@@ -1,94 +1,68 @@
-// src/types/sales/QuoteTypes.ts
+// src/types/Quote/QuoteTypes.ts
 
-export interface Quote {
-  id: string;
-  quoteNo: string;
-  date: string;
-  customerId: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  customerGst: string;
-  customerAddress: string;
-  items: QuoteItem[];
-  subtotal: number;
-  discount: number;
-  discountType: 'percentage' | 'fixed';
-  discountValue: number;
-  tax: number;
-  taxRate: number;
-  shippingCharge: number;
-  otherCharges: number;
-  roundOff: number;
-  total: number;
-  amountInWords: string;
-  notes: string;
-  termsAndConditions: string;
-  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
-  validUntil: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
+// Quote Item Interface
 export interface QuoteItem {
   id: string;
-  itemId: string;
-  itemCode: string;
-  itemName: string;
-  category: string;
-  purity: string; // e.g., "22K", "24K", "18K"
-  weight: number; // in grams
-  makingCharges: number;
-  wastagePercentage: number;
-  stoneCharges: number;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  taxRate: number;
-  taxAmount: number;
-  discount: number;
-  total: number;
-}
-
-export interface QuoteFormData {
-  customerId: string;
-  date: string;
-  validUntil: string;
-  items: QuoteItemFormData[];
-  discount: number;
-  discountType: 'percentage' | 'fixed';
-  shippingCharge: number;
-  otherCharges: number;
-  notes: string;
-  termsAndConditions: string;
-}
-
-export interface QuoteItemFormData {
   itemId: string;
   itemName: string;
   category: string;
   purity: string;
   weight: number;
+  quantity: number;
+  unitPrice: number;
   makingCharges: number;
   wastagePercentage: number;
   stoneCharges: number;
-  quantity: number;
-  unitPrice: number;
-  taxRate: number;
-  discount: number;
-  description: string;
+  total: number;
 }
 
+// Quote Status Types
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+
+// Quote Discount Types
+export type DiscountType = 'percentage' | 'fixed';
+
+// Quote Main Interface
+export interface Quote {
+  id: string;
+  quoteNo: string;
+  date: string;
+  validUntil: string;
+  customerId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerAddress?: string;
+  customerGst?: string;
+  items: QuoteItem[];
+  subtotal: number;
+  tax: number;
+  discount: number;
+  discountType: DiscountType;
+  shippingCharge: number;
+  otherCharges: number;
+  roundOff: number;
+  total: number;
+  amountInWords?: string;
+  notes?: string;
+  termsAndConditions?: string;
+  status: QuoteStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Quote Filters Interface
 export interface QuoteFilters {
   searchQuery: string;
-  status: 'all' | Quote['status'];
+  status: QuoteStatus | 'all';
   dateRange: {
     start: string;
     end: string;
   };
 }
 
+// Quote Stats Interface
 export interface QuoteStats {
   totalQuotes: number;
   draft: number;
@@ -99,20 +73,46 @@ export interface QuoteStats {
   totalValue: number;
 }
 
-export interface CustomerSuggestion {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  gst: string;
-  address: string;
+// Quote Form Data Interface (for Create/Edit)
+export interface QuoteFormData {
+  customerId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerAddress?: string;
+  customerGst?: string;
+  date: string;
+  validUntil: string;
+  items: QuoteItem[];
+  subtotal: number;
+  tax: number;
+  discount: number;
+  discountType: DiscountType;
+  shippingCharge: number;
+  otherCharges: number;
+  roundOff: number;
+  total: number;
+  amountInWords?: string;
+  notes?: string;
+  termsAndConditions?: string;
+  status: QuoteStatus;
 }
 
-export interface ItemSuggestion {
-  id: string;
-  code: string;
-  name: string;
-  category: string;
-  purity: string;
-  price: number;
+// Quote Response Interface (for API responses)
+export interface QuoteResponse {
+  success: boolean;
+  data?: Quote;
+  message?: string;
+  errors?: string[];
+}
+
+// Quote List Response Interface
+export interface QuoteListResponse {
+  success: boolean;
+  data?: Quote[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
+  message?: string;
 }

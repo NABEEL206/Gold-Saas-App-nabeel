@@ -1,4 +1,4 @@
-// src/pages/Customer/CustomerView.tsx
+// src/pages/sales/customers/CustomerView.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -19,12 +19,16 @@ import {
   Printer,
   Download,
   Users,
+  FileSpreadsheet,
+  File,
 } from 'lucide-react';
 import { useCustomers } from '../../../hooks/customer/useCustomers';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import type { ThreeDotDropdownItem } from '../../../components/common/ThreeDotDropdown';
 import type { Customer } from '../../../types/customer/CustomerTypes';
 
-export const CustomerView: React.FC = () => {
+const CustomerView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getCustomer, deleteCustomer, loading } = useCustomers();
@@ -32,13 +36,16 @@ export const CustomerView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
       const found = getCustomer(id);
       if (found) {
         setCustomer(found);
+        setError(null);
       } else {
+        setCustomer(null);
         setError('Customer not found');
       }
     }
@@ -58,27 +65,47 @@ export const CustomerView: React.FC = () => {
     }
   };
 
-  const handleExport = (format: 'pdf' | 'excel') => {
-    alert(`Exporting customer as ${format.toUpperCase()}`);
+  const handleExport = async (format: 'pdf' | 'excel') => {
+    setExportLoading(true);
+    try {
+      // Simulate export
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      alert(`Exporting customer as ${format.toUpperCase()}`);
+    } finally {
+      setExportLoading(false);
+    }
   };
 
-  const dropdownItems = [
-    {
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Get dropdown items for the header
+  const getHeaderDropdownItems = (): ThreeDotDropdownItem[] => {
+    const items: ThreeDotDropdownItem[] = [];
+
+    items.push({
       label: 'Export as PDF',
-      icon: <Download className="h-4 w-4 text-red-500" />,
+      icon: <File className="h-4 w-4 text-red-500" />,
       onClick: () => handleExport('pdf'),
-    },
-    {
+      disabled: exportLoading,
+    });
+
+    items.push({
       label: 'Export as Excel',
-      icon: <Download className="h-4 w-4 text-green-500" />,
+      icon: <FileSpreadsheet className="h-4 w-4 text-green-500" />,
       onClick: () => handleExport('excel'),
-    },
-    {
+      disabled: exportLoading,
+    });
+
+    items.push({
       label: 'Print',
       icon: <Printer className="h-4 w-4 text-blue-500" />,
-      onClick: () => window.print(),
-    },
-  ];
+      onClick: handlePrint,
+    });
+
+    return items;
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -98,6 +125,13 @@ export const CustomerView: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" text="Loading customer details..." />
+      </div>
+    );
+  }
 
   if (error || !customer) {
     return (
@@ -143,22 +177,29 @@ export const CustomerView: React.FC = () => {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            {/* Primary action buttons */}
             <button
               onClick={() => navigate(`/customers/edit/${customer.id}`)}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
             >
               <Edit className="h-4 w-4" />
               Edit
             </button>
             <button
               onClick={() => setDeleteModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
             >
               <Trash2 className="h-4 w-4" />
               Delete
             </button>
-            <ThreeDotDropdown items={dropdownItems} position="right" />
+            {/* ThreeDotDropdown with export actions */}
+            <div onClick={(e) => e.stopPropagation()}>
+              <ThreeDotDropdown 
+                items={getHeaderDropdownItems()} 
+                position="right"
+              />
+            </div>
           </div>
         </div>
 
@@ -364,3 +405,5 @@ export const CustomerView: React.FC = () => {
     </div>
   );
 };
+
+export default CustomerView;

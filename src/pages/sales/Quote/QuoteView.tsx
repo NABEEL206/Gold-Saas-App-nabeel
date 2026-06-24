@@ -1,4 +1,4 @@
-// src/pages/Sales/QuoteView.tsx
+// src/pages/sales/Quote/QuoteView.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -21,37 +21,62 @@ import {
   IndianRupee,
   Calendar,
   Hash,
-  Scale,
   Gem,
-  Sparkles,
   Send,
+  FileSpreadsheet,
+  File,
 } from 'lucide-react';
-import { useQuotes } from '../../../hooks/Quote/Quote/useQuotes';
+import { useQuotes } from '../../../hooks/Quote/useQuotes';
 import type { Quote } from '../../../types/Quote/QuoteTypes';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
-// import { useQuotes } from '../../hooks/sales/useQuotes';
-// import ThreeDotDropdown from '../../components/common/ThreeDotDropdown';
-// import type { Quote } from '../../types/sales/QuoteTypes';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import type { ThreeDotDropdownItem } from '../../../components/common/ThreeDotDropdown';
 
-export const QuoteView: React.FC = () => {
+const QuoteView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getQuote, deleteQuote, loading, handleStatusUpdate } = useQuotes();
+  const { getQuote, deleteQuote, loading, handleStatusUpdate, fetchQuotes } = useQuotes();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (id) {
-      const found = getQuote(id);
-      if (found) {
-        setQuote(found);
-      } else {
-        setError('Quote not found');
+    const loadQuote = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        if (id) {
+          // Try to get quote from state first
+          let found = getQuote(id);
+          
+          // If not found, fetch quotes and try again
+          if (!found) {
+            await fetchQuotes();
+            found = getQuote(id);
+          }
+          
+          if (found) {
+            setQuote(found);
+          } else {
+            setError('Quote not found');
+          }
+        } else {
+          setError('No quote ID provided');
+        }
+      } catch (err) {
+        console.error('Error loading quote:', err);
+        setError('Failed to load quote details');
+      } finally {
+        setIsLoading(false);
       }
-    }
-  }, [id, getQuote]);
+    };
+
+    loadQuote();
+  }, [id, getQuote, fetchQuotes]);
 
   const handleDelete = async () => {
     if (!quote) return;
@@ -76,8 +101,14 @@ export const QuoteView: React.FC = () => {
     }
   };
 
-  const handleExport = (format: 'pdf' | 'excel') => {
-    alert(`Exporting quote as ${format.toUpperCase()}`);
+  const handleExport = async (format: 'pdf' | 'excel') => {
+    setExportLoading(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      alert(`Exporting quote as ${format.toUpperCase()}`);
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const handlePrint = () => {
@@ -86,6 +117,75 @@ export const QuoteView: React.FC = () => {
 
   const handleEmail = () => {
     alert('Email quote to customer');
+  };
+
+  // Get dropdown items for the header
+  const getHeaderDropdownItems = (): ThreeDotDropdownItem[] => {
+    const items: ThreeDotDropdownItem[] = [];
+
+    // Export options
+    items.push({
+      label: 'Export as PDF',
+      icon: <File className="h-4 w-4 text-red-500" />,
+      onClick: () => handleExport('pdf'),
+      disabled: exportLoading,
+    });
+
+    items.push({
+      label: 'Export as Excel',
+      icon: <FileSpreadsheet className="h-4 w-4 text-green-500" />,
+      onClick: () => handleExport('excel'),
+      disabled: exportLoading,
+    });
+
+    items.push({
+      label: 'Print',
+      icon: <Printer className="h-4 w-4 text-blue-500" />,
+      onClick: handlePrint,
+    });
+
+    items.push({
+      label: 'Email',
+      icon: <Mail className="h-4 w-4 text-purple-500" />,
+      onClick: handleEmail,
+    });
+
+    // Status actions based on current status
+    if (quote?.status === 'draft') {
+      items.push({
+        label: 'Send Quote',
+        icon: <Send className="h-4 w-4 text-blue-500" />,
+        onClick: () => handleStatusChange('sent'),
+      });
+      items.push({
+        label: 'Edit',
+        icon: <Edit className="h-4 w-4 text-amber-500" />,
+        onClick: () => navigate(`/sales/quotes/edit/${quote.id}`),
+      });
+    }
+
+    if (quote?.status === 'sent') {
+      items.push({
+        label: 'Accept',
+        icon: <CheckCircle className="h-4 w-4 text-green-500" />,
+        onClick: () => handleStatusChange('accepted'),
+      });
+      items.push({
+        label: 'Reject',
+        icon: <XCircle className="h-4 w-4 text-red-500" />,
+        onClick: () => handleStatusChange('rejected'),
+      });
+    }
+
+    // Delete option (always available)
+    items.push({
+      label: 'Delete',
+      icon: <Trash2 className="h-4 w-4 text-red-500" />,
+      onClick: () => setDeleteModalOpen(true),
+      danger: true,
+    });
+
+    return items;
   };
 
   const getStatusConfig = (status: string) => {
@@ -99,29 +199,14 @@ export const QuoteView: React.FC = () => {
     return config[status] || config.draft;
   };
 
-  const dropdownItems = [
-    {
-      label: 'Export as PDF',
-      icon: <Download className="h-4 w-4 text-red-500" />,
-      onClick: () => handleExport('pdf'),
-    },
-    {
-      label: 'Export as Excel',
-      icon: <Download className="h-4 w-4 text-green-500" />,
-      onClick: () => handleExport('excel'),
-    },
-    {
-      label: 'Print',
-      icon: <Printer className="h-4 w-4 text-blue-500" />,
-      onClick: handlePrint,
-    },
-    {
-      label: 'Email',
-      icon: <Mail className="h-4 w-4 text-purple-500" />,
-      onClick: handleEmail,
-    },
-  ];
-
+  // Show loading spinner
+  if (isLoading || loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" text="Loading quote details..." />
+      </div>
+    );
+  }
 
   if (error || !quote) {
     return (
@@ -146,7 +231,7 @@ export const QuoteView: React.FC = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
+        {/* Header with ThreeDotDropdown */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <button
@@ -172,7 +257,7 @@ export const QuoteView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Status Actions */}
+            {/* Quick action buttons for primary actions */}
             {quote.status === 'draft' && (
               <>
                 <button
@@ -209,17 +294,17 @@ export const QuoteView: React.FC = () => {
                 </button>
               </>
             )}
-            <button
-              onClick={() => setDeleteModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </button>
-            <ThreeDotDropdown items={dropdownItems} position="right" />
+            {/* ThreeDotDropdown with all actions */}
+            <div onClick={(e) => e.stopPropagation()}>
+              <ThreeDotDropdown 
+                items={getHeaderDropdownItems()} 
+                position="right"
+              />
+            </div>
           </div>
         </div>
 
+        {/* Rest of the quote details - same as before */}
         {/* Quote Details */}
         <div className="space-y-6">
           {/* Customer & Quote Info */}
@@ -487,3 +572,5 @@ export const QuoteView: React.FC = () => {
     </div>
   );
 };
+
+export default QuoteView;

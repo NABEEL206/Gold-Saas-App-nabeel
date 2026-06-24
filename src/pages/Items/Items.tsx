@@ -5,9 +5,6 @@ import {
   Plus,
   Search,
   Filter,
-  Eye,
-  Edit,
-  Trash2,
   Package,
   AlertCircle,
   CheckCircle,
@@ -16,13 +13,13 @@ import {
   RefreshCw,
   FileSpreadsheet,
   File,
-  Printer,
   Upload,
 } from 'lucide-react';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ThreeDotDropdown from '../../components/common/ThreeDotDropdown';
+import type { ThreeDotDropdownItem } from '../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../components/common/ReusableTable';
-import type { TableColumn, TableAction } from '../../components/common/ReusableTable';
+import type { TableColumn } from '../../components/common/ReusableTable';
 import { useItems } from '../../hooks/items/useItems';
 import type { Item } from '../../types/items/Itemstype';
 
@@ -54,7 +51,6 @@ export const Items: React.FC = () => {
   } = useItems();
 
   // Local loading states for specific actions
-  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
@@ -93,21 +89,6 @@ export const Items: React.FC = () => {
   // Actions with loading states
   const handleView = (item: Item) => {
     navigate(`/items/${item.id}`);
-  };
-
-  const handleEdit = (item: Item) => {
-    navigate(`/items/edit/${item.id}`);
-  };
-
-  const handleDeleteWithLoading = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this item?')) {
-      setDeleteLoading(id);
-      try {
-        await handleDelete(id);
-      } finally {
-        setDeleteLoading(null);
-      }
-    }
   };
 
   const handleBulkDeleteWithLoading = async () => {
@@ -157,8 +138,7 @@ export const Items: React.FC = () => {
     }
   };
 
-
-  // Define table columns
+  // Define table columns - REMOVED actions column
   const columns: TableColumn<Item>[] = [
     {
       key: 'itemCode',
@@ -211,33 +191,11 @@ export const Items: React.FC = () => {
       header: 'Status',
       render: (item) => getStatusBadge(item.status),
     },
+    // ACTIONS COLUMN REMOVED - No longer needed
   ];
 
-  // Define table actions
-  const actions: TableAction<Item>[] = [
-    {
-      icon: <Eye className="h-4 w-4" />,
-      onClick: (item) => handleView(item),
-      label: 'View',
-      className: 'text-gray-400 hover:text-blue-500 hover:bg-blue-50',
-    },
-    {
-      icon: <Edit className="h-4 w-4" />,
-      onClick: (item) => handleEdit(item),
-      label: 'Edit',
-      className: 'text-gray-400 hover:text-amber-500 hover:bg-amber-50',
-    },
-    {
-      icon: deleteLoading ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4" />,
-      onClick: (item) => handleDeleteWithLoading(item.id),
-      label: 'Delete',
-      className: 'text-gray-400 hover:text-red-500 hover:bg-red-50',
-      disabled: (item) => deleteLoading === item.id,
-    },
-  ];
-
-  // Three-dot dropdown items with import option
-  const dropdownItems = [
+  // Three-dot dropdown items for the header actions (export, import)
+  const headerDropdownItems = [
     {
       label: 'Export as PDF',
       icon: <File className="h-4 w-4 text-red-500" />,
@@ -248,7 +206,6 @@ export const Items: React.FC = () => {
       icon: <FileSpreadsheet className="h-4 w-4 text-green-500" />,
       onClick: handleExportWithLoading,
     },
-
   ];
 
   // Show main loading spinner
@@ -278,7 +235,9 @@ export const Items: React.FC = () => {
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Trash2 className="h-4 w-4" />
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               )}
               Delete Selected ({selectedItems.length})
             </button>
@@ -307,7 +266,7 @@ export const Items: React.FC = () => {
 
           {/* Three Dot Dropdown - with Import option */}
           <ThreeDotDropdown 
-            items={dropdownItems} 
+            items={headerDropdownItems} 
             position="right"
             onImport={handleImportWithLoading}
             importLabel="Import Items"
@@ -351,11 +310,10 @@ export const Items: React.FC = () => {
         </div>
       </div>
 
-      {/* Reusable Table with Pagination */}
+      {/* Reusable Table with Pagination - No actions column */}
       <ReusableTable
         data={currentItems}
         columns={columns}
-        actions={actions}
         selectable={true}
         selectedItems={selectedItems}
         onSelectAll={handleSelectAll}

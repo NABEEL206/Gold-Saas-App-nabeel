@@ -1,4 +1,3 @@
-// src/pages/Inventory/InventoryAdjustmentCreate.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -11,10 +10,8 @@ import {
   Scale,
   DollarSign,
   Calendar,
-  MapPin,
   FileText,
   AlertCircle,
-  CheckCircle,
   Info,
   Search,
 } from 'lucide-react';
@@ -37,9 +34,7 @@ const InventoryAdjustmentCreate: React.FC = () => {
     handleItemChange,
     calculateTotals,
     createAdjustment,
-    resetForm,
     getAvailableItems,
-    getBranches,
     setShowItemSearch,
     setSearchQuery,
   } = useInventoryAdjustmentCreate();
@@ -99,8 +94,6 @@ const InventoryAdjustmentCreate: React.FC = () => {
       default: return <Package className="h-4 w-4" />;
     }
   };
-
-  const branches = getBranches();
 
   if (loading) {
     return (
@@ -188,30 +181,6 @@ const InventoryAdjustmentCreate: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Branch <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <select
-                      value={formData.branch}
-                      onChange={(e) => handleFormChange('branch', e.target.value)}
-                      className={`w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                        errors.branch ? 'border-red-500' : 'border-gray-200'
-                      }`}
-                    >
-                      <option value="">Select Branch</option>
-                      {branches.map((branch) => (
-                        <option key={branch} value={branch}>{branch}</option>
-                      ))}
-                    </select>
-                    {errors.branch && (
-                      <p className="mt-1 text-xs text-red-500">{errors.branch}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Date <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -230,7 +199,7 @@ const InventoryAdjustmentCreate: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Notes
                   </label>
@@ -271,7 +240,7 @@ const InventoryAdjustmentCreate: React.FC = () => {
 
               {/* Item Search Modal */}
               {showItemSearch && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50 p-4">
                   <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
                     <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-gray-900">Add Items</h3>
@@ -479,17 +448,6 @@ const InventoryAdjustmentCreate: React.FC = () => {
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-              <button
-                type="button"
-                onClick={resetForm}
-                className="w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                Reset Form
-              </button>
             </div>
           </div>
         </div>

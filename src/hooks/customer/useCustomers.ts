@@ -1,5 +1,5 @@
 // src/hooks/customer/useCustomers.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Customer, CustomerFilters, CustomerStats, CustomerFormData } from '../../types/customer/CustomerTypes';
 
 // Mock data - Replace with actual API calls
@@ -97,6 +97,7 @@ export const useCustomers = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [totalItems, setTotalItems] = useState(0);
+  const [importLoading, setImportLoading] = useState(false);
   const [stats, setStats] = useState<CustomerStats>({
     totalCustomers: 0,
     active: 0,
@@ -109,6 +110,12 @@ export const useCustomers = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  // Get customer by ID
+  const getCustomer = useCallback((id: string): Customer | null => {
+    const found = customers.find(c => c.id === id);
+    return found || null;
+  }, [customers]);
 
   // Fetch customers
   const fetchCustomers = useCallback(async () => {
@@ -252,25 +259,61 @@ export const useCustomers = () => {
 
   // Import
   const handleImport = useCallback(async (files: FileList) => {
+    setImportLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log(`Importing ${files.length} file(s)`);
+      
+      // Simulate creating imported customers
+      const fileNames: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        fileNames.push(files[i].name);
+      }
+      
+      // Add a mock imported customer
+      const newCustomer: Customer = {
+        id: `imported-${Date.now()}`,
+        customerCode: `CUST-IMP-${String(customers.length + 1).padStart(3, '0')}`,
+        salutation: 'Mr.',
+        firstName: 'Imported',
+        lastName: 'Customer',
+        displayName: 'Imported Customer',
+        customerType: 'individual',
+        email: 'imported@example.com',
+        workPhone: '',
+        mobileNumber: '9999999999',
+        billingAddress: 'Imported Address',
+        city: 'Imported City',
+        state: 'Imported State',
+        pincode: '000000',
+        country: 'India',
+        openingBalance: 0,
+        creditLimit: 0,
+        gstNumber: '',
+        panNumber: '',
+        notes: `Imported from ${fileNames.join(', ')}`,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: 'Import User',
+      };
+      
+      setCustomers(prev => [...prev, newCustomer]);
       alert(`Imported ${files.length} file(s) successfully!`);
+      return { success: true, count: files.length };
     } catch (error) {
       console.error('Error importing:', error);
       alert('Import failed');
+      throw error;
+    } finally {
+      setImportLoading(false);
     }
-  }, []);
+  }, [customers]);
 
   // Refresh
   const handleRefresh = useCallback(async () => {
     await fetchCustomers();
   }, [fetchCustomers]);
-
-  // Get customer by ID
-  const getCustomer = useCallback((id: string) => {
-    return customers.find(c => c.id === id) || null;
-  }, [customers]);
 
   // Change items per page
   const handleItemsPerPageChange = useCallback((newItemsPerPage: number) => {
@@ -317,6 +360,7 @@ export const useCustomers = () => {
     startIndex,
     endIndex,
     totalPages,
+    importLoading,
     
     // Setters
     setFilters,
@@ -331,7 +375,7 @@ export const useCustomers = () => {
     handleExport,
     handleImport,
     handleRefresh,
-    getCustomer,
+    getCustomer, // ADDED: Get a single customer by ID
     handleStatusUpdate,
     fetchCustomers,
   };

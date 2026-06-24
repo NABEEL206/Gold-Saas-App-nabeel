@@ -5,15 +5,11 @@ import {
   Plus,
   Search,
   Filter,
-  Eye,
-  Edit,
-  Trash2,
   Users,
   User,
   Building2,
   CheckCircle,
   Clock,
-  AlertCircle,
   RefreshCw,
   FileSpreadsheet,
   File,
@@ -24,7 +20,7 @@ import { useCustomers } from '../../../hooks/customer/useCustomers';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
-import type { TableColumn, TableAction } from '../../../components/common/ReusableTable';
+import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { Customer } from '../../../types/customer/CustomerTypes';
 
 // Status Badge
@@ -59,7 +55,7 @@ const TypeBadge: React.FC<{ type: Customer['customerType'] }> = ({ type }) => {
   );
 };
 
-export const Customers: React.FC = () => {
+const Customers: React.FC = () => {
   const navigate = useNavigate();
   const {
     loading,
@@ -82,7 +78,6 @@ export const Customers: React.FC = () => {
   } = useCustomers();
 
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
@@ -90,22 +85,6 @@ export const Customers: React.FC = () => {
 
   const handleView = (customer: Customer) => {
     navigate(`/customers/${customer.id}`);
-  };
-
-  const handleEdit = (customer: Customer) => {
-    navigate(`/customers/edit/${customer.id}`);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
-      setDeleteLoading(id);
-      try {
-        await deleteCustomer(id);
-        setSelectedItems(prev => prev.filter(item => item !== id));
-      } finally {
-        setDeleteLoading(null);
-      }
-    }
   };
 
   const handleBulkDeleteAction = async () => {
@@ -165,7 +144,7 @@ export const Customers: React.FC = () => {
     );
   };
 
-  // Columns
+  // Columns - NO actions column
   const columns: TableColumn<Customer>[] = [
     {
       key: 'customerCode',
@@ -208,33 +187,11 @@ export const Customers: React.FC = () => {
       header: 'Status',
       render: (item) => <StatusBadge status={item.status} />,
     },
+    // ACTIONS COLUMN REMOVED
   ];
 
-  // Actions
-  const actions: TableAction<Customer>[] = [
-    {
-      icon: <Eye className="h-4 w-4" />,
-      onClick: (item) => handleView(item),
-      label: 'View',
-      className: 'text-gray-400 hover:text-blue-500 hover:bg-blue-50',
-    },
-    {
-      icon: <Edit className="h-4 w-4" />,
-      onClick: (item) => handleEdit(item),
-      label: 'Edit',
-      className: 'text-gray-400 hover:text-amber-500 hover:bg-amber-50',
-    },
-    {
-      icon: <Trash2 className="h-4 w-4" />,
-      onClick: (item) => handleDelete(item.id),
-      label: 'Delete',
-      className: 'text-gray-400 hover:text-red-500 hover:bg-red-50',
-      disabled: (item) => deleteLoading === item.id,
-    },
-  ];
-
-  // Dropdown items
-  const dropdownItems = [
+  // Dropdown items for header ThreeDotDropdown
+  const headerDropdownItems = [
     {
       label: 'Export as PDF',
       icon: exportLoading ? (
@@ -309,7 +266,7 @@ export const Customers: React.FC = () => {
             </button>
           )}
           <ThreeDotDropdown
-            items={dropdownItems}
+            items={headerDropdownItems}
             position="right"
             onImport={handleImportAction}
             importLabel="Import Customers"
@@ -337,7 +294,7 @@ export const Customers: React.FC = () => {
                 placeholder="Search by name, code, email, mobile..."
                 value={filters.searchQuery}
                 onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
           </div>
@@ -346,7 +303,7 @@ export const Customers: React.FC = () => {
             <select
               value={filters.customerType}
               onChange={(e) => setFilters({ ...filters, customerType: e.target.value as any })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="all">All Types</option>
               <option value="individual">Individual</option>
@@ -360,7 +317,7 @@ export const Customers: React.FC = () => {
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value as any })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -370,11 +327,10 @@ export const Customers: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table - NO actions column */}
       <ReusableTable
         data={currentItems}
         columns={columns}
-        actions={actions}
         selectable={true}
         selectedItems={selectedItems}
         onSelectAll={handleSelectAll}
@@ -396,3 +352,5 @@ export const Customers: React.FC = () => {
     </div>
   );
 };
+
+export default Customers;

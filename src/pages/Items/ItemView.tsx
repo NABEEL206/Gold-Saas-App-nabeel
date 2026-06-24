@@ -32,8 +32,13 @@ import {
   Grid,
   Maximize2,
   Minimize2,
+  FileDown,
+  Copy,
+  Archive,
 } from 'lucide-react';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import ThreeDotDropdown from '../../components/common/ThreeDotDropdown';
+import type { ThreeDotDropdownItem } from '../../components/common/ThreeDotDropdown';
 import { useItemDetails } from '../../hooks/items/useItemDetails';
 
 // Define supported item status values locally to avoid invalid type imports.
@@ -265,6 +270,92 @@ const ItemView: React.FC = () => {
     }
   };
 
+  const handleDownloadPDF = () => {
+    // Implement PDF download logic
+    console.log('Downloading PDF...');
+    window.print();
+  };
+
+  const handleDuplicate = async () => {
+    if (!item) return;
+    console.log('Duplicating item:', item.id);
+    alert('Duplicate functionality coming soon!');
+  };
+
+  const handleArchive = async () => {
+    if (!item) return;
+    console.log('Archiving item:', item.id);
+    alert('Archive functionality coming soon!');
+  };
+
+  // Get dropdown items for the header
+  const getHeaderDropdownItems = (): ThreeDotDropdownItem[] => {
+    const items: ThreeDotDropdownItem[] = [];
+
+    // Edit action
+    items.push({
+      label: 'Edit',
+      icon: <Edit className="h-4 w-4" />,
+      onClick: handleEdit,
+    });
+
+    // Status toggle
+    if (item) {
+      items.push({
+        label: item.status === 'active' ? 'Deactivate' : 'Activate',
+        icon: item.status === 'active' ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />,
+        onClick: handleStatusToggle,
+        disabled: statusUpdateLoading,
+      });
+    }
+
+    // Share
+    items.push({
+      label: 'Share',
+      icon: <Share2 className="h-4 w-4" />,
+      onClick: handleShare,
+    });
+
+    // Print
+    items.push({
+      label: 'Print',
+      icon: <Printer className="h-4 w-4" />,
+      onClick: handlePrint,
+    });
+
+    // Download PDF
+    items.push({
+      label: 'Download PDF',
+      icon: <FileDown className="h-4 w-4" />,
+      onClick: handleDownloadPDF,
+    });
+
+    // Duplicate
+    items.push({
+      label: 'Duplicate',
+      icon: <Copy className="h-4 w-4" />,
+      onClick: handleDuplicate,
+    });
+
+    // Archive
+    items.push({
+      label: 'Archive',
+      icon: <Archive className="h-4 w-4" />,
+      onClick: handleArchive,
+    });
+
+    // Delete (with danger style)
+    items.push({
+      label: 'Delete',
+      icon: deleteLoading ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4" />,
+      onClick: handleDelete,
+      danger: true,
+      disabled: deleteLoading,
+    });
+
+    return items;
+  };
+
   // ==================== RENDER ====================
 
   // Loading State
@@ -299,7 +390,7 @@ const ItemView: React.FC = () => {
   // Main Render
   return (
     <div className="p-6 bg-gray-50 min-h-screen print:p-4">
-      {/* ===== HEADER ===== */}
+      {/* ===== HEADER with ThreeDotDropdown ===== */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6 print:mb-4">
         <div className="flex items-start gap-3">
           <button
@@ -325,68 +416,12 @@ const ItemView: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap print:hidden">
-          <button
-            onClick={handleShare}
-            className="p-2 text-gray-600 hover:text-gray-800 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            title="Share"
-          >
-            <Share2 className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handlePrint}
-            className="p-2 text-gray-600 hover:text-gray-800 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            title="Print"
-          >
-            <Printer className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleStatusToggle}
-            disabled={statusUpdateLoading}
-            className={`inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              item.status === 'active'
-                ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                : 'bg-green-50 text-green-600 hover:bg-green-100'
-            }`}
-          >
-            {statusUpdateLoading ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              item.status === 'active' ? (
-                <>
-                  <XCircle className="h-4 w-4" />
-                  Deactivate
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4" />
-                  Activate
-                </>
-              )
-            )}
-          </button>
-          <button
-            onClick={handleEdit}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Edit className="h-4 w-4" />
-            Edit
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleteLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {deleteLoading ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <>
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </>
-            )}
-          </button>
+        {/* Three Dot Dropdown - Replaces all action buttons */}
+        <div className="print:hidden" onClick={(e) => e.stopPropagation()}>
+          <ThreeDotDropdown 
+            items={getHeaderDropdownItems()} 
+            position="right"
+          />
         </div>
       </div>
 
@@ -560,27 +595,6 @@ const ItemView: React.FC = () => {
         >
           Back to Items
         </button>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleShare}
-            className="p-2 text-gray-600 hover:text-gray-800 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Share2 className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handlePrint}
-            className="p-2 text-gray-600 hover:text-gray-800 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Printer className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleEdit}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors"
-          >
-            <Edit className="h-4 w-4" />
-            Edit Item
-          </button>
-        </div>
       </div>
     </div>
   );

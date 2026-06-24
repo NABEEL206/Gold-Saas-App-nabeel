@@ -5,9 +5,6 @@ import {
   Plus,
   Search,
   Filter,
-  Eye,
-  Edit,
-  Trash2,
   FileText,
   CheckCircle,
   Clock,
@@ -22,7 +19,7 @@ import {
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ThreeDotDropdown from '../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../components/common/ReusableTable';
-import type { TableColumn, TableAction } from '../../components/common/ReusableTable';
+import type { TableColumn } from '../../components/common/ReusableTable';
 import { useInventoryAdjustments } from '../../hooks/inventory/useInventoryAdjustments';
 import type { InventoryAdjustment } from '../../types/inventory/InventoryAdjustmentTypes';
 
@@ -217,7 +214,7 @@ const InventoryAdjustments: React.FC = () => {
     return `${formatDate(dateString)} ${formatTime(dateString)}`;
   };
 
-  // Table Columns
+  // Table Columns - REMOVED actions column
   const columns: TableColumn<InventoryAdjustment>[] = [
     {
       key: 'date',
@@ -255,40 +252,8 @@ const InventoryAdjustments: React.FC = () => {
     },
   ];
 
-  // Table Actions
-  const actions: TableAction<InventoryAdjustment>[] = [
-    {
-      icon: <Eye className="h-4 w-4" />,
-      onClick: (item) => handleView(item),
-      label: 'View',
-      className: 'text-gray-400 hover:text-blue-500 hover:bg-blue-50',
-    },
-    {
-      icon: <Edit className="h-4 w-4" />,
-      onClick: (item) => handleEdit(item),
-      label: 'Edit',
-      className: 'text-gray-400 hover:text-amber-500 hover:bg-amber-50',
-      show: (item) => item.status === 'draft' || item.status === 'pending',
-    },
-    {
-      icon: deleteLoading ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4" />,
-      onClick: (item) => handleDeleteWithLoading(item.id),
-      label: 'Delete',
-      className: 'text-gray-400 hover:text-red-500 hover:bg-red-50',
-      show: (item) => item.status === 'draft' || item.status === 'pending',
-      disabled: (item) => deleteLoading === item.id,
-    },
-    {
-      icon: <CheckCircle className="h-4 w-4" />,
-      onClick: (item) => handleStatusUpdate(item.id, 'adjusted'),
-      label: 'Approve',
-      className: 'text-green-400 hover:text-green-600 hover:bg-green-50',
-      show: (item) => item.status === 'pending',
-    },
-  ];
-
-  // Three-dot dropdown items
-  const dropdownItems = [
+  // Three-dot dropdown items for header
+  const headerDropdownItems = [
     {
       label: 'Export as PDF',
       icon: <File className="h-4 w-4 text-red-500" />,
@@ -348,7 +313,7 @@ const InventoryAdjustments: React.FC = () => {
 
           {/* Three Dot Dropdown with Import option */}
           <ThreeDotDropdown 
-            items={dropdownItems} 
+            items={headerDropdownItems} 
             position="right"
             onImport={handleImportWithLoading}
             importLabel="Import Adjustments"
@@ -422,11 +387,10 @@ const InventoryAdjustments: React.FC = () => {
         </div>
       </div>
 
-      {/* Reusable Table with Full Pagination and Row Click */}
+      {/* Reusable Table - No actions column */}
       <ReusableTable
         data={currentItems}
         columns={columns}
-        actions={actions}
         selectable={true}
         selectedItems={selectedItems}
         onSelectAll={handleSelectAll}

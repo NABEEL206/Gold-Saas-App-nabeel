@@ -1,3 +1,4 @@
+// src/AppRoutes.tsx
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
@@ -9,7 +10,7 @@ import ResetPassword from '../pages/forgot/ResetPassword';
 import Home from '../pages/Dashboard/Dashboard';
 import Items from '../pages/Items/Items';
 import Adjustments from '../pages/Inventory/InventoryAdjustments';
-import { Quotes } from '../pages/sales/Quote/Quotes';
+import  Quote  from '../pages/sales/Quote/Quotes';
 import DeliveryChallans from '../pages/sales/deliveryChallans/DeliveryChallans';
 import PaymentsReceived from '../pages/sales/PaymentsReceived/PaymentsReceived';
 import CreditNotes from '../pages/sales/CreditNotes/CreditNotes';
@@ -31,19 +32,25 @@ import ItemView from '../pages/Items/ItemView';
 import ItemEdit from '../pages/Items/ItemEdit';
 import InventoryAdjustmentCreate from '../pages/Inventory/InventoryAdjustmentCreate';
 import InventoryAdjustmentView from '../pages/Inventory/InventoryAdjustmentView';
-import { Customers } from '../pages/sales/customers/Customers';
+
+// Customer imports - CHANGE THESE to default imports
+import Customers from '../pages/sales/customers/Customers';
 import { CustomerEdit } from '../pages/sales/customers/CustomerEdit';
-import { CustomerView } from '../pages/sales/customers/CustomerView';
+import CustomerView from '../pages/sales/customers/CustomerView';
 import { CustomerCreate } from '../pages/sales/customers/CustomerCreate';
-import QuoteRough from '../pages/sales/Quote/QuoteRough/QuoteRough';
-import { QuoteCreate } from '../pages/sales/Quote/QuoteCreate';
-import { QuoteView } from '../pages/sales/Quote/QuoteView';
-import { QuoteEdit } from '../pages/sales/Quote/QuoteEdit';
+
+import  QuoteCreate  from '../pages/sales/Quote/QuoteCreate';
+import QuoteView  from '../pages/sales/Quote/QuoteView';
+import  QuoteEdit  from '../pages/sales/Quote/QuoteEdit';
 import Invoices from '../pages/sales/invoice/Invoices';
 import InvoiceCreate from '../pages/sales/invoice/InvoiceCreate';
 import InvoiceEdit from '../pages/sales/invoice/InvoiceEdit';
 import InvoiceView from '../pages/sales/invoice/InvoiceView';
-import { ProformaInvoice } from '../pages/sales/proforma/ProformaInvoice';
+// Proforma Invoice Imports
+import ProformaInvoiceList from '../pages/sales/proforma/ProformaInvoice';
+import ProformaInvoiceCreate from '../pages/sales/proforma/ProformaInvoiceCreate';
+import ProformaInvoiceEdit from '../pages/sales/proforma/ProformaInvoiceEdit';
+import ProformaInvoiceView from '../pages/sales/proforma/ProformaInvoiceView';
 
 // Create a wrapper component for cleaner code
 const LayoutWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -85,14 +92,20 @@ const AppRoutes: React.FC = () => {
       <Route path="/customers/:id" element={<LayoutWrapper><CustomerView /></LayoutWrapper>} />
       <Route path="/customers/edit/:id" element={<LayoutWrapper><CustomerEdit /></LayoutWrapper>} />
         {/* Other Sales Routes */}
-      <Route path="/sales/quotes" element={<LayoutWrapper><Quotes /></LayoutWrapper>} />
+      <Route path="/sales/quotes" element={<LayoutWrapper><Quote /></LayoutWrapper>} />
       <Route path="/sales/quotes/create" element={<LayoutWrapper><QuoteCreate /></LayoutWrapper>} />
       <Route path="/sales/quotes/:id" element={<LayoutWrapper><QuoteView /></LayoutWrapper>} />
       <Route path="/sales/quotes/edit/:id" element={<LayoutWrapper><QuoteEdit /></LayoutWrapper>} />
 
-
-      <Route path="/sales/rough-quotes" element={<LayoutWrapper><QuoteRough /></LayoutWrapper>} />
-      <Route path="/sales/proforma-invoices" element={<LayoutWrapper><ProformaInvoice /></LayoutWrapper>} />
+      
+      {/* Proforma Invoice Routes - NEW */}
+      <Route path="/sales/proforma" element={<LayoutWrapper><ProformaInvoiceList /></LayoutWrapper>} />
+      <Route path="/sales/proforma/create" element={<LayoutWrapper><ProformaInvoiceCreate /></LayoutWrapper>} />
+      <Route path="/sales/proforma/:id/edit" element={<LayoutWrapper><ProformaInvoiceEdit /></LayoutWrapper>} />
+      <Route path="/sales/proforma/:id/view" element={<LayoutWrapper><ProformaInvoiceView /></LayoutWrapper>} />
+      
+      {/* Keep old proforma-invoices route for backward compatibility */}
+      <Route path="/sales/proforma-invoices" element={<LayoutWrapper><ProformaInvoiceList /></LayoutWrapper>} />
 
       {/* Invoice Routes */}
       <Route path="/sales/invoices" element={<LayoutWrapper><Invoices /></LayoutWrapper>} />

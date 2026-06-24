@@ -1,13 +1,10 @@
-// src/pages/Sales/Quotes.tsx
+// src/pages/sales/Quote/Quotes.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
   Filter,
-  Eye,
-  Edit,
-  Trash2,
   FileText,
   CheckCircle,
   Clock,
@@ -19,11 +16,11 @@ import {
   Trash,
   Gem,
 } from 'lucide-react';
-import { useQuotes } from '../../../hooks/Quote/Quote/useQuotes';
+import { useQuotes } from '../../../hooks/Quote/useQuotes';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
-import type { TableColumn, TableAction } from '../../../components/common/ReusableTable';
+import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { Quote } from '../../../types/Quote/QuoteTypes';
 
 // Status Badge
@@ -44,7 +41,7 @@ const StatusBadge: React.FC<{ status: Quote['status'] }> = ({ status }) => {
   );
 };
 
-export const Quotes: React.FC = () => {
+const Quotes: React.FC = () => {
   const navigate = useNavigate();
   const {
     loading,
@@ -67,7 +64,6 @@ export const Quotes: React.FC = () => {
   } = useQuotes();
 
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
@@ -75,28 +71,6 @@ export const Quotes: React.FC = () => {
 
   const handleView = (quote: Quote) => {
     navigate(`/sales/quotes/${quote.id}`);
-  };
-
-  const handleEdit = (quote: Quote) => {
-    navigate(`/sales/quotes/edit/${quote.id}`);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this quote?')) {
-      setDeleteLoading(id);
-      try {
-        await deleteQuote(id);
-        setSelectedItems(prev => prev.filter(item => item !== id));
-      } finally {
-        setDeleteLoading(null);
-      }
-    }
-  };
-
-  const handleApprove = async (id: string) => {
-    if (window.confirm('Approve this quote?')) {
-      await handleStatusUpdate(id, 'accepted');
-    }
   };
 
   const handleSelectAll = () => {
@@ -143,7 +117,19 @@ export const Quotes: React.FC = () => {
     }
   };
 
-  // Columns
+  const handleImportAction = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      setImportLoading(true);
+      try {
+        await handleImport(files);
+      } finally {
+        setImportLoading(false);
+      }
+    }
+  };
+
+  // Columns - NO actions column
   const columns: TableColumn<Quote>[] = [
     {
       key: 'quoteNo',
@@ -190,39 +176,7 @@ export const Quotes: React.FC = () => {
     },
   ];
 
-  // Actions - Fixed the icon property
-  const actions: TableAction<Quote>[] = [
-    {
-      icon: <Eye className="h-4 w-4" />,
-      onClick: (item) => handleView(item),
-      label: 'View',
-      className: 'text-gray-400 hover:text-blue-500 hover:bg-blue-50',
-    },
-    {
-      icon: <Edit className="h-4 w-4" />,
-      onClick: (item) => handleEdit(item),
-      label: 'Edit',
-      className: 'text-gray-400 hover:text-amber-500 hover:bg-amber-50',
-      show: (item) => item.status === 'draft',
-    },
-    {
-      icon: <Trash2 className="h-4 w-4" />,
-      onClick: (item) => handleDelete(item.id),
-      label: 'Delete',
-      className: 'text-gray-400 hover:text-red-500 hover:bg-red-50',
-      show: (item) => item.status === 'draft',
-      disabled: (item) => deleteLoading === item.id,
-    },
-    {
-      icon: <CheckCircle className="h-4 w-4" />,
-      onClick: (item) => handleApprove(item.id),
-      label: 'Approve',
-      className: 'text-gray-400 hover:text-green-500 hover:bg-green-50',
-      show: (item) => item.status === 'sent',
-    },
-  ];
-
-  // Dropdown items
+  // Dropdown items for header
   const dropdownItems = [
     {
       label: 'Export as PDF',
@@ -303,16 +257,7 @@ export const Quotes: React.FC = () => {
           <ThreeDotDropdown
             items={dropdownItems}
             position="right"
-            onImport={(event) => {
-              if (event.target.files) {
-                setImportLoading(true);
-                try {
-                  handleImport(event.target.files);
-                } finally {
-                  setImportLoading(false);
-                }
-              }
-            }}
+            onImport={handleImportAction}
             importLabel="Import Quotes"
             importIcon={
               importLoading ? (
@@ -360,11 +305,10 @@ export const Quotes: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table - NO actions prop */}
       <ReusableTable
         data={currentItems}
         columns={columns}
-        actions={actions}
         selectable={true}
         selectedItems={selectedItems}
         onSelectAll={handleSelectAll}
@@ -386,3 +330,5 @@ export const Quotes: React.FC = () => {
     </div>
   );
 };
+
+export default Quotes;
