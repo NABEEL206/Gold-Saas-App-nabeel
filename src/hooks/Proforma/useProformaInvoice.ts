@@ -1,135 +1,196 @@
+// src/hooks/Proforma/useProformaInvoice.ts
 import { useState, useEffect, useCallback } from 'react';
 import type { 
   ProformaInvoice, 
   ProformaInvoiceFilters 
 } from '../../types/proforma/ProformaInvoiceType';
 
-// Mock data for demonstration
+// Mock data with richer demo data
 const mockInvoices: ProformaInvoice[] = [
   {
-      id: '1',
-      invoiceNumber: 'PI-2024-001',
-      invoiceDate: '2024-01-15',
-      validUntil: '2024-02-15',
-      customerId: 'cust1',
-      customerName: 'ABC Corporation',
-      customerEmail: 'contact@abccorp.com',
-      customerPhone: '+1-555-0100',
-      customerAddress: '123 Business St, New York, NY 10001',
-      items: [
-          {
-              id: 'item1',
-              productId: 'prod1',
-              productName: 'Product A',
-              description: 'High-quality product A',
-              quantity: 5,
-              unitPrice: 100,
-              discount: 10,
-              taxRate: 10,
-              total: 450,
-          },
-          {
-              id: 'item2',
-              productId: 'prod2',
-              productName: 'Product B',
-              description: 'Premium product B',
-              quantity: 3,
-              unitPrice: 200,
-              discount: 5,
-              taxRate: 15,
-              total: 655.5,
-          },
-      ],
-      subtotal: 1100,
-      discountTotal: 95,
-      taxTotal: 150.75,
-      grandTotal: 1155.75,
-      currency: 'USD',
-      paymentTerms: 'Net 30',
-      deliveryTerms: 'FOB Shipping Point',
-      notes: 'Please deliver before the end of the month',
-      termsAndConditions: 'Standard terms apply',
-      status: 'draft',
-      createdBy: 'admin',
-      createdAt: '2024-01-15T10:00:00Z',
-      updatedAt: '2024-01-15T10:00:00Z',
-      discount: 0
+    id: '1',
+    invoiceNumber: 'PI-2024-001',
+    invoiceDate: '2024-01-15',
+    validUntil: '2024-02-15',
+    customerId: 'cust1',
+    customerName: 'Rajesh Jewelers',
+    customerEmail: 'rajesh@jewelers.com',
+    customerPhone: '+91-98765-43210',
+    customerAddress: '123, Jewelry Market, Mumbai, Maharashtra',
+    items: [
+      {
+        id: 'item1',
+        productId: 'prod1',
+        productName: 'Gold Chain',
+        description: '22K Gold Chain with pendant',
+        quantity: 2,
+        unitPrice: 4500,
+        discount: 0,
+        taxRate: 18,
+        total: 9000,
+      },
+      {
+        id: 'item2',
+        productId: 'prod2',
+        productName: 'Diamond Ring',
+        description: '18K Diamond Ring with 0.5ct diamond',
+        quantity: 1,
+        unitPrice: 8500,
+        discount: 5,
+        taxRate: 18,
+        total: 8075,
+      },
+    ],
+    subtotal: 17075,
+    discountTotal: 425,
+    taxTotal: 2997,
+    grandTotal: 19647,
+    currency: 'INR',
+    paymentTerms: 'Net 15',
+    deliveryTerms: 'FOB Shipping Point',
+    notes: 'Please deliver before the end of the month',
+    termsAndConditions: '1. All prices are in Indian Rupee (₹)\n2. Taxes as applicable\n3. Payment terms: 15 days',
+    status: 'draft',
+    createdBy: 'admin',
+    createdAt: '2024-01-15T10:00:00Z',
+    updatedAt: '2024-01-15T10:00:00Z',
+    discount: 0
   },
   {
-      id: '2',
-      invoiceNumber: 'PI-2024-002',
-      invoiceDate: '2024-01-20',
-      validUntil: '2024-02-20',
-      customerId: 'cust2',
-      customerName: 'XYZ Ltd',
-      customerEmail: 'info@xyzltd.com',
-      customerPhone: '+1-555-0200',
-      customerAddress: '456 Commerce Ave, Los Angeles, CA 90001',
-      items: [
-          {
-              id: 'item3',
-              productId: 'prod3',
-              productName: 'Product C',
-              description: 'Standard product C',
-              quantity: 10,
-              unitPrice: 50,
-              discount: 0,
-              taxRate: 10,
-              total: 550,
-          },
-      ],
-      subtotal: 500,
-      discountTotal: 0,
-      taxTotal: 50,
-      grandTotal: 550,
-      currency: 'USD',
-      paymentTerms: 'Net 15',
-      deliveryTerms: 'CIF',
-      notes: '',
-      termsAndConditions: 'Standard terms apply',
-      status: 'sent',
-      createdBy: 'admin',
-      createdAt: '2024-01-20T14:30:00Z',
-      updatedAt: '2024-01-20T14:30:00Z',
-      discount: 0
+    id: '2',
+    invoiceNumber: 'PI-2024-002',
+    invoiceDate: '2024-01-20',
+    validUntil: '2024-02-20',
+    customerId: 'cust2',
+    customerName: 'Priya Gold House',
+    customerEmail: 'priya@goldhouse.com',
+    customerPhone: '+91-98765-43211',
+    customerAddress: '45, Gold Street, Chennai, Tamil Nadu',
+    items: [
+      {
+        id: 'item3',
+        productId: 'prod3',
+        productName: 'Gold Earrings',
+        description: '22K Gold Earrings with pearl',
+        quantity: 3,
+        unitPrice: 3200,
+        discount: 0,
+        taxRate: 18,
+        total: 9600,
+      },
+      {
+        id: 'item4',
+        productId: 'prod4',
+        productName: 'Silver Necklace',
+        description: '18K Silver Necklace with chain',
+        quantity: 2,
+        unitPrice: 2800,
+        discount: 0,
+        taxRate: 18,
+        total: 5600,
+      },
+    ],
+    subtotal: 15200,
+    discountTotal: 0,
+    taxTotal: 2736,
+    grandTotal: 17936,
+    currency: 'INR',
+    paymentTerms: 'Net 15',
+    deliveryTerms: 'CIF',
+    notes: '',
+    termsAndConditions: '1. All prices are in Indian Rupee (₹)\n2. Taxes as applicable',
+    status: 'sent',
+    createdBy: 'admin',
+    createdAt: '2024-01-20T14:30:00Z',
+    updatedAt: '2024-01-20T14:30:00Z',
+    discount: 0
   },
   {
-      id: '3',
-      invoiceNumber: 'PI-2024-003',
-      invoiceDate: '2024-01-25',
-      validUntil: '2024-02-25',
-      customerId: 'cust3',
-      customerName: 'Tech Solutions Inc',
-      customerEmail: 'sales@techsolutions.com',
-      customerPhone: '+1-555-0300',
-      customerAddress: '789 Innovation Drive, San Francisco, CA 94105',
-      items: [
-          {
-              id: 'item4',
-              productId: 'prod4',
-              productName: 'Product D',
-              description: 'Enterprise product D',
-              quantity: 2,
-              unitPrice: 500,
-              discount: 10,
-              taxRate: 15,
-              total: 1035,
-          },
-      ],
-      subtotal: 1000,
-      discountTotal: 100,
-      taxTotal: 135,
-      grandTotal: 1035,
-      currency: 'USD',
-      paymentTerms: 'Net 45',
-      deliveryTerms: 'DDP',
-      notes: 'Urgent delivery required',
-      termsAndConditions: 'Special terms apply',
-      status: 'approved',
-      createdBy: 'admin',
-      createdAt: '2024-01-25T09:15:00Z',
-      updatedAt: '2024-01-26T11:00:00Z',
-      discount: 0
+    id: '3',
+    invoiceNumber: 'PI-2024-003',
+    invoiceDate: '2024-01-25',
+    validUntil: '2024-02-25',
+    customerId: 'cust3',
+    customerName: 'Suresh Gold Mart',
+    customerEmail: 'suresh@goldmart.com',
+    customerPhone: '+91-98765-43212',
+    customerAddress: '78, Gold Plaza, Delhi',
+    items: [
+      {
+        id: 'item5',
+        productId: 'prod5',
+        productName: 'Gold Bracelet',
+        description: '22K Gold Bracelet with diamonds',
+        quantity: 1,
+        unitPrice: 3800,
+        discount: 0,
+        taxRate: 18,
+        total: 3800,
+      },
+    ],
+    subtotal: 3800,
+    discountTotal: 0,
+    taxTotal: 684,
+    grandTotal: 4484,
+    currency: 'INR',
+    paymentTerms: 'Net 15',
+    deliveryTerms: 'DDP',
+    notes: 'Urgent delivery required',
+    termsAndConditions: '1. All prices are in Indian Rupee (₹)\n2. Taxes as applicable',
+    status: 'approved',
+    createdBy: 'admin',
+    createdAt: '2024-01-25T09:15:00Z',
+    updatedAt: '2024-01-26T11:00:00Z',
+    discount: 0
+  },
+  {
+    id: '4',
+    invoiceNumber: 'PI-2024-004',
+    invoiceDate: '2024-01-28',
+    validUntil: '2024-02-28',
+    customerId: 'cust4',
+    customerName: 'Meera Jewel World',
+    customerEmail: 'meera@jewelworld.com',
+    customerPhone: '+91-98765-43213',
+    customerAddress: '56, Diamond District, Surat, Gujarat',
+    items: [
+      {
+        id: 'item6',
+        productId: 'prod1',
+        productName: 'Gold Chain',
+        description: '22K Gold Chain with pendant',
+        quantity: 1,
+        unitPrice: 4500,
+        discount: 0,
+        taxRate: 18,
+        total: 4500,
+      },
+      {
+        id: 'item7',
+        productId: 'prod3',
+        productName: 'Gold Earrings',
+        description: '22K Gold Earrings',
+        quantity: 2,
+        unitPrice: 3200,
+        discount: 0,
+        taxRate: 18,
+        total: 6400,
+      },
+    ],
+    subtotal: 10900,
+    discountTotal: 0,
+    taxTotal: 1962,
+    grandTotal: 12862,
+    currency: 'INR',
+    paymentTerms: 'Net 15',
+    deliveryTerms: 'FOB Shipping Point',
+    notes: 'Draft proforma - pending review',
+    termsAndConditions: '1. All prices are in Indian Rupee (₹)\n2. Taxes as applicable',
+    status: 'draft',
+    createdBy: 'admin',
+    createdAt: '2024-01-28T11:00:00Z',
+    updatedAt: '2024-01-28T11:00:00Z',
+    discount: 0
   },
 ];
 
@@ -169,7 +230,6 @@ export const useProformaInvoice = (): UseProformaInvoiceReturn => {
     setLoading(true);
     setError(null);
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
       const currentFilters = newFilters || filters;
@@ -200,7 +260,6 @@ export const useProformaInvoice = (): UseProformaInvoiceReturn => {
       
       setTotalItems(filtered.length);
       
-      // Paginate
       const startIndex = (currentPageNum - 1) * itemsPerPage;
       const endIndex = startIndex + itemsPerPage;
       const paginatedData = filtered.slice(startIndex, endIndex);
@@ -218,7 +277,12 @@ export const useProformaInvoice = (): UseProformaInvoiceReturn => {
     setError(null);
     try {
       await new Promise(resolve => setTimeout(resolve, 300));
-      return mockInvoices.find(inv => inv.id === id);
+      // Check mock data directly
+      const invoice = mockInvoices.find(inv => inv.id === id);
+      if (invoice) {
+        return { ...invoice };
+      }
+      return undefined;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get invoice');
       throw err;

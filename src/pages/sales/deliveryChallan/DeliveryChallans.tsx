@@ -1,43 +1,37 @@
-// src/pages/sales/invoice/Invoices.tsx
+// src/pages/sales/deliveryChallan/DeliveryChallans.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
   Filter,
-  Eye,
-  Edit,
-  Trash2,
-  FileText,
-  CheckCircle,
-  Clock,
-  AlertCircle,
   RefreshCw,
   FileSpreadsheet,
   File,
   Upload,
   Trash,
   Receipt,
+  Truck,
+  CheckCircle,
+  Clock,
   XCircle,
 } from 'lucide-react';
-import { useInvoices } from '../../../hooks/Invoices/useInvoices';
+import { useDeliveryChallan } from '../../../hooks/DeliveryChallan/useDeliveryChallan';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import type { TableColumn } from '../../../components/common/ReusableTable';
-import type { Invoice } from '../../../types/Invoice/InvoiceTypes';
+import type { DeliveryChallan } from '../../../types/deliveryChallan/DeliveryChallanTypes';
 
 // Status Badge
-const StatusBadge: React.FC<{ status: Invoice['status'] }> = ({ status }) => {
+const StatusBadge: React.FC<{ status: DeliveryChallan['status'] }> = ({ status }) => {
   const config = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: FileText, label: 'Draft' },
-    sent: { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Sent' },
-    paid: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Paid' },
-    partial: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Partial' },
-    overdue: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Overdue' },
-    cancelled: { color: 'bg-gray-100 text-gray-700', icon: XCircle, label: 'Cancelled' },
+    draft: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Draft' },
+    sent: { color: 'bg-blue-100 text-blue-700', icon: Truck, label: 'Sent' },
+    delivered: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Delivered' },
+    cancelled: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Cancelled' },
   };
-  const { color, icon: Icon, label } = config[status];
+  const { color, icon: Icon, label } = config[status] || config.draft;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
       <Icon className="h-3 w-3" />
@@ -46,7 +40,7 @@ const StatusBadge: React.FC<{ status: Invoice['status'] }> = ({ status }) => {
   );
 };
 
-export const Invoices: React.FC = () => {
+const DeliveryChallans: React.FC = () => {
   const navigate = useNavigate();
   const {
     loading,
@@ -61,12 +55,12 @@ export const Invoices: React.FC = () => {
     totalPages,
     setFilters,
     setCurrentPage,
-    deleteInvoice,
+    deleteChallan,
     handleExport,
     handleImport,
     handleRefresh,
     updateStatus,
-  } = useInvoices();
+  } = useDeliveryChallan();
 
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
@@ -75,19 +69,19 @@ export const Invoices: React.FC = () => {
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
-  const handleView = (invoice: Invoice) => {
-    navigate(`/sales/invoices/${invoice.id}`);
+  const handleView = (challan: DeliveryChallan) => {
+    navigate(`/sales/delivery-challan/${challan.id}/view`);
   };
 
-  const handleEdit = (invoice: Invoice) => {
-    navigate(`/sales/invoices/edit/${invoice.id}`);
+  const handleEdit = (challan: DeliveryChallan) => {
+    navigate(`/sales/delivery-challan/${challan.id}/edit`);
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this invoice?')) {
+    if (window.confirm('Are you sure you want to delete this delivery challan?')) {
       setDeleteLoading(id);
       try {
-        await deleteInvoice(id);
+        await deleteChallan(id);
         setSelectedItems(prev => prev.filter(item => item !== id));
       } finally {
         setDeleteLoading(null);
@@ -95,9 +89,9 @@ export const Invoices: React.FC = () => {
     }
   };
 
-  const handleMarkAsPaid = async (id: string) => {
-    if (window.confirm('Mark this invoice as paid?')) {
-      await updateStatus(id, 'paid');
+  const handleStatusUpdate = async (id: string, status: DeliveryChallan['status']) => {
+    if (window.confirm(`Mark this delivery challan as ${status}?`)) {
+      await updateStatus(id, status);
     }
   };
 
@@ -105,7 +99,7 @@ export const Invoices: React.FC = () => {
     if (selectedItems.length === currentItems.length) {
       setSelectedItems([]);
     } else {
-      setSelectedItems(currentItems.map(item => item.id));
+      setSelectedItems(currentItems.map(item => item.id!));
     }
   };
 
@@ -134,10 +128,10 @@ export const Invoices: React.FC = () => {
   };
 
   const handleBulkDeleteWithLoading = async () => {
-    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} invoices?`)) {
+    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} delivery challans?`)) {
       setBulkDeleteLoading(true);
       try {
-        await Promise.all(selectedItems.map(id => deleteInvoice(id)));
+        await Promise.all(selectedItems.map(id => deleteChallan(id)));
         setSelectedItems([]);
       } finally {
         setBulkDeleteLoading(false);
@@ -146,19 +140,19 @@ export const Invoices: React.FC = () => {
   };
 
   // Columns - No action column
-  const columns: TableColumn<Invoice>[] = [
+  const columns: TableColumn<DeliveryChallan>[] = [
     {
-      key: 'invoiceNo',
-      header: 'Invoice No',
+      key: 'challanNumber',
+      header: 'Challan #',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">{item.invoiceNo}</span>
+        <span className="text-sm font-medium text-gray-900">{item.challanNumber}</span>
       ),
     },
     {
-      key: 'date',
+      key: 'challanDate',
       header: 'Date',
       render: (item) => (
-        <span className="text-sm text-gray-600">{new Date(item.date).toLocaleDateString()}</span>
+        <span className="text-sm text-gray-600">{new Date(item.challanDate).toLocaleDateString()}</span>
       ),
     },
     {
@@ -179,25 +173,16 @@ export const Invoices: React.FC = () => {
       ),
     },
     {
-      key: 'balanceDue',
-      header: 'Balance',
+      key: 'deliveryDate',
+      header: 'Delivery Date',
       render: (item) => (
-        <span className={`text-sm font-medium ${item.balanceDue > 0 ? 'text-red-600' : 'text-green-600'}`}>
-          ₹{item.balanceDue.toLocaleString()}
-        </span>
+        <span className="text-sm text-gray-600">{new Date(item.deliveryDate).toLocaleDateString()}</span>
       ),
     },
     {
       key: 'status',
       header: 'Status',
       render: (item) => <StatusBadge status={item.status} />,
-    },
-    {
-      key: 'dueDate',
-      header: 'Due Date',
-      render: (item) => (
-        <span className="text-sm text-gray-600">{new Date(item.dueDate).toLocaleDateString()}</span>
-      ),
     },
   ];
 
@@ -229,7 +214,7 @@ export const Invoices: React.FC = () => {
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading invoices..." />
+        <LoadingSpinner size="lg" text="Loading delivery challans..." />
       </div>
     );
   }
@@ -240,10 +225,10 @@ export const Invoices: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Receipt className="h-6 w-6 text-amber-500" />
-            Invoices
+            <Truck className="h-6 w-6 text-amber-500" />
+            Delivery Challans
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your sales invoices</p>
+          <p className="text-sm text-gray-500 mt-0.5">Manage your delivery challans</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
@@ -259,11 +244,11 @@ export const Invoices: React.FC = () => {
             Refresh
           </button>
           <button
-            onClick={() => navigate('/sales/invoices/create')}
+            onClick={() => navigate('/sales/delivery-challan/create')}
             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            New Invoice
+            New Challan
           </button>
           {selectedItems.length > 0 && (
             <button
@@ -292,7 +277,7 @@ export const Invoices: React.FC = () => {
                 }
               }
             }}
-            importLabel="Import Invoices"
+            importLabel="Import Challans"
             importIcon={
               importLoading ? (
                 <LoadingSpinner size="sm" />
@@ -314,9 +299,9 @@ export const Invoices: React.FC = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by invoice no, customer..."
-                value={filters.searchQuery}
-                onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+                placeholder="Search by challan # or customer..."
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -325,31 +310,29 @@ export const Invoices: React.FC = () => {
             <Filter className="h-4 w-4 text-gray-400" />
             <select
               value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value as any })}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
-              <option value="all">All Status</option>
+              <option value="">All Status</option>
               <option value="draft">Draft</option>
               <option value="sent">Sent</option>
-              <option value="paid">Paid</option>
-              <option value="partial">Partial</option>
-              <option value="overdue">Overdue</option>
+              <option value="delivered">Delivered</option>
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
             <input
               type="date"
-              value={filters.dateRange.start}
-              onChange={(e) => setFilters({ ...filters, dateRange: { ...filters.dateRange, start: e.target.value } })}
+              value={filters.dateFrom}
+              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="Start Date"
             />
             <span className="text-gray-400">to</span>
             <input
               type="date"
-              value={filters.dateRange.end}
-              onChange={(e) => setFilters({ ...filters, dateRange: { ...filters.dateRange, end: e.target.value } })}
+              value={filters.dateTo}
+              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="End Date"
             />
@@ -365,9 +348,9 @@ export const Invoices: React.FC = () => {
         selectedItems={selectedItems}
         onSelectAll={handleSelectAll}
         onSelectItem={handleSelectItem}
-        getId={(item) => item.id}
-        emptyMessage="No invoices found"
-        emptyIcon={<Receipt className="h-12 w-12 text-gray-300" />}
+        getId={(item) => item.id!}
+        emptyMessage="No delivery challans found"
+        emptyIcon={<Truck className="h-12 w-12 text-gray-300" />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage,
@@ -383,4 +366,4 @@ export const Invoices: React.FC = () => {
   );
 };
 
-export default Invoices;
+export default DeliveryChallans;

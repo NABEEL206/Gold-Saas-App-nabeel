@@ -1,3 +1,4 @@
+// src/pages/sales/proforma/ProformaInvoices.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -22,7 +23,7 @@ import { useProformaInvoice } from '../../../hooks/Proforma/useProformaInvoice';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
-import type { TableColumn, TableAction } from '../../../components/common/ReusableTable';
+import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { ProformaInvoice as ProformaInvoiceType } from '../../../types/proforma/ProformaInvoiceType';
 
 // Format currency in Rupees
@@ -160,7 +161,7 @@ const ProformaInvoiceList: React.FC = () => {
     console.log('Importing files:', files);
   };
 
-  // Columns
+  // Columns - No action column
   const columns: TableColumn<ProformaInvoiceType>[] = [
     {
       key: 'invoiceNumber',
@@ -190,7 +191,7 @@ const ProformaInvoiceList: React.FC = () => {
       key: 'grandTotal',
       header: 'Total',
       render: (item) => (
-        <span className="text-sm font-semibold text-gray-900">{formatCurrency(item.grandTotal)}</span>
+        <span className="text-sm font-semibold text-amber-600">{formatCurrency(item.grandTotal)}</span>
       ),
     },
     {
@@ -204,45 +205,6 @@ const ProformaInvoiceList: React.FC = () => {
       key: 'status',
       header: 'Status',
       render: (item) => <StatusBadge status={item.status} />,
-    },
-  ];
-
-  // Actions with View, Edit, Delete, Send, and Reject buttons
-  const actions: TableAction<ProformaInvoiceType>[] = [
-    {
-      icon: <Eye className="h-4 w-4" />,
-      onClick: (item) => handleView(item),
-      label: 'View',
-      className: 'text-gray-400 hover:text-blue-500 hover:bg-blue-50',
-    },
-    {
-      icon: <Edit className="h-4 w-4" />,
-      onClick: (item) => handleEdit(item),
-      label: 'Edit',
-      className: 'text-gray-400 hover:text-amber-500 hover:bg-amber-50',
-      show: (item) => item.status === 'draft',
-    },
-    {
-      icon: <Trash2 className="h-4 w-4" />,
-      onClick: (item) => handleDelete(item.id!),
-      label: 'Delete',
-      className: 'text-gray-400 hover:text-red-500 hover:bg-red-50',
-      show: (item) => item.status === 'draft',
-      disabled: (item) => deleteLoading === item.id,
-    },
-    {
-      icon: <Send className="h-4 w-4" />,
-      onClick: (item) => handleStatusUpdate(item.id!, 'sent'),
-      label: 'Send',
-      className: 'text-gray-400 hover:text-blue-500 hover:bg-blue-50',
-      show: (item) => item.status === 'draft',
-    },
-    {
-      icon: <XCircle className="h-4 w-4" />,
-      onClick: (item) => handleStatusUpdate(item.id!, 'rejected'),
-      label: 'Reject',
-      className: 'text-gray-400 hover:text-red-500 hover:bg-red-50',
-      show: (item) => item.status === 'sent',
     },
   ];
 
@@ -392,6 +354,7 @@ const ProformaInvoiceList: React.FC = () => {
               <option value="">All Status</option>
               <option value="draft">Draft</option>
               <option value="sent">Sent</option>
+              <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
               <option value="expired">Expired</option>
             </select>
@@ -416,11 +379,10 @@ const ProformaInvoiceList: React.FC = () => {
         </div>
       </div>
 
-      {/* Table - with row click to view and all action buttons */}
+      {/* Table - No actions prop, row click for view */}
       <ReusableTable
         data={invoices}
         columns={columns}
-        actions={actions}
         selectable={true}
         selectedItems={selectedItems}
         onSelectAll={handleSelectAll}

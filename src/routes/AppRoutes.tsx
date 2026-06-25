@@ -10,8 +10,11 @@ import ResetPassword from '../pages/forgot/ResetPassword';
 import Home from '../pages/Dashboard/Dashboard';
 import Items from '../pages/Items/Items';
 import Adjustments from '../pages/Inventory/InventoryAdjustments';
-import  Quote  from '../pages/sales/Quote/Quotes';
-import DeliveryChallans from '../pages/sales/deliveryChallans/DeliveryChallans';
+import Quote from '../pages/sales/Quote/Quotes';
+import DeliveryChallans from '../pages/sales/deliveryChallan/DeliveryChallans';
+import DeliveryChallanView from '../pages/sales/deliveryChallan/DeliveryChallanView';
+import DeliveryChallanCreate from '../pages/sales/deliveryChallan/DeliveryChallanCreate';
+import DeliveryChallanEdit from '../pages/sales/deliveryChallan/DeliveryChallanEdit';
 import PaymentsReceived from '../pages/sales/PaymentsReceived/PaymentsReceived';
 import CreditNotes from '../pages/sales/CreditNotes/CreditNotes';
 import Vendors from '../pages/purchases/Vendors';
@@ -33,19 +36,20 @@ import ItemEdit from '../pages/Items/ItemEdit';
 import InventoryAdjustmentCreate from '../pages/Inventory/InventoryAdjustmentCreate';
 import InventoryAdjustmentView from '../pages/Inventory/InventoryAdjustmentView';
 
-// Customer imports - CHANGE THESE to default imports
+// Customer imports
 import Customers from '../pages/sales/customers/Customers';
 import { CustomerEdit } from '../pages/sales/customers/CustomerEdit';
 import CustomerView from '../pages/sales/customers/CustomerView';
 import { CustomerCreate } from '../pages/sales/customers/CustomerCreate';
 
-import  QuoteCreate  from '../pages/sales/Quote/QuoteCreate';
-import QuoteView  from '../pages/sales/Quote/QuoteView';
-import  QuoteEdit  from '../pages/sales/Quote/QuoteEdit';
+import QuoteCreate from '../pages/sales/Quote/QuoteCreate';
+import QuoteView from '../pages/sales/Quote/QuoteView';
+import QuoteEdit from '../pages/sales/Quote/QuoteEdit';
 import Invoices from '../pages/sales/invoice/Invoices';
 import InvoiceCreate from '../pages/sales/invoice/InvoiceCreate';
 import InvoiceEdit from '../pages/sales/invoice/InvoiceEdit';
 import InvoiceView from '../pages/sales/invoice/InvoiceView';
+
 // Proforma Invoice Imports
 import ProformaInvoiceList from '../pages/sales/proforma/ProformaInvoice';
 import ProformaInvoiceCreate from '../pages/sales/proforma/ProformaInvoiceCreate';
@@ -84,21 +88,20 @@ const AppRoutes: React.FC = () => {
       <Route path="/inventory/adjustments/:id" element={<LayoutWrapper><InventoryAdjustmentView /></LayoutWrapper>} />
       <Route path="/inventory/adjustments/edit/:id" element={<LayoutWrapper><InventoryAdjustmentCreate /></LayoutWrapper>} />
 
-      
       {/* Sales Routes */}
-        {/* Customers */}
+      {/* Customers */}
       <Route path="/sales/customers" element={<LayoutWrapper><Customers /></LayoutWrapper>} />
       <Route path="/customers/create" element={<LayoutWrapper><CustomerCreate /></LayoutWrapper>} />
       <Route path="/customers/:id" element={<LayoutWrapper><CustomerView /></LayoutWrapper>} />
       <Route path="/customers/edit/:id" element={<LayoutWrapper><CustomerEdit /></LayoutWrapper>} />
-        {/* Other Sales Routes */}
+
+      {/* Quotes */}
       <Route path="/sales/quotes" element={<LayoutWrapper><Quote /></LayoutWrapper>} />
       <Route path="/sales/quotes/create" element={<LayoutWrapper><QuoteCreate /></LayoutWrapper>} />
       <Route path="/sales/quotes/:id" element={<LayoutWrapper><QuoteView /></LayoutWrapper>} />
       <Route path="/sales/quotes/edit/:id" element={<LayoutWrapper><QuoteEdit /></LayoutWrapper>} />
 
-      
-      {/* Proforma Invoice Routes - NEW */}
+      {/* Proforma Invoice Routes */}
       <Route path="/sales/proforma" element={<LayoutWrapper><ProformaInvoiceList /></LayoutWrapper>} />
       <Route path="/sales/proforma/create" element={<LayoutWrapper><ProformaInvoiceCreate /></LayoutWrapper>} />
       <Route path="/sales/proforma/:id/edit" element={<LayoutWrapper><ProformaInvoiceEdit /></LayoutWrapper>} />
@@ -113,11 +116,18 @@ const AppRoutes: React.FC = () => {
       <Route path="/sales/invoices/edit/:id" element={<LayoutWrapper><InvoiceEdit /></LayoutWrapper>} />
       <Route path="/sales/invoices/:id" element={<LayoutWrapper><InvoiceView /></LayoutWrapper>} />
 
+      {/* Delivery Challan Routes */}
+      <Route path="/sales/delivery-challan" element={<LayoutWrapper><DeliveryChallans /></LayoutWrapper>} />
+      <Route path="/sales/delivery-challan/create" element={<LayoutWrapper><DeliveryChallanCreate /></LayoutWrapper>} />
+      <Route path="/sales/delivery-challan/:id/view" element={<LayoutWrapper><DeliveryChallanView /></LayoutWrapper>} />
+      <Route path="/sales/delivery-challan/:id/edit" element={<LayoutWrapper><DeliveryChallanEdit /></LayoutWrapper>} />
+      
+      {/* Keep old delivery-challans route for backward compatibility */}
       <Route path="/sales/delivery-challans" element={<LayoutWrapper><DeliveryChallans /></LayoutWrapper>} />
+
       <Route path="/sales/payments-received" element={<LayoutWrapper><PaymentsReceived /></LayoutWrapper>} />
       <Route path="/sales/credit-notes" element={<LayoutWrapper><CreditNotes /></LayoutWrapper>} />
 
-      
       {/* Purchases Routes */}
       <Route path="/purchases/vendors" element={<LayoutWrapper><Vendors /></LayoutWrapper>} />
       <Route path="/purchases/expenses" element={<LayoutWrapper><Expenses /></LayoutWrapper>} />

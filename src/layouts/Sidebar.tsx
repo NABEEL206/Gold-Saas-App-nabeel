@@ -51,7 +51,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
     Purchases: false,
     Accountant: false,
     Quote: false,
-    Invoice: false,
   });
 
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
@@ -105,7 +104,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
         Purchases: false,
         Accountant: false,
         Quote: false,
-        Invoice: false,
       });
     }
   }, [sidebarOpen]);
@@ -136,27 +134,14 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
         // Customers
         { name: 'Customers', icon: <Users2 size={18} />, path: '/sales/customers' },
         
-        // Quote section
-        { 
-          name: 'Quote', 
-          icon: <Quote size={18} />,
-          path: '/sales/quotes',
-          subItems: [
-            { name: 'Quote', icon: <FileText size={16} />, path: '/sales/quotes' },
-            { name: 'Quote Rough', icon: <FileEdit size={16} />, path: '/sales/rough-quotes' },
-          ]
-        },
+        // Quote - now as a regular item (no sub-dropdown)
+        { name: 'Quote', icon: <Quote size={18} />, path: '/sales/quotes' },
         
-        // Invoice section
-        { 
-          name: 'Invoice', 
-          icon: <Receipt size={18} />,
-          path: '/sales/invoices',
-          subItems: [
-            { name: 'Invoice', icon: <FileText size={16} />, path: '/sales/invoices' },
-            { name: 'proforma Invoice', icon: <FileSignature size={16} />, path: '/sales/proforma-invoices' },
-          ]
-        },
+        // Invoice - now as a regular item (no sub-dropdown)
+        { name: 'Invoice', icon: <Receipt size={18} />, path: '/sales/invoices' },
+        
+        // Proforma Invoice - now as a regular item (no sub-dropdown)
+        { name: 'Proforma Invoice', icon: <FileSignature size={18} />, path: '/sales/proforma-invoices' },
         
         // Other sales items
         { name: 'Delivery Challans', icon: <Truck size={18} />, path: '/sales/delivery-challans' },
