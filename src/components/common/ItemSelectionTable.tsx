@@ -7,8 +7,6 @@ import {
   ChevronDown,
   AlertCircle,
 } from 'lucide-react';
-import ItemSelectionDropdown from './ItemSelectionDropdown';
-import type { ItemSuggestion } from './ItemSelectionDropdown';
 
 // Tax rate options
 export const TAX_RATES = [
@@ -79,7 +77,7 @@ export interface ItemSelectionTableProps {
   onItemRemove?: (index: number) => void;
   onItemUpdate?: (index: number, field: string, value: any) => void;
   errors?: Record<string, string>;
-  productSuggestions?: Array<{ id: string; name: string; code?: string; category?: string; purity?: string; price?: number; description?: string; sku?: string; stock?: number; unit?: string; email?: string; phone?: string }>;
+  productSuggestions?: Array<{ id: string; name: string; code?: string; category?: string; purity?: string; price?: number; description?: string; sku?: string; stock?: number; unit?: string }>;
   productSearch?: string;
   onProductSearchChange?: (value: string) => void;
   onProductSelect?: (product: any) => void;
@@ -146,7 +144,7 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
   showPurity = true,
   simpleMode = false,
   loading = false,
-  searchPlaceholder = 'Select or add a item',
+  searchPlaceholder = 'Search items...',
   addButtonLabel = 'Add Item',
   title = 'Items',
   className = '',
@@ -160,12 +158,7 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
   autoAddDefaultRow = true,
   addButtonAtBottom = true,
 }) => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
   const [localSearch, setLocalSearch] = useState(externalProductSearch || '');
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
-  const inputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
-  const containerRef = useRef<HTMLDivElement>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
   // Auto add default row when items is empty
@@ -312,8 +305,6 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
     }
     
     setLocalSearch('');
-    setIsDropdownOpen(false);
-    setActiveRowIndex(null);
   };
 
   const handleAddCustomItem = () => {
@@ -347,14 +338,6 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
     
     const updatedItems = [...items, newItem];
     onItemsChange(updatedItems);
-    
-    setTimeout(() => {
-      const newIndex = updatedItems.length - 1;
-      const input = inputRefs.current[newIndex];
-      if (input) {
-        input.focus();
-      }
-    }, 100);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -388,41 +371,12 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
     }
   };
 
-  const handleSearchFocus = (index: number) => {
-    setActiveRowIndex(index);
-    setIsDropdownOpen(true);
-    setTimeout(() => {
-      const input = inputRefs.current[index];
-      if (input && containerRef.current) {
-        const rect = input.getBoundingClientRect();
-        setDropdownPosition({
-          top: rect.bottom + window.scrollY + 4,
-          left: rect.left + window.scrollX,
-          width: Math.max(rect.width, 320),
-        });
-      }
-    }, 10);
-  };
-
   const handleSearchChange = (index: number, value: string) => {
     setLocalSearch(value);
     handleItemChange(index, 'productName', value);
     if (onProductSearchChange) {
       onProductSearchChange(value);
     }
-    setActiveRowIndex(index);
-    setIsDropdownOpen(true);
-    setTimeout(() => {
-      const input = inputRefs.current[index];
-      if (input && containerRef.current) {
-        const rect = input.getBoundingClientRect();
-        setDropdownPosition({
-          top: rect.bottom + window.scrollY + 4,
-          left: rect.left + window.scrollX,
-          width: Math.max(rect.width, 320),
-        });
-      }
-    }, 10);
   };
 
   const subtotal = items.reduce((sum, item) => {
@@ -527,23 +481,11 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
 
   const columns = getVisibleColumns();
 
-  // Convert to ItemSuggestion format for dropdown
-  const dropdownItems: ItemSuggestion[] = productSuggestions.map(p => ({
-    id: p.id,
-    name: p.name,
-    sku: p.sku || p.code,
-    category: p.category,
-    purity: p.purity,
-    price: p.price,
-    stock: p.stock || 0,
-    unit: p.unit || 'NOS',
-    description: p.description,
-    email: p.email,
-    phone: p.phone,
-  }));
+  // Create datalist options
+  const datalistId = `item-suggestions-${Date.now()}`;
 
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`} ref={containerRef}>
+    <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
       {title && (
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <span>{title}</span>
@@ -644,24 +586,36 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
                   return (
                     <tr key={index} className={`hover:bg-gray-50 transition-colors ${hasError ? 'bg-red-50' : ''}`}>
                       {columns.item && (
-                        <td className="px-2 py-2 relative">
+                        <td className="px-2 py-2">
                           <div className="relative">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <input
-                              ref={(el) => {
-                                inputRefs.current[index] = el;
-                              }}
                               type="text"
                               value={item.productName}
-                              onChange={(e) => handleSearchChange(index, e.target.value)}
-                              onFocus={() => handleSearchFocus(index)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                handleSearchChange(index, val);
+                                // Check if value matches any product
+                                const matched = productSuggestions.find(p => p.name === val);
+                                if (matched) {
+                                  handleProductSelect(matched, index);
+                                }
+                              }}
                               className={`w-full pl-7 pr-7 py-1.5 border rounded text-left focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm ${
                                 errors[`${errorKey}_productName`] ? 'border-red-500' : 'border-gray-300'
                               }`}
                               placeholder={searchPlaceholder}
+                              list={`${datalistId}-${index}`}
                               autoComplete="off"
                             />
                             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                            <datalist id={`${datalistId}-${index}`}>
+                              {productSuggestions.map((product) => (
+                                <option key={product.id} value={product.name}>
+                                  {product.code && `(${product.code})`} {product.purity && `${product.purity}`}
+                                </option>
+                              ))}
+                            </datalist>
                           </div>
                           {errors[`${errorKey}_productName`] && (
                             <p className="mt-1 text-xs text-red-500">{errors[`${errorKey}_productName`]}</p>
@@ -987,35 +941,6 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
           <p className="text-gray-500">Loading...</p>
         </div>
       )}
-
-      {/* Item Selection Dropdown */}
-      <ItemSelectionDropdown
-        isOpen={isDropdownOpen}
-        onClose={() => {
-          setIsDropdownOpen(false);
-          setActiveRowIndex(null);
-        }}
-        searchTerm={localSearch}
-        onSearchChange={(value) => {
-          setLocalSearch(value);
-          if (onProductSearchChange) {
-            onProductSearchChange(value);
-          }
-        }}
-        items={dropdownItems}
-        onItemSelect={(item) => {
-          if (activeRowIndex !== null) {
-            handleProductSelect(item, activeRowIndex);
-          }
-        }}
-        position={dropdownPosition}
-        isLoading={loading}
-        showRecent={true}
-        recentItems={dropdownItems.slice(0, 5)}
-        placeholder={searchPlaceholder}
-        title="ITEM DETAILS"
-        showDetails={true}
-      />
     </div>
   );
 };

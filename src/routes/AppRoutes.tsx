@@ -16,7 +16,11 @@ import DeliveryChallanView from '../pages/sales/deliveryChallan/DeliveryChallanV
 import DeliveryChallanCreate from '../pages/sales/deliveryChallan/DeliveryChallanCreate';
 import DeliveryChallanEdit from '../pages/sales/deliveryChallan/DeliveryChallanEdit';
 import PaymentsReceived from '../pages/sales/PaymentsReceived/PaymentsReceived';
+import PaymentReceivedView from '../pages/sales/PaymentsReceived/PaymentReceivedView';
+import PaymentReceivedCreate from '../pages/sales/PaymentsReceived/PaymentReceivedCreate';
 import CreditNotes from '../pages/sales/CreditNotes/CreditNotes';
+import CreditNoteView from '../pages/sales/CreditNotes/CreditNoteView';
+import CreditNoteCreate from '../pages/sales/CreditNotes/CreditNoteCreate';
 import Vendors from '../pages/purchases/Vendors';
 import Expenses from '../pages/purchases/Expenses';
 import RecurringExpenses from '../pages/purchases/RecurringExpenses';
@@ -125,8 +129,17 @@ const AppRoutes: React.FC = () => {
       {/* Keep old delivery-challans route for backward compatibility */}
       <Route path="/sales/delivery-challans" element={<LayoutWrapper><DeliveryChallans /></LayoutWrapper>} />
 
+      {/* Payment Received Routes */}
       <Route path="/sales/payments-received" element={<LayoutWrapper><PaymentsReceived /></LayoutWrapper>} />
+      <Route path="/sales/payments-received/create" element={<LayoutWrapper><PaymentReceivedCreate /></LayoutWrapper>} />
+      <Route path="/sales/payments-received/:id/view" element={<LayoutWrapper><PaymentReceivedView /></LayoutWrapper>} />
+      <Route path="/sales/payments-received/:id/edit" element={<LayoutWrapper><PaymentReceivedCreate /></LayoutWrapper>} />
+
+      {/* Credit Notes Routes */}
       <Route path="/sales/credit-notes" element={<LayoutWrapper><CreditNotes /></LayoutWrapper>} />
+      <Route path="/sales/credit-notes/create" element={<LayoutWrapper><CreditNoteCreate /></LayoutWrapper>} />
+      <Route path="/sales/credit-notes/:id/view" element={<LayoutWrapper><CreditNoteView /></LayoutWrapper>} />
+      <Route path="/sales/credit-notes/:id/edit" element={<LayoutWrapper><CreditNoteCreate /></LayoutWrapper>} />
 
       {/* Purchases Routes */}
       <Route path="/purchases/vendors" element={<LayoutWrapper><Vendors /></LayoutWrapper>} />
