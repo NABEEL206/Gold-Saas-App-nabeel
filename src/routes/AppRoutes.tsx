@@ -1,4 +1,5 @@
 // src/AppRoutes.tsx
+
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
@@ -21,13 +22,16 @@ import PaymentReceivedCreate from '../pages/sales/PaymentsReceived/PaymentReceiv
 import CreditNotes from '../pages/sales/CreditNotes/CreditNotes';
 import CreditNoteView from '../pages/sales/CreditNotes/CreditNoteView';
 import CreditNoteCreate from '../pages/sales/CreditNotes/CreditNoteCreate';
-import Vendors from '../pages/purchases/Vendors';
-import Expenses from '../pages/purchases/Expenses';
-import RecurringExpenses from '../pages/purchases/RecurringExpenses';
-import PurchaseOrders from '../pages/purchases/PurchaseOrders';
-import Bills from '../pages/purchases/Bills';
-import PaymentsMade from '../pages/purchases/PaymentsMade';
-import VendorCredits from '../pages/purchases/VendorCredits';
+import Vendors from '../pages/purchases/Vendors/Vendors';
+import VendorCreate from '../pages/purchases/Vendors/VendorCreate';
+import VendorEdit from '../pages/purchases/Vendors/VendorEdit';
+import VendorView from '../pages/purchases/Vendors/VendorView';
+import Expenses from '../pages/purchases/Expenses/Expenses';
+import RecurringExpenses from '../pages/purchases/RecurringExpenses/RecurringExpenses';
+import PurchaseOrders from '../pages/purchases/PurchaseOrders/PurchaseOrders';
+import Bills from '../pages/purchases/Bills/Bills';
+import PaymentsMade from '../pages/purchases/PaymentsMade/PaymentsMade';
+import VendorCredits from '../pages/purchases/VendorCredits/VendorCredits';
 import Banking from '../pages/Banking/Banking';
 import ManualJournals from '../pages/accountant/ManualJournals';
 import CurrencyAdjustments from '../pages/accountant/CurrencyAdjustments';
@@ -59,6 +63,18 @@ import ProformaInvoiceList from '../pages/sales/proforma/ProformaInvoice';
 import ProformaInvoiceCreate from '../pages/sales/proforma/ProformaInvoiceCreate';
 import ProformaInvoiceEdit from '../pages/sales/proforma/ProformaInvoiceEdit';
 import ProformaInvoiceView from '../pages/sales/proforma/ProformaInvoiceView';
+import ExpenseEdit from '../pages/purchases/Expenses/ExpenseEdit';
+import ExpenseView from '../pages/purchases/Expenses/ExpenseView';
+import ExpenseCreate from '../pages/purchases/Expenses/ExpenseCreate';
+import RecurringExpenseEdit from '../pages/purchases/RecurringExpenses/RecurringExpenseEdit';
+import RecurringExpenseView from '../pages/purchases/RecurringExpenses/RecurringExpenseView';
+import RecurringExpenseCreate from '../pages/purchases/RecurringExpenses/RecurringExpenseCreate';
+import PurchaseOrderEdit from '../pages/purchases/PurchaseOrders/PurchaseOrderEdit';
+import PurchaseOrderView from '../pages/purchases/PurchaseOrders/PurchaseOrderView';
+import PurchaseOrderCreate from '../pages/purchases/PurchaseOrders/PurchaseOrderCreate';
+import BillCreate from '../pages/purchases/Bills/BillCreate';
+import BillView from '../pages/purchases/Bills/BillView';
+import BillEdit from '../pages/purchases/Bills/BillEdit';
 
 // Create a wrapper component for cleaner code
 const LayoutWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -142,10 +158,37 @@ const AppRoutes: React.FC = () => {
       <Route path="/sales/credit-notes/:id/edit" element={<LayoutWrapper><CreditNoteCreate /></LayoutWrapper>} />
 
       {/* Purchases Routes */}
+      {/* Vendor Routes */}
       <Route path="/purchases/vendors" element={<LayoutWrapper><Vendors /></LayoutWrapper>} />
+      <Route path="/purchases/vendors/create" element={<LayoutWrapper><VendorCreate /></LayoutWrapper>} />
+      <Route path="/purchases/vendors/:id" element={<LayoutWrapper><VendorView /></LayoutWrapper>} />
+      <Route path="/purchases/vendors/:id/edit" element={<LayoutWrapper><VendorEdit /></LayoutWrapper>} />
+
+      {/*expense Routes */} 
       <Route path="/purchases/expenses" element={<LayoutWrapper><Expenses /></LayoutWrapper>} />
+      <Route path="/purchases/expenses/create" element={<LayoutWrapper><ExpenseCreate /></LayoutWrapper>} />
+      <Route path="/purchases/expenses/:id" element={<LayoutWrapper><ExpenseView /></LayoutWrapper>} />
+      <Route path="/purchases/expenses/:id/edit" element={<LayoutWrapper><ExpenseEdit /></LayoutWrapper>} />
+      
+      {/* recurring expenses Routes */}
       <Route path="/purchases/recurring-expenses" element={<LayoutWrapper><RecurringExpenses /></LayoutWrapper>} />
+      <Route path="/purchases/recurring-expenses/create" element={<LayoutWrapper><RecurringExpenseCreate /></LayoutWrapper>} />
+      <Route path="/purchases/recurring-expenses/:id" element={<LayoutWrapper><RecurringExpenseView /></LayoutWrapper>} />
+      <Route path="/purchases/recurring-expenses/:id/edit" element={<LayoutWrapper><RecurringExpenseEdit /></LayoutWrapper>} />
+
+      {/*purchase order routes*/}
       <Route path="/purchases/orders" element={<LayoutWrapper><PurchaseOrders /></LayoutWrapper>} />
+      <Route path="/purchases/orders/create" element={<LayoutWrapper><PurchaseOrderCreate /></LayoutWrapper>} />
+      <Route path="/purchases/orders/:id" element={<LayoutWrapper><PurchaseOrderView /></LayoutWrapper>} />
+      <Route path="/purchases/orders/:id/edit" element={<LayoutWrapper><PurchaseOrderEdit /></LayoutWrapper>} />
+
+      {/*Bills routes*/}
+      <Route path="/purchases/bills" element={<LayoutWrapper><Bills /></LayoutWrapper>} />
+      <Route path="/purchases/bills/create" element={<LayoutWrapper><BillCreate /></LayoutWrapper>} />
+      <Route path="/purchases/bills/:id" element={<LayoutWrapper><BillView /></LayoutWrapper>} />
+      <Route path="/purchases/bills/:id/edit" element={<LayoutWrapper><BillEdit /></LayoutWrapper>} />
+
+
       <Route path="/purchases/bills" element={<LayoutWrapper><Bills /></LayoutWrapper>} />
       <Route path="/purchases/payments-made" element={<LayoutWrapper><PaymentsMade /></LayoutWrapper>} />
       <Route path="/purchases/vendor-credits" element={<LayoutWrapper><VendorCredits /></LayoutWrapper>} />
