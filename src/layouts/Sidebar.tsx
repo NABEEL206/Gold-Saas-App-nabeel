@@ -1,6 +1,7 @@
-// Sidebar.tsx
+// Sidebar.tsx - Parent menus always light when expanded
+
 import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
@@ -44,10 +45,11 @@ import type { MenuItem, SidebarProps } from '../types/sidebar/sidebartype';
 
 const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [openDropdowns, setOpenDropdowns] = useState<{ [key: string]: boolean }>({
     Items: false,
     Inventory: false,
-    Sales: false,
+    Sales: true, // Default open
     Purchases: false,
     Accountant: false,
     Quote: false,
@@ -55,6 +57,108 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
 
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ top: 0, left: 0 });
+
+  // Custom function to check if a path is active
+  const isPathActive = (path: string): boolean => {
+    if (!path) return false;
+    if (path === '/home') {
+      return location.pathname === path;
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  // Check if any sub-item is active
+  const isAnySubItemActive = (subItems: MenuItem[]): boolean => {
+    return subItems.some(sub => {
+      if (sub.path) {
+        // Sales sub-items
+        if (sub.path === '/sales/payments-received') {
+          return location.pathname.startsWith('/sales/payments-received');
+        }
+        if (sub.path === '/sales/delivery-challans') {
+          return location.pathname.startsWith('/sales/delivery-challan') || 
+                 location.pathname.startsWith('/sales/delivery-challans');
+        }
+        if (sub.path === '/sales/proforma-invoices') {
+          return location.pathname.startsWith('/sales/proforma');
+        }
+        if (sub.path === '/sales/quotes') {
+          return location.pathname.startsWith('/sales/quotes');
+        }
+        if (sub.path === '/sales/invoices') {
+          return location.pathname.startsWith('/sales/invoices');
+        }
+        if (sub.path === '/sales/credit-notes') {
+          return location.pathname.startsWith('/sales/credit-notes');
+        }
+        if (sub.path === '/sales/customers') {
+          return location.pathname.startsWith('/sales/customers') || 
+                 location.pathname.startsWith('/customers');
+        }
+        
+        // Purchases sub-items
+        if (sub.path === '/purchases/vendors') {
+          return location.pathname.startsWith('/purchases/vendors');
+        }
+        if (sub.path === '/purchases/expenses') {
+          return location.pathname.startsWith('/purchases/expenses');
+        }
+        if (sub.path === '/purchases/recurring-expenses') {
+          return location.pathname.startsWith('/purchases/recurring-expenses');
+        }
+        if (sub.path === '/purchases/orders') {
+          return location.pathname.startsWith('/purchases/orders');
+        }
+        if (sub.path === '/purchases/bills') {
+          return location.pathname.startsWith('/purchases/bills');
+        }
+        if (sub.path === '/purchases/payments-made') {
+          return location.pathname.startsWith('/purchases/payments-made');
+        }
+        if (sub.path === '/purchases/vendor-credits') {
+          return location.pathname.startsWith('/purchases/vendor-credits');
+        }
+        
+        // Items sub-items
+        if (sub.path === '/items') {
+          return location.pathname.startsWith('/items');
+        }
+        
+        // Inventory sub-items
+        if (sub.path === '/inventory/adjustments') {
+          return location.pathname.startsWith('/inventory/adjustments');
+        }
+        
+        // Accountant sub-items
+        if (sub.path === '/accountant/manual-journals') {
+          return location.pathname.startsWith('/accountant/manual-journals');
+        }
+        if (sub.path === '/accountant/chart-of-accounts') {
+          return location.pathname.startsWith('/accountant/chart-of-accounts');
+        }
+        
+        // Banking sub-items
+        if (sub.path === '/banking/banks') {
+          return location.pathname.startsWith('/banking/banks');
+        }
+        
+        return location.pathname.startsWith(sub.path);
+      }
+      return false;
+    });
+  };
+
+  // Check if parent should show light color
+  const shouldShowLightColor = (item: MenuItem): boolean => {
+    const hasSubItems = item.subItems && item.subItems.length > 0;
+    if (!hasSubItems) return false;
+    
+    const isOpen = openDropdowns[item.name];
+    const hasActiveSubItem = isAnySubItemActive(item.subItems!);
+    
+    // Show light color if dropdown is open OR any sub-item is active
+    return isOpen || hasActiveSubItem;
+  };
 
   const toggleDropdown = (menuName: string) => {
     if (sidebarOpen) {
@@ -131,19 +235,10 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
       name: 'Sales', 
       icon: <ShoppingCart size={20} />,
       subItems: [
-        // Customers
         { name: 'Customers', icon: <Users2 size={18} />, path: '/sales/customers' },
-        
-        // Quote - now as a regular item (no sub-dropdown)
         { name: 'Quote', icon: <Quote size={18} />, path: '/sales/quotes' },
-        
-        // Invoice - now as a regular item (no sub-dropdown)
         { name: 'Invoice', icon: <Receipt size={18} />, path: '/sales/invoices' },
-        
-        // Proforma Invoice - now as a regular item (no sub-dropdown)
         { name: 'Proforma Invoice', icon: <FileSignature size={18} />, path: '/sales/proforma-invoices' },
-        
-        // Other sales items
         { name: 'Delivery Challans', icon: <Truck size={18} />, path: '/sales/delivery-challans' },
         { name: 'Payments Received', icon: <CreditCard size={18} />, path: '/sales/payments-received' },
         { name: 'Credit Notes', icon: <FileMinus size={18} />, path: '/sales/credit-notes' },
@@ -162,7 +257,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
         { name: 'Vendor Credits', icon: <FilePlus size={18} />, path: '/purchases/vendor-credits' },
       ]
     },
-    { name: 'Banking', icon: <Landmark size={20} />, path: '/banking' },
+    { name: 'Banks', icon: <Landmark size={20} />, path: '/banking/banks' },
     { 
       name: 'Accountant', 
       icon: <Users size={20} />,
@@ -175,12 +270,13 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
     { name: 'Documents', icon: <FileSpreadsheet size={18} />, path: '/documents' },
   ];
 
-  // Update the renderMenuItem function to handle nested sub-items
+  // Update the renderMenuItem function
   const renderMenuItem = (item: MenuItem, depth: number = 0) => {
     const hasSubItems = item.subItems && item.subItems.length > 0;
     const isOpen = openDropdowns[item.name];
     const isHovered = hoveredMenu === item.name;
     const paddingLeft = depth > 0 ? `pl-${depth * 4}` : '';
+    const showLight = shouldShowLightColor(item);
 
     if (hasSubItems) {
       return (
@@ -190,9 +286,11 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
             onClick={(e) => handleParentClick(item, e)}
             onMouseEnter={(e) => handleMouseEnter(item, e)}
             onMouseLeave={handleMouseLeave}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-gray-700 hover:bg-amber-50 hover:text-amber-600 ${
-              !sidebarOpen ? 'justify-center' : ''
-            } ${paddingLeft}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+              showLight
+                ? 'bg-amber-50 text-amber-600' // Light amber when expanded or has active child
+                : 'text-gray-700 hover:bg-amber-50 hover:text-amber-600'
+            } ${!sidebarOpen ? 'justify-center' : ''} ${paddingLeft}`}
             title={!sidebarOpen ? item.name : ''}
           >
             <span className="flex-shrink-0">{item.icon}</span>
@@ -212,18 +310,62 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
               {item.subItems!.map((subItem) => (
                 <li key={subItem.name} className="w-full">
                   {subItem.subItems ? (
-                    // If subItem has its own sub-items (nested)
                     renderMenuItem(subItem, depth + 1)
                   ) : (
                     <NavLink
                       to={subItem.path}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 ml-6 ${
-                          isActive
+                      className={({ isActive: isNavActive }) => {
+                        // Check if this specific sub-item is active
+                        let isSubActive = isNavActive;
+                        // Special handling for nested routes
+                        if (subItem.path === '/sales/delivery-challans') {
+                          isSubActive = location.pathname.startsWith('/sales/delivery-challan') || 
+                                       location.pathname.startsWith('/sales/delivery-challans');
+                        }
+                        if (subItem.path === '/sales/payments-received') {
+                          isSubActive = location.pathname.startsWith('/sales/payments-received');
+                        }
+                        if (subItem.path === '/sales/proforma-invoices') {
+                          isSubActive = location.pathname.startsWith('/sales/proforma');
+                        }
+                        if (subItem.path === '/sales/quotes') {
+                          isSubActive = location.pathname.startsWith('/sales/quotes');
+                        }
+                        if (subItem.path === '/sales/invoices') {
+                          isSubActive = location.pathname.startsWith('/sales/invoices');
+                        }
+                        if (subItem.path === '/sales/customers') {
+                          isSubActive = location.pathname.startsWith('/sales/customers') || 
+                                       location.pathname.startsWith('/customers');
+                        }
+                        // Purchases sub-items
+                        if (subItem.path === '/purchases/vendors') {
+                          isSubActive = location.pathname.startsWith('/purchases/vendors');
+                        }
+                        if (subItem.path === '/purchases/expenses') {
+                          isSubActive = location.pathname.startsWith('/purchases/expenses');
+                        }
+                        if (subItem.path === '/purchases/recurring-expenses') {
+                          isSubActive = location.pathname.startsWith('/purchases/recurring-expenses');
+                        }
+                        if (subItem.path === '/purchases/orders') {
+                          isSubActive = location.pathname.startsWith('/purchases/orders');
+                        }
+                        if (subItem.path === '/purchases/bills') {
+                          isSubActive = location.pathname.startsWith('/purchases/bills');
+                        }
+                        if (subItem.path === '/purchases/payments-made') {
+                          isSubActive = location.pathname.startsWith('/purchases/payments-made');
+                        }
+                        if (subItem.path === '/purchases/vendor-credits') {
+                          isSubActive = location.pathname.startsWith('/purchases/vendor-credits');
+                        }
+                        return `flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 ml-6 ${
+                          isSubActive
                             ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md'
                             : 'text-gray-600 hover:bg-amber-50 hover:text-amber-600'
-                        }`
-                      }
+                        }`;
+                      }}
                     >
                       <span className="flex-shrink-0">{subItem.icon}</span>
                       <span className="text-sm font-medium">{subItem.name}</span>
@@ -276,13 +418,59 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
       <li key={item.name} className="w-full">
         <NavLink
           to={item.path!}
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 w-full ${
-              isActive
+          className={({ isActive }) => {
+            // Special handling for non-exact matches
+            let isLinkActive = isActive;
+            if (item.path === '/sales/delivery-challans') {
+              isLinkActive = location.pathname.startsWith('/sales/delivery-challan') || 
+                            location.pathname.startsWith('/sales/delivery-challans');
+            }
+            if (item.path === '/sales/payments-received') {
+              isLinkActive = location.pathname.startsWith('/sales/payments-received');
+            }
+            if (item.path === '/sales/proforma-invoices') {
+              isLinkActive = location.pathname.startsWith('/sales/proforma');
+            }
+            if (item.path === '/sales/quotes') {
+              isLinkActive = location.pathname.startsWith('/sales/quotes');
+            }
+            if (item.path === '/sales/invoices') {
+              isLinkActive = location.pathname.startsWith('/sales/invoices');
+            }
+            if (item.path === '/sales/customers') {
+              isLinkActive = location.pathname.startsWith('/sales/customers') || 
+                            location.pathname.startsWith('/customers');
+            }
+            if (item.path === '/sales/credit-notes') {
+              isLinkActive = location.pathname.startsWith('/sales/credit-notes');
+            }
+            if (item.path === '/purchases/vendors') {
+              isLinkActive = location.pathname.startsWith('/purchases/vendors');
+            }
+            if (item.path === '/purchases/expenses') {
+              isLinkActive = location.pathname.startsWith('/purchases/expenses');
+            }
+            if (item.path === '/purchases/recurring-expenses') {
+              isLinkActive = location.pathname.startsWith('/purchases/recurring-expenses');
+            }
+            if (item.path === '/purchases/orders') {
+              isLinkActive = location.pathname.startsWith('/purchases/orders');
+            }
+            if (item.path === '/purchases/bills') {
+              isLinkActive = location.pathname.startsWith('/purchases/bills');
+            }
+            if (item.path === '/purchases/payments-made') {
+              isLinkActive = location.pathname.startsWith('/purchases/payments-made');
+            }
+            if (item.path === '/purchases/vendor-credits') {
+              isLinkActive = location.pathname.startsWith('/purchases/vendor-credits');
+            }
+            return `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 w-full ${
+              isLinkActive
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md'
                 : 'text-gray-700 hover:bg-amber-50 hover:text-amber-600'
-            } ${!sidebarOpen ? 'justify-center' : ''} ${paddingLeft}`
-          }
+            } ${!sidebarOpen ? 'justify-center' : ''} ${paddingLeft}`;
+          }}
           title={!sidebarOpen ? item.name : ''}
         >
           <span className="flex-shrink-0">{item.icon}</span>

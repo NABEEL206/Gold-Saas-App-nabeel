@@ -32,7 +32,7 @@ import PurchaseOrders from '../pages/purchases/PurchaseOrders/PurchaseOrders';
 import Bills from '../pages/purchases/Bills/Bills';
 import PaymentsMade from '../pages/purchases/PaymentsMade/PaymentsMade';
 import VendorCredits from '../pages/purchases/VendorCredits/VendorCredits';
-import Banking from '../pages/Banking/Banking';
+import Banking from '../pages/Banking/Banks';
 import ManualJournals from '../pages/accountant/ManualJournals';
 import CurrencyAdjustments from '../pages/accountant/CurrencyAdjustments';
 import ChartOfAccounts from '../pages/accountant/ChartOfAccounts';
@@ -75,6 +75,16 @@ import PurchaseOrderCreate from '../pages/purchases/PurchaseOrders/PurchaseOrder
 import BillCreate from '../pages/purchases/Bills/BillCreate';
 import BillView from '../pages/purchases/Bills/BillView';
 import BillEdit from '../pages/purchases/Bills/BillEdit';
+import PaymentMadeCreate from '../pages/purchases/PaymentsMade/PaymentMadeCreate';
+import PaymentMadeView from '../pages/purchases/PaymentsMade/PaymentMadeView';
+import PaymentMadeEdit from '../pages/purchases/PaymentsMade/PaymentMadeEdit';
+import VendorCreditsCreate from '../pages/purchases/VendorCredits/VendorCreditsCreate';
+import VendorCreditsView from '../pages/purchases/VendorCredits/VendorCreditsView';
+import VendorCreditsEdit from '../pages/purchases/VendorCredits/VendorCreditsEdit';
+import Banks from '../pages/Banking/Banks';
+import BankCreate from '../pages/Banking/BankCreate';
+import BankView from '../pages/Banking/BankView';
+import BankEdit from '../pages/Banking/BankEdit';
 
 // Create a wrapper component for cleaner code
 const LayoutWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -188,13 +198,23 @@ const AppRoutes: React.FC = () => {
       <Route path="/purchases/bills/:id" element={<LayoutWrapper><BillView /></LayoutWrapper>} />
       <Route path="/purchases/bills/:id/edit" element={<LayoutWrapper><BillEdit /></LayoutWrapper>} />
 
-
-      <Route path="/purchases/bills" element={<LayoutWrapper><Bills /></LayoutWrapper>} />
+      {/*Payment Made rotes*/}
       <Route path="/purchases/payments-made" element={<LayoutWrapper><PaymentsMade /></LayoutWrapper>} />
+      <Route path="/purchases/payments-made/create" element={<LayoutWrapper><PaymentMadeCreate /></LayoutWrapper>} />
+      <Route path="/purchases/payments-made/:id" element={<LayoutWrapper><PaymentMadeView /></LayoutWrapper>} />
+      <Route path="/purchases/payments-made/:id/edit" element={<LayoutWrapper><PaymentMadeEdit /></LayoutWrapper>} />
+
+      {/*Vendor Credits  rotes*/}
       <Route path="/purchases/vendor-credits" element={<LayoutWrapper><VendorCredits /></LayoutWrapper>} />
+      <Route path="/purchases/vendor-credits/create" element={<LayoutWrapper><VendorCreditsCreate /></LayoutWrapper>} />
+      <Route path="/purchases/vendor-credits/:id" element={<LayoutWrapper><VendorCreditsView /></LayoutWrapper>} />
+      <Route path="/purchases/vendor-credits/:id/edit" element={<LayoutWrapper><VendorCreditsEdit /></LayoutWrapper>} />
       
       {/* Banking */}
-      <Route path="/banking" element={<LayoutWrapper><Banking /></LayoutWrapper>} />
+      <Route path="/banking/banks" element={<LayoutWrapper><Banks /></LayoutWrapper>} />
+      <Route path="/banking/banks/create" element={<LayoutWrapper><BankCreate /></LayoutWrapper>} />
+      <Route path="/banking/banks/:id" element={<LayoutWrapper><BankView /></LayoutWrapper>} />
+      <Route path="/banking/banks/:id/edit" element={<LayoutWrapper><BankEdit /></LayoutWrapper>} />
       
       {/* Accountant Routes */}
       <Route path="/accountant/manual-journals" element={<LayoutWrapper><ManualJournals /></LayoutWrapper>} />
