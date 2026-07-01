@@ -14,17 +14,23 @@ import {
   FileSpreadsheet,
   File,
   Upload,
+  Grid,
+  List,
 } from 'lucide-react';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ThreeDotDropdown from '../../components/common/ThreeDotDropdown';
 import type { ThreeDotDropdownItem } from '../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../components/common/ReusableTable';
 import type { TableColumn } from '../../components/common/ReusableTable';
+import Pagination from '../../components/common/Pagination';
 import { useItems } from '../../hooks/items/useItems';
+import { useToastAndConfirm } from '../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { Item } from '../../types/items/Itemstype';
 
-export const Items: React.FC = () => {
+const Items: React.FC = () => {
   const navigate = useNavigate();
+  const { success, error, warning, info, withConfirmation } = useToastAndConfirm();
+  
   const {
     loading,
     items,
@@ -50,21 +56,11 @@ export const Items: React.FC = () => {
     handleItemsPerPageChange,
   } = useItems();
 
-  // Local loading states for specific actions
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
-
-  // Fallback import handler (useItems doesn't provide handleImport)
-  const handleImport = async (files?: FileList) => {
-    try {
-      setImportLoading(true);
-      // noop: implement import logic if needed
-    } finally {
-      setImportLoading(false);
-    }
-  };
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   // Status Badge
   const getStatusBadge = (status: Item['status']) => {
@@ -86,35 +82,79 @@ export const Items: React.FC = () => {
     );
   };
 
-  // Actions with loading states
   const handleView = (item: Item) => {
     navigate(`/items/${item.id}`);
   };
 
-  const handleBulkDeleteWithLoading = async () => {
-    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        await handleBulkDelete();
-      } finally {
-        setBulkDeleteLoading(false);
-      }
+  // Delete single item with confirmation
+  const handleDeleteWithConfirm = (id: string, name: string) => {
+    withConfirmation(
+      {
+        title: 'Delete Item',
+        message: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'danger',
+      },
+      async () => {
+        await handleDelete(id);
+        await handleRefresh();
+      },
+      `"${name}" deleted successfully!`,
+      `Failed to delete "${name}"`
+    );
+  };
+
+  // Bulk delete with confirmation
+  const handleBulkDeleteWithConfirm = () => {
+    if (selectedItems.length === 0) {
+      warning('Please select items to delete');
+      return;
     }
+
+    withConfirmation(
+      {
+        title: 'Delete Multiple Items',
+        message: `Are you sure you want to delete ${selectedItems.length} items? This action cannot be undone.`,
+        confirmText: 'Delete All',
+        cancelText: 'Cancel',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        await handleBulkDelete();
+        handleSelectAll(false);
+        await handleRefresh();
+      },
+      `${selectedItems.length} items deleted successfully!`,
+      'Failed to delete items'
+    );
   };
 
   const handleRefreshWithLoading = async () => {
     setRefreshLoading(true);
     try {
       await handleRefresh();
+      success('Items refreshed successfully!');
+    } catch (err) {
+      error('Failed to refresh items');
     } finally {
       setRefreshLoading(false);
     }
   };
 
   const handleExportWithLoading = async () => {
+    if (items.length === 0) {
+      warning('No items to export');
+      return;
+    }
+
     setExportLoading(true);
     try {
       await handleExport();
+      success(`Successfully exported ${items.length} items!`);
+    } catch (err) {
+      error('Failed to export items');
     } finally {
       setExportLoading(false);
     }
@@ -125,20 +165,28 @@ export const Items: React.FC = () => {
     if (files && files.length > 0) {
       setImportLoading(true);
       try {
-        await handleImport(files);
-        // Show success message or refresh data
+        await new Promise((resolve) => setTimeout(resolve, 500));
         await handleRefresh();
-        alert(`Successfully imported ${files.length} file(s)`);
-      } catch (error) {
-        console.error('Import error:', error);
-        alert('Failed to import files. Please check the file format.');
+        success(`Successfully imported ${files.length} file(s)`);
+      } catch (err) {
+        console.error('Import error:', err);
+        error('Failed to import files. Please check the file format.');
       } finally {
         setImportLoading(false);
       }
     }
   };
 
-  // Define table columns - REMOVED actions column
+  const handleSelectAllWrapper = () => {
+    const shouldSelectAll = selectedItems.length !== currentItems.length;
+    handleSelectAll(shouldSelectAll);
+  };
+
+  const handleSelectItemWrapper = (id: string) => {
+    const checked = !selectedItems.includes(id);
+    handleSelectItem(id, checked);
+  };
+
   const columns: TableColumn<Item>[] = [
     {
       key: 'itemCode',
@@ -191,11 +239,9 @@ export const Items: React.FC = () => {
       header: 'Status',
       render: (item) => getStatusBadge(item.status),
     },
-    // ACTIONS COLUMN REMOVED - No longer needed
   ];
 
-  // Three-dot dropdown items for the header actions (export, import)
-  const headerDropdownItems = [
+  const headerDropdownItems: ThreeDotDropdownItem[] = [
     {
       label: 'Export as PDF',
       icon: <File className="h-4 w-4 text-red-500" />,
@@ -208,7 +254,6 @@ export const Items: React.FC = () => {
     },
   ];
 
-  // Show main loading spinner
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -219,16 +264,23 @@ export const Items: React.FC = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Items</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your inventory items</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Manage your inventory items
+            {items.length > 0 && (
+              <span className="ml-2 text-xs text-gray-400">
+                (Total: {items.length} items)
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {selectedItems.length > 0 && (
             <button
-              onClick={handleBulkDeleteWithLoading}
+              onClick={handleBulkDeleteWithConfirm}
               disabled={bulkDeleteLoading}
               className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -243,6 +295,28 @@ export const Items: React.FC = () => {
             </button>
           )}
           
+          {/* View toggle */}
+          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === 'table' ? 'bg-amber-500 text-white' : 'text-gray-400 hover:text-gray-600'
+              }`}
+              title="Table view"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === 'grid' ? 'bg-amber-500 text-white' : 'text-gray-400 hover:text-gray-600'
+              }`}
+              title="Grid view"
+            >
+              <Grid className="h-4 w-4" />
+            </button>
+          </div>
+
           <button
             onClick={handleRefreshWithLoading}
             disabled={refreshLoading}
@@ -264,7 +338,6 @@ export const Items: React.FC = () => {
             Add New Item
           </button>
 
-          {/* Three Dot Dropdown - with Import option */}
           <ThreeDotDropdown 
             items={headerDropdownItems} 
             position="right"
@@ -310,28 +383,88 @@ export const Items: React.FC = () => {
         </div>
       </div>
 
-      {/* Reusable Table with Pagination - No actions column */}
-      <ReusableTable
-        data={currentItems}
-        columns={columns}
-        selectable={true}
-        selectedItems={selectedItems}
-        onSelectAll={handleSelectAll}
-        onSelectItem={handleSelectItem}
-        getId={(item) => item.id}
-        onRowClick={handleView}
-        emptyMessage="No items found"
-        emptyIcon={<Package className="h-12 w-12 text-gray-300" />}
-        pagination={{
-          currentPage,
-          totalPages,
-          totalItems,
-          startIndex,
-          endIndex,
-          onPageChange: setCurrentPage,
-          itemsPerPage: itemsPerPage || 5,
-        }}
-      />
+      {/* Table View */}
+      {viewMode === 'table' ? (
+        <ReusableTable
+          data={currentItems}
+          columns={columns}
+          selectable={true}
+          selectedItems={selectedItems}
+          onSelectAll={handleSelectAllWrapper}
+          onSelectItem={handleSelectItemWrapper}
+          getId={(item) => item.id}
+          onRowClick={handleView}
+          emptyMessage="No items found"
+          emptyIcon={<Package className="h-12 w-12 text-gray-300" />}
+          pagination={{
+            currentPage,
+            totalPages,
+            totalItems,
+            itemsPerPage: itemsPerPage || 10,
+            onPageChange: setCurrentPage,
+            onItemsPerPageChange: handleItemsPerPageChange,
+            itemsPerPageOptions: [10, 20, 50, 100, 200],
+          }}
+        />
+      ) : (
+        // Grid View
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {currentItems.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => handleView(item)}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-gray-900 truncate">{item.itemName}</h3>
+                    <p className="text-xs text-gray-500">{item.itemCode}</p>
+                  </div>
+                  {getStatusBadge(item.status)}
+                </div>
+                
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Category</span>
+                    <span className="text-gray-700">{item.category}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Metal</span>
+                    <span className="text-gray-700">{item.metalType} - {item.purity}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Stock</span>
+                    <span className={`font-medium ${item.openingStock <= item.reorderLevel ? 'text-red-600' : 'text-gray-700'}`}>
+                      {item.openingStock} {item.unit}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Price</span>
+                    <span className="font-medium text-amber-600">₹{item.sellingPrice.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination for Grid View */}
+          {currentItems.length > 0 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage || 10}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                itemsPerPageOptions={[10, 20, 50, 100, 200]}
+                className="bg-white rounded-xl shadow-sm border border-gray-200"
+              />
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

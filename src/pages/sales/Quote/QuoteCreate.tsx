@@ -17,7 +17,9 @@ import {
 import { useQuotes } from '../../../hooks/Quote/useQuotes';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
+import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
+import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 
 // Mock product suggestions for jewelry items
 const MOCK_PRODUCTS = [
@@ -29,6 +31,20 @@ const MOCK_PRODUCTS = [
   { id: '6', name: 'Silver Necklace', code: 'SN-001', category: 'Necklace', purity: '18K', price: 2800, description: '18K Silver Necklace with chain' },
 ];
 
+// Mock customer data for dropdown - these will appear in the customer name dropdown
+const MOCK_CUSTOMERS: DropdownOption[] = [
+  { value: 'CUST-001', label: 'Rajesh Kumar', group: 'Regular' },
+  { value: 'CUST-002', label: 'Priya Sharma', group: 'Regular' },
+  { value: 'CUST-003', label: 'Amit Patel', group: 'VIP' },
+  { value: 'CUST-004', label: 'Sneha Reddy', group: 'Regular' },
+  { value: 'CUST-005', label: 'Vikram Singh', group: 'VIP' },
+  { value: 'CUST-006', label: 'Meera Iyer', group: 'Regular' },
+  { value: 'CUST-007', label: 'Arjun Nair', group: 'Corporate' },
+  { value: 'CUST-008', label: 'Kavya Menon', group: 'Corporate' },
+  { value: 'CUST-009', label: 'Rahul Gupta', group: 'Regular' },
+  { value: 'CUST-010', label: 'Ananya Desai', group: 'VIP' },
+];
+
 const QuoteCreate: React.FC = () => {
   const navigate = useNavigate();
   const { createQuote, loading } = useQuotes();
@@ -38,6 +54,7 @@ const QuoteCreate: React.FC = () => {
 
   // Basic form state
   const [formData, setFormData] = useState({
+    customerId: null as string | null,
     customerName: '',
     customerEmail: '',
     customerPhone: '',
@@ -51,6 +68,44 @@ const QuoteCreate: React.FC = () => {
 
   // Items state for ItemSelectionTable
   const [items, setItems] = useState<ItemSelectionItem[]>([]);
+
+  // Handle customer selection from dropdown
+  const handleCustomerSelect = (selectedOption: DropdownOption) => {
+    // In a real app, you would fetch customer details from API
+    // For demo, we'll simulate loading customer data
+    const customerDetails: Record<string, any> = {
+      'CUST-001': { name: 'Rajesh Kumar', email: 'rajesh@email.com', phone: '9876543210', address: '123 Main St, Mumbai', gst: 'GSTIN001' },
+      'CUST-002': { name: 'Priya Sharma', email: 'priya@email.com', phone: '9876543211', address: '456 Park Ave, Delhi', gst: 'GSTIN002' },
+      'CUST-003': { name: 'Amit Patel', email: 'amit@email.com', phone: '9876543212', address: '789 Lake Rd, Bangalore', gst: 'GSTIN003' },
+      'CUST-004': { name: 'Sneha Reddy', email: 'sneha@email.com', phone: '9876543213', address: '321 Hill St, Hyderabad', gst: 'GSTIN004' },
+      'CUST-005': { name: 'Vikram Singh', email: 'vikram@email.com', phone: '9876543214', address: '654 Forest Ln, Chennai', gst: 'GSTIN005' },
+      'CUST-006': { name: 'Meera Iyer', email: 'meera@email.com', phone: '9876543215', address: '987 River Rd, Kolkata', gst: 'GSTIN006' },
+      'CUST-007': { name: 'Arjun Nair', email: 'arjun@email.com', phone: '9876543216', address: '147 Beach Ave, Kochi', gst: 'GSTIN007' },
+      'CUST-008': { name: 'Kavya Menon', email: 'kavya@email.com', phone: '9876543217', address: '258 Hillcrest, Pune', gst: 'GSTIN008' },
+      'CUST-009': { name: 'Rahul Gupta', email: 'rahul@email.com', phone: '9876543218', address: '369 Garden St, Jaipur', gst: 'GSTIN009' },
+      'CUST-010': { name: 'Ananya Desai', email: 'ananya@email.com', phone: '9876543219', address: '741 Lakeview, Ahmedabad', gst: 'GSTIN010' },
+    };
+
+    const details = customerDetails[selectedOption.value] || null;
+    if (details) {
+      setFormData(prev => ({
+        ...prev,
+        customerId: selectedOption.value,
+        customerName: details.name || selectedOption.label,
+        customerEmail: details.email || '',
+        customerPhone: details.phone || '',
+        customerAddress: details.address || '',
+        customerGst: details.gst || '',
+      }));
+    } else {
+      // If no details found, just set the name from label
+      setFormData(prev => ({
+        ...prev,
+        customerId: selectedOption.value,
+        customerName: selectedOption.label,
+      }));
+    }
+  };
 
   // Handle product search
   const handleProductSearch = (search: string) => {
@@ -152,7 +207,7 @@ const QuoteCreate: React.FC = () => {
         roundOff: 0,
         total: totals.total,
         status,
-        customerId: 'CUST-' + Date.now(),
+        customerId: formData.customerId || 'CUST-' + Date.now(),
       };
 
       await createQuote(quoteData);
@@ -238,19 +293,28 @@ const QuoteCreate: React.FC = () => {
             Customer Information
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            {/* Customer Name - Now using SearchableDropdown */}
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Customer Name *
               </label>
-              <input
-                type="text"
-                value={formData.customerName}
-                onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="Enter customer name"
-                required
+              <SearchableDropdown
+                options={MOCK_CUSTOMERS}
+                value={formData.customerId}
+                onChange={handleCustomerSelect}
+                placeholder="Search customer by name..."
+                triggerPlaceholder="Select or search customer..."
+                className="w-full max-w-full"
+                showEmptyState={true}
+                emptyStateText="No customers found. Type to search."
+                resetSearchOnOpen={true}
               />
+              <p className="text-xs text-gray-400 mt-1.5">
+                Start typing to search existing customers or select from the list
+              </p>
             </div>
+
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Email
@@ -263,6 +327,8 @@ const QuoteCreate: React.FC = () => {
                 placeholder="customer@email.com"
               />
             </div>
+
+            {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Phone *
@@ -276,6 +342,8 @@ const QuoteCreate: React.FC = () => {
                 required
               />
             </div>
+
+            {/* GST Number */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 GST Number
@@ -288,7 +356,9 @@ const QuoteCreate: React.FC = () => {
                 placeholder="GSTIN"
               />
             </div>
-            <div className="md:col-span-2">
+
+            {/* Address */}
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Address
               </label>

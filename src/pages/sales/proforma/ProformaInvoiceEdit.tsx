@@ -1,53 +1,53 @@
+// src/pages/sales/proforma/ProformaInvoiceEdit.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Save,
   Trash2,
-  Plus,
   User,
   Mail,
   Phone,
   Hash,
   Calendar,
   Clock,
-  ShoppingBag,
-  Gem,
   FileText,
   Paperclip,
   Upload,
   X,
-  ChevronDown,
   AlertCircle,
-  Pencil,
   Receipt,
 } from 'lucide-react';
 import { useProformaInvoice } from '../../../hooks/Proforma/useProformaInvoice';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
-import type { 
-  ProformaInvoiceFormData, 
-  ProformaInvoiceItem 
-} from '../../../types/proforma/ProformaInvoiceType';
+import SearchableDropdown from '../../../components/common/Searchabledropdown';
+import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
+import type { DropdownOption } from '../../../components/common/Searchabledropdown';
+import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
+import type { ProformaInvoiceFormData } from '../../../types/proforma/ProformaInvoiceType';
 
-// Purity options
-const PURITY_OPTIONS = [
-  { value: '24K', label: '24K (99.9%)' },
-  { value: '22K', label: '22K (91.6%)' },
-  { value: '18K', label: '18K (75%)' },
-  { value: '14K', label: '14K (58.5%)' },
-  { value: '10K', label: '10K (41.7%)' },
+// Mock customer data for dropdown
+const MOCK_CUSTOMERS: DropdownOption[] = [
+  { value: 'CUST-001', label: 'Rajesh Kumar', group: 'Regular' },
+  { value: 'CUST-002', label: 'Priya Sharma', group: 'Regular' },
+  { value: 'CUST-003', label: 'Amit Patel', group: 'VIP' },
+  { value: 'CUST-004', label: 'Sneha Reddy', group: 'Regular' },
+  { value: 'CUST-005', label: 'Vikram Singh', group: 'VIP' },
+  { value: 'CUST-006', label: 'Meera Iyer', group: 'Regular' },
+  { value: 'CUST-007', label: 'Arjun Nair', group: 'Corporate' },
+  { value: 'CUST-008', label: 'Kavya Menon', group: 'Corporate' },
+  { value: 'CUST-009', label: 'Rahul Gupta', group: 'Regular' },
+  { value: 'CUST-010', label: 'Ananya Desai', group: 'VIP' },
 ];
 
-const CATEGORY_OPTIONS = [
-  'Chain', 'Bracelet', 'Ring', 'Earring', 'Necklace', 'Pendant', 'Bangle', 'Brooch', 'Others'
-];
-
-const TAX_OPTIONS = [
-  { value: 'gst_0', label: 'GST 0%' },
-  { value: 'gst_5', label: 'GST 5%' },
-  { value: 'gst_12', label: 'GST 12%' },
-  { value: 'gst_18', label: 'GST 18%' },
-  { value: 'gst_28', label: 'GST 28%' },
+// Mock product suggestions
+const MOCK_PRODUCTS = [
+  { id: '1', name: 'Gold Ring', code: 'GR-001', category: 'Ring', purity: '22K', price: 7500, description: '22K Gold Ring with diamond', unit: 'Pcs' },
+  { id: '2', name: 'Gold Chain', code: 'GC-001', category: 'Chain', purity: '22K', price: 4500, description: '22K Gold Chain with pendant', unit: 'Pcs' },
+  { id: '3', name: 'Gold Earrings', code: 'GE-001', category: 'Earring', purity: '22K', price: 3200, description: '22K Gold Earrings with pearl', unit: 'Pair' },
+  { id: '4', name: 'Diamond Ring', code: 'DR-001', category: 'Ring', purity: '18K', price: 8500, description: '18K Diamond Ring with 0.5ct diamond', unit: 'Pcs' },
+  { id: '5', name: 'Gold Bracelet', code: 'GB-001', category: 'Bracelet', purity: '22K', price: 3800, description: '22K Gold Bracelet with diamonds', unit: 'Pcs' },
+  { id: '6', name: 'Silver Necklace', code: 'SN-001', category: 'Necklace', purity: '18K', price: 2800, description: '18K Silver Necklace with chain', unit: 'Pcs' },
 ];
 
 const ProformaInvoiceEdit: React.FC = () => {
@@ -60,19 +60,65 @@ const ProformaInvoiceEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<File[]>([]);
-  const [selectedTax, setSelectedTax] = useState('');
+  const [items, setItems] = useState<ItemSelectionItem[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [productSuggestions] = useState(MOCK_PRODUCTS);
 
-  // New item state
-  const [newItem, setNewItem] = useState<ProformaInvoiceItem>({
-    productId: '',
-    productName: '',
-    description: '',
-    quantity: 1,
-    unitPrice: 0,
-    discount: 0,
-    taxRate: 0,
-    total: 0,
-  });
+  // Handle customer selection from dropdown
+  const handleCustomerSelect = (selectedOption: DropdownOption) => {
+    const customerDetails: Record<string, any> = {
+      'CUST-001': { name: 'Rajesh Kumar', email: 'rajesh@email.com', phone: '9876543210', address: '123 Main St, Mumbai', gst: 'GSTIN001' },
+      'CUST-002': { name: 'Priya Sharma', email: 'priya@email.com', phone: '9876543211', address: '456 Park Ave, Delhi', gst: 'GSTIN002' },
+      'CUST-003': { name: 'Amit Patel', email: 'amit@email.com', phone: '9876543212', address: '789 Lake Rd, Bangalore', gst: 'GSTIN003' },
+      'CUST-004': { name: 'Sneha Reddy', email: 'sneha@email.com', phone: '9876543213', address: '321 Hill St, Hyderabad', gst: 'GSTIN004' },
+      'CUST-005': { name: 'Vikram Singh', email: 'vikram@email.com', phone: '9876543214', address: '654 Forest Ln, Chennai', gst: 'GSTIN005' },
+      'CUST-006': { name: 'Meera Iyer', email: 'meera@email.com', phone: '9876543215', address: '987 River Rd, Kolkata', gst: 'GSTIN006' },
+      'CUST-007': { name: 'Arjun Nair', email: 'arjun@email.com', phone: '9876543216', address: '147 Beach Ave, Kochi', gst: 'GSTIN007' },
+      'CUST-008': { name: 'Kavya Menon', email: 'kavya@email.com', phone: '9876543217', address: '258 Hillcrest, Pune', gst: 'GSTIN008' },
+      'CUST-009': { name: 'Rahul Gupta', email: 'rahul@email.com', phone: '9876543218', address: '369 Garden St, Jaipur', gst: 'GSTIN009' },
+      'CUST-010': { name: 'Ananya Desai', email: 'ananya@email.com', phone: '9876543219', address: '741 Lakeview, Ahmedabad', gst: 'GSTIN010' },
+    };
+
+    const details = customerDetails[selectedOption.value] || null;
+    if (details && formData) {
+      setFormData({
+        ...formData,
+        customerId: selectedOption.value,
+        customerName: details.name || selectedOption.label,
+        customerEmail: details.email || '',
+        customerPhone: details.phone || '',
+        customerAddress: details.address || '',
+      });
+    }
+  };
+
+  // Handle items change from ItemSelectionTable
+  const handleItemsChange = (newItems: ItemSelectionItem[]) => {
+    setItems(newItems);
+    if (formData) {
+      const proformaItems = newItems.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        description: item.description || '',
+        quantity: item.quantity || 1,
+        unitPrice: item.rate || 0,
+        discount: item.discount || 0,
+        taxRate: item.taxRate || 0,
+        total: item.total || 0,
+        purity: item.purity || '',
+        category: item.category || '',
+      }));
+      setFormData({
+        ...formData,
+        items: proformaItems,
+      });
+    }
+  };
+
+  // Handle product search
+  const handleProductSearch = (search: string) => {
+    setProductSearch(search);
+  };
 
   useEffect(() => {
     const loadInvoice = async () => {
@@ -98,6 +144,26 @@ const ProformaInvoiceEdit: React.FC = () => {
               status: invoice.status,
               discount: invoice.discount || 0,
             });
+
+            // Convert items to ItemSelectionItem format
+            if (invoice.items && invoice.items.length > 0) {
+              const convertedItems = invoice.items.map((item: any) => ({
+                productId: item.productId || `item_${Date.now()}`,
+                productName: item.productName || '',
+                description: item.description || '',
+                quantity: item.quantity || 1,
+                unit: 'Pcs',
+                rate: item.unitPrice || 0,
+                discount: item.discount || 0,
+                discountType: 'percentage' as const,
+                taxRate: item.taxRate || 0,
+                taxAmount: 0,
+                total: item.total || 0,
+                purity: item.purity || '22K',
+                category: item.category || '',
+              }));
+              setItems(convertedItems);
+            }
           } else {
             navigate('/sales/proforma');
           }
@@ -114,103 +180,16 @@ const ProformaInvoiceEdit: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => prev ? { ...prev, [name]: value } : null);
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-  };
-
-  const handleItemChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewItem(prev => {
-      const updated = { 
-        ...prev, 
-        [name]: ['quantity', 'unitPrice', 'discount', 'taxRate'].includes(name) 
-          ? parseFloat(value) || 0 
-          : value 
-      };
-      
-      const quantity = name === 'quantity' ? parseFloat(value) || 0 : prev.quantity;
-      const unitPrice = name === 'unitPrice' ? parseFloat(value) || 0 : prev.unitPrice;
-      const discount = name === 'discount' ? parseFloat(value) || 0 : prev.discount;
-      const taxRate = name === 'taxRate' ? parseFloat(value) || 0 : prev.taxRate;
-      
-      const subtotal = quantity * unitPrice;
-      const discountAmount = subtotal * (discount / 100);
-      const taxAmount = (subtotal - discountAmount) * (taxRate / 100);
-      updated.total = subtotal - discountAmount + taxAmount;
-      
-      return updated;
-    });
-  };
-
-  const addItem = () => {
-    if (newItem.productName && newItem.quantity > 0 && newItem.unitPrice > 0) {
-      setFormData(prev => prev ? {
-        ...prev,
-        items: [...prev.items, { ...newItem, id: Date.now().toString() }],
-      } : null);
-      setNewItem({
-        productId: '',
-        productName: '',
-        description: '',
-        quantity: 1,
-        unitPrice: 0,
-        discount: 0,
-        taxRate: 0,
-        total: 0,
-      });
-      if (errors.items) {
+    if (formData) {
+      setFormData({ ...formData, [name]: value });
+      if (errors[name]) {
         setErrors(prev => {
           const newErrors = { ...prev };
-          delete newErrors.items;
+          delete newErrors[name];
           return newErrors;
         });
       }
-    } else {
-      setErrors({ items: 'Please fill in product name, quantity, and unit price' });
     }
-  };
-
-  const removeItem = (index: number) => {
-    setFormData(prev => prev ? {
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    } : null);
-  };
-
-  const updateItem = (index: number, field: string, value: any) => {
-    setFormData(prev => {
-      if (!prev) return null;
-      const newItems = [...prev.items];
-      newItems[index] = { ...newItems[index], [field]: value };
-      
-      // Recalculate total
-      const item = newItems[index];
-      const subtotal = item.quantity * item.unitPrice;
-      const discountAmount = subtotal * (item.discount / 100);
-      const taxAmount = (subtotal - discountAmount) * (item.taxRate / 100);
-      item.total = subtotal - discountAmount + taxAmount;
-      
-      return { ...prev, items: newItems };
-    });
-  };
-
-  const calculateTotals = (items: ProformaInvoiceItem[]) => {
-    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const discountTotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice * (item.discount / 100)), 0);
-    const taxTotal = items.reduce((sum, item) => {
-      const itemSubtotal = item.quantity * item.unitPrice;
-      const itemDiscount = itemSubtotal * (item.discount / 100);
-      return sum + ((itemSubtotal - itemDiscount) * (item.taxRate / 100));
-    }, 0);
-    const grandTotal = subtotal - discountTotal + taxTotal;
-    return { subtotal, discountTotal, taxTotal, grandTotal };
   };
 
   const validateForm = () => {
@@ -246,20 +225,13 @@ const ProformaInvoiceEdit: React.FC = () => {
 
     setSaving(true);
     try {
-      // Update invoice status back to draft
       await updateInvoiceStatus(id!, 'draft');
-      
-      // Here you would call your API to update the invoice
-      // For now, we'll simulate it
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
       console.log('Updated Proforma Invoice:', {
         id,
         ...formData,
         files,
-        selectedTax,
       });
-      
       navigate('/sales/proforma');
     } catch (err) {
       setErrors({ submit: err instanceof Error ? err.message : 'Failed to update invoice' });
@@ -283,13 +255,11 @@ const ProformaInvoiceEdit: React.FC = () => {
     const fileList = e.target.files;
     if (fileList) {
       const newFiles = Array.from(fileList);
-      // Check file size (10MB limit)
       const oversizedFiles = newFiles.filter(f => f.size > 10 * 1024 * 1024);
       if (oversizedFiles.length > 0) {
         setErrors(prev => ({ ...prev, files: 'Some files exceed the 10MB limit' }));
         return;
       }
-      // Check file count (max 5)
       if (files.length + newFiles.length > 5) {
         setErrors(prev => ({ ...prev, files: 'Maximum 5 files allowed' }));
         return;
@@ -302,6 +272,24 @@ const ProformaInvoiceEdit: React.FC = () => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Custom columns configuration for Proforma Invoice
+  const proformaColumns = {
+    item: true,
+    purity: true,
+    description: true,
+    grossWt: false,
+    stoneWt: false,
+    netWt: false,
+    qty: true,
+    unit: true,
+    rate: true,
+    making: false,
+    discount: true,
+    tax: true,
+    amount: true,
+    action: true,
+  };
+
   if (loadingData) {
     return <LoadingSpinner fullScreen text="Loading invoice..." />;
   }
@@ -310,7 +298,6 @@ const ProformaInvoiceEdit: React.FC = () => {
     return null;
   }
 
-  const totals = calculateTotals(formData.items);
   const isEditable = formData.status === 'draft';
 
   return (
@@ -402,102 +389,48 @@ const ProformaInvoiceEdit: React.FC = () => {
           {/* Customer & Invoice Details */}
           <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              {/* Customer Name */}
-              <div>
+              {/* Customer Name - Using SearchableDropdown */}
+              <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Customer <span className="text-red-500">*</span>
                 </label>
-                <div className={`flex items-center border rounded-lg px-3 py-2.5 ${
-                  errors.customerName ? 'border-red-400' : 'border-gray-300'
-                } ${!isEditable ? 'bg-gray-50' : ''}`}>
-                  <User className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                  <input
-                    type="text"
-                    name="customerName"
-                    value={formData.customerName}
-                    onChange={handleInputChange}
-                    disabled={!isEditable}
-                    placeholder="Customer name"
-                    className="flex-1 outline-none text-sm bg-transparent text-gray-900 placeholder:text-gray-400 disabled:text-gray-500"
-                  />
-                </div>
+                <SearchableDropdown
+                  options={MOCK_CUSTOMERS}
+                  value={formData.customerId}
+                  onChange={handleCustomerSelect}
+                  placeholder="Search customer by name..."
+                  triggerPlaceholder="Select or search customer..."
+                  className="w-full max-w-full"
+                  showEmptyState={true}
+                  emptyStateText="No customers found"
+                  resetSearchOnOpen={true}
+                  disabled={!isEditable}
+                />
                 {errors.customerName && (
                   <p className="mt-1 text-xs text-red-500">{errors.customerName}</p>
                 )}
-              </div>
-
-              {/* Customer Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <div className={`flex items-center border rounded-lg px-3 py-2.5 ${
-                  errors.customerEmail ? 'border-red-400' : 'border-gray-300'
-                } ${!isEditable ? 'bg-gray-50' : ''}`}>
-                  <Mail className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                  <input
-                    type="email"
-                    name="customerEmail"
-                    value={formData.customerEmail}
-                    onChange={handleInputChange}
-                    disabled={!isEditable}
-                    placeholder="customer@email.com"
-                    className="flex-1 outline-none text-sm bg-transparent text-gray-900 placeholder:text-gray-400 disabled:text-gray-500"
-                  />
-                </div>
-                {errors.customerEmail && (
-                  <p className="mt-1 text-xs text-red-500">{errors.customerEmail}</p>
+                {formData.customerName && (
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                    {formData.customerEmail && (
+                      <span className="flex items-center gap-1">
+                        <Mail className="h-3 w-3" /> {formData.customerEmail}
+                      </span>
+                    )}
+                    {formData.customerPhone && (
+                      <span className="flex items-center gap-1">
+                        <Phone className="h-3 w-3" /> {formData.customerPhone}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {/* Customer Phone */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Phone
-                </label>
-                <div className={`flex items-center border border-gray-300 rounded-lg px-3 py-2.5 ${!isEditable ? 'bg-gray-50' : ''}`}>
-                  <Phone className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                  <input
-                    type="text"
-                    name="customerPhone"
-                    value={formData.customerPhone}
-                    onChange={handleInputChange}
-                    disabled={!isEditable}
-                    placeholder="+1-555-0000"
-                    className="flex-1 outline-none text-sm bg-transparent text-gray-900 placeholder:text-gray-400 disabled:text-gray-500"
-                  />
-                </div>
-              </div>
-
-              {/* Customer Address */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Address
-                </label>
-                <div className={`flex items-center border border-gray-300 rounded-lg px-3 py-2.5 ${!isEditable ? 'bg-gray-50' : ''}`}>
-                  <input
-                    type="text"
-                    name="customerAddress"
-                    value={formData.customerAddress}
-                    onChange={handleInputChange}
-                    disabled={!isEditable}
-                    placeholder="Customer address"
-                    className="flex-1 outline-none text-sm bg-transparent text-gray-900 placeholder:text-gray-400 disabled:text-gray-500"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Invoice Details Row 2 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               {/* Invoice Number */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Proforma # <span className="text-red-500">*</span>
                 </label>
-                <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
+                <div className={`flex items-center border rounded-lg px-3 py-2.5 ${!isEditable ? 'bg-gray-50' : 'bg-white'} border-gray-300`}>
                   <Hash className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
                   <input
                     type="text"
@@ -507,10 +440,6 @@ const ProformaInvoiceEdit: React.FC = () => {
                     disabled={!isEditable}
                     className="flex-1 outline-none text-sm bg-transparent text-gray-900 disabled:text-gray-500"
                   />
-                  <span className="text-xs text-gray-400 flex items-center gap-1 ml-2">
-                    <Pencil className="h-3 w-3" />
-                    Editable
-                  </span>
                 </div>
               </div>
 
@@ -559,25 +488,6 @@ const ProformaInvoiceEdit: React.FC = () => {
                   <p className="mt-1 text-xs text-red-500">{errors.validUntil}</p>
                 )}
               </div>
-
-              {/* Currency */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Currency
-                </label>
-                <select
-                  name="currency"
-                  value={formData.currency}
-                  onChange={handleInputChange}
-                  disabled={!isEditable}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 bg-white disabled:bg-gray-50 disabled:text-gray-500"
-                >
-                  <option value="USD">USD - US Dollar</option>
-                  <option value="EUR">EUR - Euro</option>
-                  <option value="GBP">GBP - British Pound</option>
-                  <option value="JPY">JPY - Japanese Yen</option>
-                </select>
-              </div>
             </div>
           </div>
 
@@ -623,241 +533,54 @@ const ProformaInvoiceEdit: React.FC = () => {
             </div>
           </div>
 
-          {/* Item Table */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
-            <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <ShoppingBag className="h-5 w-5 text-gray-600" />
-                <h3 className="text-sm font-semibold text-gray-700">Item Table</h3>
+          {/* Item Selection Table */}
+          <ItemSelectionTable
+            items={items}
+            onItemsChange={handleItemsChange}
+            productSuggestions={productSuggestions}
+            productSearch={productSearch}
+            onProductSearchChange={handleProductSearch}
+            showJewelryFields={true}
+            showDescription={true}
+            showUnit={true}
+            showDiscount={true}
+            showTax={true}
+            showMakingCharges={false}
+            showWeightFields={false}
+            showPurity={true}
+            columns={proformaColumns}
+            showSubtotalSection={true}
+            showTotalSection={true}
+            searchPlaceholder="Search jewelry items..."
+            addButtonLabel="Add Item"
+            title="Proforma Items"
+            additionalCharges={[]}
+            autoAddDefaultRow={true}
+            addButtonAtBottom={true}
+            className={!isEditable ? 'pointer-events-none opacity-75' : ''}
+          />
+
+          {/* Customer Notes */}
+          <div className="bg-white rounded-lg border border-gray-200 p-5 mt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                <FileText className="h-4 w-4 text-amber-600" />
               </div>
+              <span className="text-sm font-semibold text-gray-700">Customer Notes</span>
             </div>
-
-            {errors.items && (
-              <div className="p-3 bg-red-50 border-b border-red-200">
-                <p className="text-sm text-red-600">{errors.items}</p>
-              </div>
-            )}
-
-            {/* Table Header */}
-            <div className="grid grid-cols-10 gap-2 px-5 py-2.5 bg-gray-50/50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              <div className="col-span-4 text-left">ITEM DETAILS</div>
-              <div className="col-span-1 text-center">QUANTITY</div>
-              <div className="col-span-1 text-center">RATE</div>
-              <div className="col-span-1 text-center">DISCOUNT</div>
-              <div className="col-span-2 text-center">AMOUNT</div>
-              {isEditable && <div className="col-span-1 text-center">ACTION</div>}
-            </div>
-
-            {/* Items */}
-            {formData.items.length === 0 ? (
-              <div className="px-5 py-8 text-center text-gray-400">
-                <p>No items added yet</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {formData.items.map((item: any, index: number) => {
-                  const itemTotal = item.quantity * item.unitPrice;
-                  const discountAmount = itemTotal * (item.discount / 100);
-                  const amount = itemTotal - discountAmount + ((itemTotal - discountAmount) * (item.taxRate / 100));
-                  
-                  return (
-                    <div key={item.id} className="grid grid-cols-10 gap-2 px-5 py-2 items-center hover:bg-gray-50 transition-colors">
-                      <div className="col-span-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Gem className="h-4 w-4 text-amber-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            {isEditable ? (
-                              <input
-                                type="text"
-                                value={item.productName}
-                                onChange={(e) => updateItem(index, 'productName', e.target.value)}
-                                placeholder="Item name"
-                                className="w-full px-2 py-1 border-0 border-b border-gray-200 focus:border-amber-400 focus:ring-0 text-sm outline-none bg-transparent font-medium text-gray-900"
-                              />
-                            ) : (
-                              <p className="text-sm font-medium text-gray-900">{item.productName}</p>
-                            )}
-                            <div className="flex items-center gap-2 mt-0.5">
-                              {isEditable ? (
-                                <>
-                                  <select
-                                    value={item.purity || ''}
-                                    onChange={(e) => updateItem(index, 'purity', e.target.value)}
-                                    className="text-xs border-0 text-amber-600 font-medium bg-transparent focus:ring-0 outline-none"
-                                  >
-                                    <option value="">Select Purity</option>
-                                    {PURITY_OPTIONS.map(p => (
-                                      <option key={p.value} value={p.value}>{p.label}</option>
-                                    ))}
-                                  </select>
-                                  <span className="text-gray-300">|</span>
-                                  <select
-                                    value={item.category || ''}
-                                    onChange={(e) => updateItem(index, 'category', e.target.value)}
-                                    className="text-xs border-0 text-gray-500 bg-transparent focus:ring-0 outline-none"
-                                  >
-                                    <option value="">Select Category</option>
-                                    {CATEGORY_OPTIONS.map(cat => (
-                                      <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                  </select>
-                                </>
-                              ) : (
-                                <>
-                                  {item.purity && (
-                                    <span className="text-xs text-amber-600 font-medium">{item.purity}</span>
-                                  )}
-                                  {item.category && (
-                                    <>
-                                      <span className="text-gray-300">|</span>
-                                      <span className="text-xs text-gray-500">{item.category}</span>
-                                    </>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="col-span-1">
-                        {isEditable ? (
-                          <input
-                            type="number"
-                            value={item.quantity}
-                            onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                            className="w-full text-center px-2 py-1 border-0 border-b border-gray-200 focus:border-amber-400 focus:ring-0 text-sm outline-none bg-transparent text-gray-900"
-                            min="1"
-                            step="1"
-                          />
-                        ) : (
-                          <p className="text-sm text-center text-gray-900">{item.quantity}</p>
-                        )}
-                      </div>
-                      <div className="col-span-1">
-                        {isEditable ? (
-                          <input
-                            type="number"
-                            value={item.unitPrice}
-                            onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            className="w-full text-center px-2 py-1 border-0 border-b border-gray-200 focus:border-amber-400 focus:ring-0 text-sm outline-none bg-transparent text-gray-900"
-                            step="0.01"
-                          />
-                        ) : (
-                          <p className="text-sm text-center text-gray-900">${item.unitPrice.toFixed(2)}</p>
-                        )}
-                      </div>
-                      <div className="col-span-1">
-                        {isEditable ? (
-                          <div className="flex items-center gap-1 justify-center">
-                            <input
-                              type="number"
-                              value={item.discount}
-                              onChange={(e) => updateItem(index, 'discount', parseFloat(e.target.value) || 0)}
-                              className="w-full text-center px-2 py-1 border-0 border-b border-gray-200 focus:border-amber-400 focus:ring-0 text-sm outline-none bg-transparent text-gray-900"
-                              step="0.01"
-                              min="0"
-                              max="100"
-                            />
-                            <span className="text-xs text-gray-400 font-medium">%</span>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-center text-gray-900">{item.discount}%</p>
-                        )}
-                      </div>
-                      <div className="col-span-2 text-center font-semibold text-gray-900">
-                        ${amount.toFixed(2)}
-                      </div>
-                      {isEditable && (
-                        <div className="col-span-1 text-center">
-                          <button
-                            type="button"
-                            onClick={() => removeItem(index)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Footer Actions */}
-            {isEditable && (
-              <div className="flex items-center px-5 py-3 border-t border-gray-200 bg-gray-50">
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="text-sm text-amber-600 hover:text-amber-700 flex items-center gap-1.5 px-3 py-1.5 hover:bg-amber-50 rounded-lg transition-colors font-medium"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add New Row</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Sub Total, Taxes & Customer Notes */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-            {/* Sub Total & Taxes */}
-            <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-5">
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Sub Total</span>
-                    <span className="font-semibold text-gray-900">${totals.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Discount</span>
-                    <span className="font-semibold text-red-500">-${totals.discountTotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Tax</span>
-                    <span className="font-semibold text-gray-900">${totals.taxTotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2.5">
-                    <span className="text-sm font-semibold text-gray-700">Grand Total</span>
-                    <span className="text-lg font-bold text-amber-600">${totals.grandTotal.toFixed(2)}</span>
-                  </div>
-                </div>
-                <div className="flex flex-col justify-center items-end">
-                  <div className="text-sm text-gray-500 mb-1">Total Amount</div>
-                  <div className="text-3xl font-bold text-amber-600">
-                    ${totals.grandTotal.toFixed(2)}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    {formData.currency || 'USD'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Notes */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                  <FileText className="h-4 w-4 text-amber-600" />
-                </div>
-                <span className="text-sm font-semibold text-gray-700">Customer Notes</span>
-              </div>
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleInputChange}
-                disabled={!isEditable}
-                rows={4}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 transition-all resize-none text-gray-900 disabled:bg-gray-50 disabled:text-gray-500"
-                placeholder="Thank you for your business."
-              />
-            </div>
+            <textarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleInputChange}
+              disabled={!isEditable}
+              rows={3}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 transition-all resize-none text-gray-900 disabled:bg-gray-50 disabled:text-gray-500"
+              placeholder="Thank you for your business."
+            />
           </div>
 
           {/* Terms & Conditions and Attach Files */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
             {/* Terms & Conditions */}
             <div className="bg-white rounded-lg border border-gray-200 p-5">
               <div className="flex items-center gap-2 mb-3">
@@ -871,7 +594,7 @@ const ProformaInvoiceEdit: React.FC = () => {
                 value={formData.termsAndConditions}
                 onChange={handleInputChange}
                 disabled={!isEditable}
-                rows={4}
+                rows={3}
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 transition-all resize-none text-gray-900 disabled:bg-gray-50 disabled:text-gray-500"
                 placeholder="Enter the terms and conditions..."
               />

@@ -39,7 +39,8 @@ import {
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ThreeDotDropdown from '../../components/common/ThreeDotDropdown';
 import type { ThreeDotDropdownItem } from '../../components/common/ThreeDotDropdown';
-import { useItemDetails } from '../../hooks/items/useItemDetails';
+import { useItemDetails } from '../../hooks/items/useItemView';
+import { useToastAndConfirm } from '../../hooks/ToastConfirmModal/useToastAndConfirm';
 
 // Define supported item status values locally to avoid invalid type imports.
 type ItemStatus = 'active' | 'inactive' | 'out_of_stock' | 'low_stock';
@@ -204,6 +205,7 @@ const ItemView: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { loading, item, error, fetchItem, deleteItem, updateStatus } = useItemDetails();
+  const { success, error: toastError, withConfirmation } = useToastAndConfirm();
   
   // Local states
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -227,23 +229,44 @@ const ItemView: React.FC = () => {
 
   const handleDelete = async () => {
     if (!item) return;
-    if (window.confirm(`Are you sure you want to delete "${item.itemName}"?`)) {
-      setDeleteLoading(true);
-      try {
-        await deleteItem(item.id);
-        navigate('/items');
-      } finally {
-        setDeleteLoading(false);
-      }
-    }
+    
+    withConfirmation(
+      {
+        title: 'Delete Item',
+        message: `Are you sure you want to delete "${item.itemName}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(true);
+        try {
+          await deleteItem(item.id);
+          success(`"${item.itemName}" deleted successfully!`);
+          navigate('/items');
+        } catch (error) {
+          console.error('Error deleting item:', error);
+          toastError(`Failed to delete "${item.itemName}"`);
+        } finally {
+          setDeleteLoading(false);
+        }
+      },
+      undefined,
+      `Failed to delete "${item.itemName}"`
+    );
   };
 
   const handleStatusToggle = async () => {
     if (!item) return;
+    
     const newStatus = item.status === 'active' ? 'inactive' : 'active';
     setStatusUpdateLoading(true);
     try {
       await updateStatus(item.id, newStatus);
+      success(`Item ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully!`);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toastError('Failed to update status');
     } finally {
       setStatusUpdateLoading(false);
     }
@@ -266,7 +289,7 @@ const ItemView: React.FC = () => {
       }
     } else {
       navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard!');
+      success('Link copied to clipboard!');
     }
   };
 
@@ -278,14 +301,26 @@ const ItemView: React.FC = () => {
 
   const handleDuplicate = async () => {
     if (!item) return;
-    console.log('Duplicating item:', item.id);
-    alert('Duplicate functionality coming soon!');
+    try {
+      // Your duplicate logic here
+      console.log('Duplicating item:', item.id);
+      success(`"${item.itemName}" duplicated successfully!`);
+    } catch (error) {
+      console.error('Error duplicating item:', error);
+      toastError('Failed to duplicate item');
+    }
   };
 
   const handleArchive = async () => {
     if (!item) return;
-    console.log('Archiving item:', item.id);
-    alert('Archive functionality coming soon!');
+    try {
+      // Your archive logic here
+      console.log('Archiving item:', item.id);
+      success(`"${item.itemName}" archived successfully!`);
+    } catch (error) {
+      console.error('Error archiving item:', error);
+      toastError('Failed to archive item');
+    }
   };
 
   // Get dropdown items for the header

@@ -22,89 +22,92 @@ import {
   ToggleLeft,
   ToggleRight,
   Truck,
+  Plus,
 } from 'lucide-react';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import SearchableDropdown, { type DropdownOption } from '../../components/common/Searchabledropdown';
 import { useItemCreate } from '../../hooks/items/useItemCreate';
+import { useToastAndConfirm } from '../../hooks/ToastConfirmModal/useToastAndConfirm';
 
-// Constants
-const CATEGORIES = [
-  { value: 'Rings', label: '💍 Rings' },
-  { value: 'Necklaces', label: '📿 Necklaces' },
-  { value: 'Earrings', label: '💎 Earrings' },
-  { value: 'Bracelets', label: '📿 Bracelets' },
-  { value: 'Pendants', label: '🔱 Pendants' },
-  { value: 'Chains', label: '⛓️ Chains' },
-  { value: 'Bangles', label: '🔄 Bangles' },
-  { value: 'Sets', label: '📦 Sets' },
-  { value: 'Other', label: '📌 Other' },
+// Constants with proper types for SearchableDropdown
+const CATEGORY_OPTIONS: DropdownOption[] = [
+  { value: 'Rings', label: '💍 Rings', group: 'Jewelry' },
+  { value: 'Necklaces', label: '📿 Necklaces', group: 'Jewelry' },
+  { value: 'Earrings', label: '💎 Earrings', group: 'Jewelry' },
+  { value: 'Bracelets', label: '📿 Bracelets', group: 'Jewelry' },
+  { value: 'Pendants', label: '🔱 Pendants', group: 'Jewelry' },
+  { value: 'Chains', label: '⛓️ Chains', group: 'Jewelry' },
+  { value: 'Bangles', label: '🔄 Bangles', group: 'Jewelry' },
+  { value: 'Sets', label: '📦 Sets', group: 'Jewelry' },
+  { value: 'Other', label: '📌 Other', group: 'Jewelry' },
 ];
 
-const METAL_TYPES = [
-  { value: 'Gold', label: '🥇 Gold' },
-  { value: 'Silver', label: '🥈 Silver' },
-  { value: 'Platinum', label: '💎 Platinum' },
-  { value: 'Palladium', label: '🔘 Palladium' },
-  { value: 'Rhodium', label: '🔘 Rhodium' },
-  { value: 'Diamond', label: '💎 Diamond' },
-  { value: 'Other', label: '📌 Other' },
+const METAL_TYPE_OPTIONS: DropdownOption[] = [
+  { value: 'Gold', label: '🥇 Gold', group: 'Precious Metals' },
+  { value: 'Silver', label: '🥈 Silver', group: 'Precious Metals' },
+  { value: 'Platinum', label: '💎 Platinum', group: 'Precious Metals' },
+  { value: 'Palladium', label: '🔘 Palladium', group: 'Precious Metals' },
+  { value: 'Rhodium', label: '🔘 Rhodium', group: 'Precious Metals' },
+  { value: 'Diamond', label: '💎 Diamond', group: 'Stones' },
+  { value: 'Other', label: '📌 Other', group: 'Other' },
 ];
 
-const PURITIES = [
-  { value: '24K', label: '24K (99.9%)' },
-  { value: '22K', label: '22K (91.6%)' },
-  { value: '18K', label: '18K (75%)' },
-  { value: '14K', label: '14K (58.5%)' },
-  { value: '10K', label: '10K (41.7%)' },
-  { value: '999', label: '999 (Fine Silver)' },
-  { value: '958', label: '958 (Britannia Silver)' },
-  { value: '925', label: '925 (Sterling Silver)' },
-  { value: '900', label: '900 (Coin Silver)' },
-  { value: '950', label: '950 (Platinum)' },
-  { value: '850', label: '850 (Platinum)' },
+const PURITY_OPTIONS: DropdownOption[] = [
+  { value: '24K', label: '24K (99.9%)', group: 'Gold' },
+  { value: '22K', label: '22K (91.6%)', group: 'Gold' },
+  { value: '18K', label: '18K (75%)', group: 'Gold' },
+  { value: '14K', label: '14K (58.5%)', group: 'Gold' },
+  { value: '10K', label: '10K (41.7%)', group: 'Gold' },
+  { value: '999', label: '999 (Fine Silver)', group: 'Silver' },
+  { value: '958', label: '958 (Britannia Silver)', group: 'Silver' },
+  { value: '925', label: '925 (Sterling Silver)', group: 'Silver' },
+  { value: '900', label: '900 (Coin Silver)', group: 'Silver' },
+  { value: '950', label: '950 (Platinum)', group: 'Platinum' },
+  { value: '850', label: '850 (Platinum)', group: 'Platinum' },
 ];
 
-const UNITS = [
-  { value: 'g', label: 'Grams (g)' },
-  { value: 'kg', label: 'Kilograms (kg)' },
-  { value: 'oz', label: 'Ounces (oz)' },
-  { value: 'ct', label: 'Carats (ct)' },
-  { value: 'mg', label: 'Milligrams (mg)' },
-  { value: 'pc', label: 'Pieces (pc)' },
+const UNIT_OPTIONS: DropdownOption[] = [
+  { value: 'g', label: 'Grams (g)', group: 'Weight' },
+  { value: 'kg', label: 'Kilograms (kg)', group: 'Weight' },
+  { value: 'oz', label: 'Ounces (oz)', group: 'Weight' },
+  { value: 'ct', label: 'Carats (ct)', group: 'Weight' },
+  { value: 'mg', label: 'Milligrams (mg)', group: 'Weight' },
+  { value: 'pc', label: 'Pieces (pc)', group: 'Count' },
 ];
 
-const GST_PERCENTAGES = [
-  { value: '0', label: '0%' },
-  { value: '5', label: '5%' },
-  { value: '12', label: '12%' },
-  { value: '18', label: '18%' },
-  { value: '28', label: '28%' },
+const GST_OPTIONS: DropdownOption[] = [
+  { value: '0', label: '0%', group: 'GST' },
+  { value: '5', label: '5%', group: 'GST' },
+  { value: '12', label: '12%', group: 'GST' },
+  { value: '18', label: '18%', group: 'GST' },
+  { value: '28', label: '28%', group: 'GST' },
 ];
 
-const MC_TYPES = [
-  { value: 'fixed', label: 'Fixed Amount' },
-  { value: 'percentage', label: 'Percentage' },
+const MC_TYPE_OPTIONS: DropdownOption[] = [
+  { value: 'fixed', label: 'Fixed Amount', group: 'Making Charge' },
+  { value: 'percentage', label: 'Percentage', group: 'Making Charge' },
 ];
 
-const ACCOUNT_OPTIONS = [
-  { value: 'sales', label: 'Sales' },
-  { value: 'revenue', label: 'Revenue' },
-  { value: 'income', label: 'Income' },
+const ACCOUNT_OPTIONS: DropdownOption[] = [
+  { value: 'sales', label: 'Sales', group: 'Accounts' },
+  { value: 'revenue', label: 'Revenue', group: 'Accounts' },
+  { value: 'income', label: 'Income', group: 'Accounts' },
 ];
 
-const PURCHASE_ACCOUNT_OPTIONS = [
-  { value: 'cogs', label: 'Cost of Goods Sold' },
-  { value: 'inventory', label: 'Inventory' },
-  { value: 'purchases', label: 'Purchases' },
+const PURCHASE_ACCOUNT_OPTIONS: DropdownOption[] = [
+  { value: 'cogs', label: 'Cost of Goods Sold', group: 'Accounts' },
+  { value: 'inventory', label: 'Inventory', group: 'Accounts' },
+  { value: 'purchases', label: 'Purchases', group: 'Accounts' },
 ];
 
-const VENDOR_OPTIONS = [
-  { value: 'preferred_vendor', label: 'Preferred Vendor' },
-  { value: 'supplier_a', label: 'Supplier A' },
-  { value: 'supplier_b', label: 'Supplier B' },
-  { value: 'wholesaler', label: 'Wholesaler' },
+const VENDOR_OPTIONS: DropdownOption[] = [
+  { value: 'preferred_vendor', label: 'Preferred Vendor', group: 'Vendors' },
+  { value: 'supplier_a', label: 'Supplier A', group: 'Vendors' },
+  { value: 'supplier_b', label: 'Supplier B', group: 'Vendors' },
+  { value: 'wholesaler', label: 'Wholesaler', group: 'Vendors' },
 ];
 
-// Section Component
+// Section Component - FIXED: overflow-visible instead of overflow-hidden
 const Section = ({ 
   id, 
   title, 
@@ -125,7 +128,7 @@ const Section = ({
   onToggle: (id: string) => void;
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
       <button
         type="button"
         onClick={() => onToggle(id)}
@@ -150,12 +153,12 @@ const Section = ({
           <ChevronDown className="h-5 w-5 text-gray-400" />
         )}
       </button>
-      {isExpanded && <div className="px-6 pb-6">{children}</div>}
+      {isExpanded && <div className="px-6 pb-6 overflow-visible">{children}</div>}
     </div>
   );
 };
 
-// InputField Component
+// InputField Component - FIXED: added proper z-index
 const InputField = ({ 
   label, 
   name, 
@@ -169,19 +172,21 @@ const InputField = ({
   options,
   readOnly = false,
   disabled = false,
+  onCustomValueChange,
 }: {
   label: string;
   name: string;
   value: string | number;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  type?: 'text' | 'number' | 'select' | 'textarea';
+  type?: 'text' | 'number' | 'select' | 'textarea' | 'searchable-select';
   placeholder?: string;
   required?: boolean;
   error?: string;
   step?: string;
-  options?: Array<{ value: string; label: string }>;
+  options?: DropdownOption[];
   readOnly?: boolean;
   disabled?: boolean;
+  onCustomValueChange?: (value: string) => void;
 }) => {
   const baseClasses = `w-full px-3 py-2 border ${error ? 'border-red-500' : 'border-gray-300'} 
     rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent 
@@ -189,14 +194,65 @@ const InputField = ({
 
   const labelClasses = "block text-sm font-medium text-gray-700 mb-1";
 
-  return (
-    <div>
-      <label className={labelClasses}>
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
-      
-      {type === 'textarea' ? (
+  // Searchable select - FIXED: added z-index
+  if (type === 'searchable-select' && options) {
+    return (
+      <div className="relative z-50">
+        <label className={labelClasses}>
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <SearchableDropdown
+              options={options}
+              value={value as string}
+              onChange={(option) => {
+                const event = {
+                  target: { name, value: option.value }
+                } as React.ChangeEvent<HTMLInputElement>;
+                onChange(event);
+              }}
+              placeholder={`Search ${label.toLowerCase()}...`}
+              triggerPlaceholder={`Select ${label.toLowerCase()}`}
+              disabled={disabled}
+              className="w-full"
+            />
+          </div>
+          {onCustomValueChange && (
+            <button
+              type="button"
+              onClick={() => {
+                const customValue = prompt(`Enter custom ${label.toLowerCase()}:`);
+                if (customValue && customValue.trim()) {
+                  onCustomValueChange(customValue.trim());
+                }
+              }}
+              className="flex-shrink-0 px-3 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors text-sm flex items-center gap-1 whitespace-nowrap"
+              disabled={disabled}
+            >
+              <Plus className="h-4 w-4" />
+              Custom
+            </button>
+          )}
+        </div>
+        {error && (
+          <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'textarea') {
+    return (
+      <div>
+        <label className={labelClasses}>
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
         <textarea
           name={name}
           value={value}
@@ -207,7 +263,23 @@ const InputField = ({
           disabled={disabled}
           readOnly={readOnly}
         />
-      ) : type === 'select' && options ? (
+        {error && (
+          <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'select' && options) {
+    return (
+      <div>
+        <label className={labelClasses}>
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
         <select
           name={name}
           value={value}
@@ -222,20 +294,33 @@ const InputField = ({
             </option>
           ))}
         </select>
-      ) : (
-        <input
-          type={type}
-          name={name}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          step={step}
-          className={baseClasses}
-          disabled={disabled}
-          readOnly={readOnly}
-        />
-      )}
-      
+        {error && (
+          <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label className={labelClasses}>
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        step={step}
+        className={baseClasses}
+        disabled={disabled}
+        readOnly={readOnly}
+      />
       {error && (
         <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
           <AlertCircle className="h-3 w-3" />
@@ -280,6 +365,8 @@ const ToggleCheckbox = ({
 
 const ItemCreate: React.FC = () => {
   const navigate = useNavigate();
+  const { success, error, withConfirmation } = useToastAndConfirm();
+  
   const {
     formData,
     errors,
@@ -293,6 +380,7 @@ const ItemCreate: React.FC = () => {
     handleImageUpload,
     removeImage,
     validateForm,
+    resetForm
   } = useItemCreate();
 
   const [localLoading, setLocalLoading] = useState(false);
@@ -306,11 +394,36 @@ const ItemCreate: React.FC = () => {
   
   const isLoading = hookLoading || localLoading;
 
+  // Handle custom category entry
+  const handleCustomCategory = useCallback((customValue: string) => {
+    const event = {
+      target: { name: 'category', value: customValue }
+    } as React.ChangeEvent<HTMLInputElement>;
+    handleInputChange(event);
+  }, [handleInputChange]);
+
+  // Handle custom metal type entry
+  const handleCustomMetalType = useCallback((customValue: string) => {
+    const event = {
+      target: { name: 'metalType', value: customValue }
+    } as React.ChangeEvent<HTMLInputElement>;
+    handleInputChange(event);
+  }, [handleInputChange]);
+
+  // Handle custom purity entry
+  const handleCustomPurity = useCallback((customValue: string) => {
+    const event = {
+      target: { name: 'purity', value: customValue }
+    } as React.ChangeEvent<HTMLInputElement>;
+    handleInputChange(event);
+  }, [handleInputChange]);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       
       if (!validateForm()) {
+        error('Please fill in all required fields');
         const firstError = Object.keys(errors)[0];
         const element = document.querySelector(`[name="${firstError}"]`);
         if (element) {
@@ -326,19 +439,38 @@ const ItemCreate: React.FC = () => {
       try {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         console.log('Form Data:', formData);
+        success('Item created successfully!');
+        resetForm();
         navigate('/items');
-      } catch (error) {
-        console.error('Error creating item:', error);
+      } catch (err) {
+        console.error('Error creating item:', err);
+        error('Failed to create item. Please try again.');
       } finally {
         setLocalLoading(false);
         setLoading(false);
       }
     },
-    [validateForm, errors, setLoading, formData, navigate]
+    [validateForm, errors, setLoading, formData, navigate, success, error, resetForm]
   );
 
-  const handleNavigateBack = useCallback(() => navigate('/items'), [navigate]);
-  const handleNavigateCancel = useCallback(() => navigate('/items'), [navigate]);
+  const handleNavigateBack = useCallback(() => {
+    navigate('/items');
+  }, [navigate]);
+
+  const handleNavigateCancel = useCallback(() => {
+    withConfirmation(
+      {
+        title: 'Discard Changes',
+        message: 'You have unsaved changes. Are you sure you want to leave?',
+        confirmText: 'Leave',
+        cancelText: 'Stay',
+        variant: 'warning',
+      },
+      async () => {
+        navigate('/items');
+      }
+    );
+  }, [navigate, withConfirmation]);
 
   if (isLoading) {
     return (
@@ -419,13 +551,14 @@ const ItemCreate: React.FC = () => {
             <InputField
               label="Category (What type of jewelry?)"
               name="category"
-              type="select"
+              type="searchable-select"
               value={formData.category}
               onChange={handleInputChange}
               required
               error={errors.category}
-              options={CATEGORIES}
+              options={CATEGORY_OPTIONS}
               disabled={isLoading}
+              onCustomValueChange={handleCustomCategory}
             />
             <InputField
               label="Brand"
@@ -471,34 +604,34 @@ const ItemCreate: React.FC = () => {
                 <InputField
                   label="Metal / Material Type"
                   name="metalType"
-                  type="select"
+                  type="searchable-select"
                   value={formData.metalType}
                   onChange={handleInputChange}
                   required={showMetalInfo}
                   error={errors.metalType}
-                  options={METAL_TYPES}
+                  options={METAL_TYPE_OPTIONS}
                   disabled={isLoading}
-                  placeholder="Select metal type"
+                  onCustomValueChange={handleCustomMetalType}
                 />
                 <InputField
                   label="Purity / Karat"
                   name="purity"
-                  type="select"
+                  type="searchable-select"
                   value={formData.purity}
                   onChange={handleInputChange}
                   required={showMetalInfo}
                   error={errors.purity}
-                  options={PURITIES}
+                  options={PURITY_OPTIONS}
                   disabled={isLoading}
-                  placeholder="Select purity"
+                  onCustomValueChange={handleCustomPurity}
                 />
               </div>
             )}
           </div>
         </Section>
 
-        {/* Weight Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Weight Information - FIXED: removed overflow-hidden */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -516,7 +649,7 @@ const ItemCreate: React.FC = () => {
           </div>
 
           {showWeightInfo && (
-            <div className="px-6 py-6">
+            <div className="px-6 py-6 overflow-visible">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <InputField
                   label="Gross Weight"
@@ -555,10 +688,10 @@ const ItemCreate: React.FC = () => {
                 <InputField
                   label="Unit"
                   name="unit"
-                  type="select"
+                  type="searchable-select"
                   value={formData.unit}
                   onChange={handleManualChange}
-                  options={UNITS}
+                  options={UNIT_OPTIONS}
                   disabled={isLoading}
                 />
               </div>
@@ -566,8 +699,8 @@ const ItemCreate: React.FC = () => {
           )}
         </div>
 
-        {/* Diamond Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Diamond Information - FIXED: removed overflow-hidden */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -584,7 +717,7 @@ const ItemCreate: React.FC = () => {
           </div>
 
           {showDiamondInfo && (
-            <div className="px-6 py-6">
+            <div className="px-6 py-6 overflow-visible">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField
                   label="Number of Diamonds"
@@ -610,8 +743,8 @@ const ItemCreate: React.FC = () => {
           )}
         </div>
 
-        {/* Making Charge & Pricing */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Making Charge & Pricing - FIXED: removed overflow-hidden */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -629,15 +762,15 @@ const ItemCreate: React.FC = () => {
           </div>
 
           {showPricingInfo && (
-            <div className="px-6 py-6">
+            <div className="px-6 py-6 overflow-visible">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <InputField
                   label="Making Charge Type"
                   name="mcType"
-                  type="select"
+                  type="searchable-select"
                   value={formData.mcType}
                   onChange={handleInputChange}
-                  options={MC_TYPES}
+                  options={MC_TYPE_OPTIONS}
                   disabled={isLoading}
                 />
                 <InputField
@@ -677,169 +810,112 @@ const ItemCreate: React.FC = () => {
           )}
         </div>
 
-        {/* Sales Information - Simplified */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Sales Information - FIXED: removed overflow-hidden */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center gap-2">
               <ShoppingBag className="h-5 w-5 text-amber-500" />
               <h2 className="text-base font-semibold text-gray-900">Sales Information</h2>
             </div>
           </div>
-          <div className="px-6 py-6">
+          <div className="px-6 py-6 overflow-visible">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Selling Price <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">
-                    INR
-                  </span>
-                  <input
-                    type="number"
-                    name="sellingPrice"
-                    value={formData.sellingPrice}
-                    onChange={handleManualChange}
-                    placeholder="Enter selling price"
-                    step="0.01"
-                    required
-                    disabled={isLoading}
-                    className="w-full pl-14 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-                {errors.sellingPrice && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.sellingPrice}
-                  </p>
-                )}
-              </div>
+              <InputField
+                label="Selling Price"
+                name="sellingPrice"
+                type="number"
+                value={formData.sellingPrice}
+                onChange={handleManualChange}
+                placeholder="Enter selling price"
+                step="0.01"
+                required
+                error={errors.sellingPrice}
+                disabled={isLoading}
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Account <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="salesAccount"
-                  value={formData.salesAccount || 'sales'}
-                  onChange={handleInputChange}
-                  disabled={isLoading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                >
-                  {ACCOUNT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <InputField
+                label="Account"
+                name="salesAccount"
+                type="searchable-select"
+                value={formData.salesAccount || 'sales'}
+                onChange={handleInputChange}
+                options={ACCOUNT_OPTIONS}
+                disabled={isLoading}
+              />
             </div>
 
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
+              <InputField
+                label="Description"
                 name="salesDescription"
+                type="textarea"
                 value={formData.salesDescription || ''}
                 onChange={handleManualChange}
                 placeholder="Enter sales description..."
-                rows={3}
                 disabled={isLoading}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm resize-y disabled:bg-gray-50 disabled:cursor-not-allowed"
               />
             </div>
           </div>
         </div>
 
-        {/* Purchase Information - Simplified */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Purchase Information - FIXED: removed overflow-hidden */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-amber-500" />
               <h2 className="text-base font-semibold text-gray-900">Purchase Information</h2>
             </div>
           </div>
-          <div className="px-6 py-6">
+          <div className="px-6 py-6 overflow-visible">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cost Price <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">
-                    INR
-                  </span>
-                  <input
-                    type="number"
-                    name="purchasePrice"
-                    value={formData.purchasePrice || ''}
-                    onChange={handleManualChange}
-                    placeholder="Enter cost price"
-                    step="0.01"
-                    disabled={isLoading}
-                    className="w-full pl-14 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
+              <InputField
+                label="Cost Price"
+                name="purchasePrice"
+                type="number"
+                value={formData.purchasePrice || ''}
+                onChange={handleManualChange}
+                placeholder="Enter cost price"
+                step="0.01"
+                disabled={isLoading}
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <input
-                  type="text"
-                  name="purchaseDescription"
-                  value={formData.purchaseDescription || ''}
-                  onChange={handleManualChange}
-                  placeholder="Enter purchase description"
-                  disabled={isLoading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                />
-              </div>
+              <InputField
+                label="Description"
+                name="purchaseDescription"
+                type="text"
+                value={formData.purchaseDescription || ''}
+                onChange={handleManualChange}
+                placeholder="Enter purchase description"
+                disabled={isLoading}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Account <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="purchaseAccount"
-                  value={formData.purchaseAccount || 'cogs'}
-                  onChange={handleInputChange}
-                  disabled={isLoading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                >
-                  {PURCHASE_ACCOUNT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <InputField
+                label="Account"
+                name="purchaseAccount"
+                type="searchable-select"
+                value={formData.purchaseAccount || 'cogs'}
+                onChange={handleInputChange}
+                options={PURCHASE_ACCOUNT_OPTIONS}
+                disabled={isLoading}
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Preferred Vendor
-                </label>
-                <select
-                  name="preferredVendor"
-                  value={formData.preferredVendor || ''}
-                  onChange={handleInputChange}
-                  disabled={isLoading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">Select Vendor</option>
-                  {VENDOR_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <InputField
+                label="Preferred Vendor"
+                name="preferredVendor"
+                type="searchable-select"
+                value={formData.preferredVendor || ''}
+                onChange={handleInputChange}
+                options={VENDOR_OPTIONS}
+                disabled={isLoading}
+              />
             </div>
           </div>
         </div>
 
-        {/* Inventory & Tax */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Inventory & Tax - FIXED: removed overflow-hidden */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -857,7 +933,7 @@ const ItemCreate: React.FC = () => {
           </div>
 
           {showInventoryInfo && (
-            <div className="px-6 py-6">
+            <div className="px-6 py-6 overflow-visible">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <InputField
                   label="Opening Stock"
@@ -891,10 +967,10 @@ const ItemCreate: React.FC = () => {
                 <InputField
                   label="GST %"
                   name="gstPercentage"
-                  type="select"
+                  type="searchable-select"
                   value={formData.gstPercentage}
                   onChange={handleManualChange}
-                  options={GST_PERCENTAGES}
+                  options={GST_OPTIONS}
                   disabled={isLoading}
                 />
               </div>
@@ -902,8 +978,8 @@ const ItemCreate: React.FC = () => {
           )}
         </div>
 
-        {/* Image Upload */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Image Upload - FIXED: removed overflow-hidden */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5 text-amber-500" />

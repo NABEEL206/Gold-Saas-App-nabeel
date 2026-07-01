@@ -1,8 +1,8 @@
 // src/hooks/items/useItems.ts
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Item } from '../../types/items/Itemstype';
+import type{ Item, ItemFilters } from '../../types/items/Itemstype';
 
-// Mock data for demonstration
+// Mock Data
 const MOCK_ITEMS: Item[] = [
   {
     id: '1',
@@ -10,36 +10,42 @@ const MOCK_ITEMS: Item[] = [
     itemName: 'Gold Diamond Ring',
     itemType: 'Gold',
     category: 'Rings',
-    brand: 'Luxury Jewelers',
-    designCode: 'DR-2024-001',
+    brand: 'Luxury Gold',
+    designCode: 'GR-2024-001',
     metalType: 'Gold',
     purity: '22K',
-    grossWeight: 12.5,
-    stoneWeight: 1.3,
-    netWeight: 11.2,
+    grossWeight: 8.5,
+    stoneWeight: 1.2,
+    netWeight: 7.3,
     unit: 'g',
-    diamondPieces: 8,
-    caratWeight: 1.5,
+    diamondPieces: 12,
+    caratWeight: 0.75,
     mcType: 'percentage',
-    mcValue: 15,
-    goldRate: 7500,
-    sellingPrice: 125000,
-    mrp: 135000,
+    mcValue: 10,
+    goldRate: 5400,
+    sellingPrice: 45000,
+    mrp: 52000,
     currency: 'INR',
-    openingStock: 5,
-    reorderLevel: 2,
-    hsnCode: '71131910',
+    openingStock: 25,
+    reorderLevel: 5,
+    hsnCode: '71131911',
     gstPercentage: 18,
-    description: 'Beautiful 22K gold ring with 8 diamonds.',
+    salesAccount: 'sales',
+    salesDescription: 'Beautiful gold ring with diamonds',
+    purchasePrice: 38000,
+    purchaseDescription: 'Bulk purchase from supplier',
+    purchaseAccount: 'cogs',
+    preferredVendor: 'preferred_vendor',
     status: 'active',
-    images: ['https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800'],
-    createdBy: 'Admin User',
+    description: 'Elegant gold ring with diamond setting',
+    images: ['https://via.placeholder.com/200x200/FFD700/FFFFFF?text=Ring'],
+    createdBy: 'admin',
     createdAt: '2024-01-15T10:30:00Z',
-    updatedAt: '2024-03-20T14:45:00Z',
+    updatedAt: '2024-03-20T14:45:00Z'
   },
   {
     id: '2',
-    itemCode: 'SILV-NECK-002',
+    itemCode: 'SILVER-NECK-002',
     itemName: 'Silver Chain Necklace',
     itemType: 'Silver',
     category: 'Necklaces',
@@ -47,9 +53,9 @@ const MOCK_ITEMS: Item[] = [
     designCode: 'SN-2024-002',
     metalType: 'Silver',
     purity: '925',
-    grossWeight: 25.0,
-    stoneWeight: 0.5,
-    netWeight: 24.5,
+    grossWeight: 15.2,
+    stoneWeight: 0,
+    netWeight: 15.2,
     unit: 'g',
     diamondPieces: 0,
     caratWeight: 0,
@@ -57,387 +63,247 @@ const MOCK_ITEMS: Item[] = [
     mcValue: 500,
     goldRate: 0,
     sellingPrice: 8500,
-    mrp: 9500,
+    mrp: 10000,
     currency: 'INR',
-    openingStock: 12,
+    openingStock: 10,
     reorderLevel: 3,
-    hsnCode: '71131100',
-    gstPercentage: 12,
-    description: 'Elegant 925 sterling silver chain necklace.',
+    hsnCode: '71179000',
+    gstPercentage: 18,
+    salesAccount: 'sales',
+    salesDescription: 'Silver chain necklace',
+    purchasePrice: 6000,
+    purchaseDescription: 'Supplier purchase',
+    purchaseAccount: 'inventory',
+    preferredVendor: 'supplier_a',
     status: 'active',
-    images: ['https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800'],
-    createdBy: 'Admin User',
-    createdAt: '2024-02-01T09:15:00Z',
-    updatedAt: '2024-03-18T16:30:00Z',
+    description: 'Beautiful silver chain necklace',
+    images: ['https://via.placeholder.com/200x200/C0C0C0/FFFFFF?text=Necklace'],
+    createdBy: 'admin',
+    createdAt: '2024-02-10T09:15:00Z',
+    updatedAt: '2024-03-18T11:20:00Z'
   },
   {
     id: '3',
-    itemCode: 'DIAM-EARR-003',
-    itemName: 'Diamond Stud Earrings',
-    itemType: 'Diamond',
-    category: 'Earrings',
-    brand: 'Diamond Collection',
-    designCode: 'DE-2024-003',
-    metalType: 'Platinum',
-    purity: '950',
-    grossWeight: 3.8,
-    stoneWeight: 0.6,
-    netWeight: 3.2,
-    unit: 'g',
-    diamondPieces: 4,
-    caratWeight: 1.0,
-    mcType: 'percentage',
-    mcValue: 20,
-    goldRate: 0,
-    sellingPrice: 280000,
-    mrp: 300000,
-    currency: 'INR',
-    openingStock: 3,
-    reorderLevel: 1,
-    hsnCode: '71131930',
-    gstPercentage: 18,
-    description: 'Luxurious platinum stud earrings with diamonds.',
-    status: 'low_stock',
-    images: ['https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800'],
-    createdBy: 'Admin User',
-    createdAt: '2024-02-15T11:45:00Z',
-    updatedAt: '2024-03-22T09:20:00Z',
-  },
-  {
-    id: '4',
-    itemCode: 'PLAT-BANG-004',
-    itemName: 'Platinum Bangle Set',
+    itemCode: 'PLAT-EAR-003',
+    itemName: 'Platinum Earrings',
     itemType: 'Platinum',
-    category: 'Bangles',
-    brand: 'Platinum Studio',
-    designCode: 'PB-2024-004',
+    category: 'Earrings',
+    brand: 'Platinum Plus',
+    designCode: 'PE-2024-003',
     metalType: 'Platinum',
     purity: '950',
-    grossWeight: 45.0,
-    stoneWeight: 0.8,
-    netWeight: 44.2,
+    grossWeight: 4.8,
+    stoneWeight: 0.5,
+    netWeight: 4.3,
     unit: 'g',
     diamondPieces: 6,
-    caratWeight: 2.0,
+    caratWeight: 0.45,
     mcType: 'percentage',
-    mcValue: 18,
-    goldRate: 0,
-    sellingPrice: 450000,
-    mrp: 480000,
+    mcValue: 15,
+    goldRate: 2800,
+    sellingPrice: 32000,
+    mrp: 38000,
     currency: 'INR',
     openingStock: 0,
     reorderLevel: 2,
-    hsnCode: '71131940',
-    gstPercentage: 18,
-    description: 'Elegant platinum bangle set with diamond accents.',
-    status: 'out_of_stock',
-    images: ['https://images.unsplash.com/photo-1603561596112-0a132b757442?w=800'],
-    createdBy: 'Admin User',
-    createdAt: '2024-03-01T13:00:00Z',
-    updatedAt: '2024-03-25T10:15:00Z',
-  },
-  {
-    id: '5',
-    itemCode: 'GOLD-PEND-005',
-    itemName: 'Gold Pendant with Chain',
-    itemType: 'Gold',
-    category: 'Pendants',
-    brand: 'Gold Heritage',
-    designCode: 'GP-2024-005',
-    metalType: 'Gold',
-    purity: '22K',
-    grossWeight: 18.5,
-    stoneWeight: 0.7,
-    netWeight: 17.8,
-    unit: 'g',
-    diamondPieces: 3,
-    caratWeight: 0.75,
-    mcType: 'fixed',
-    mcValue: 1500,
-    goldRate: 7500,
-    sellingPrice: 185000,
-    mrp: 195000,
-    currency: 'INR',
-    openingStock: 2,
-    reorderLevel: 3,
     hsnCode: '71131910',
     gstPercentage: 18,
-    description: 'Beautiful 22K gold pendant with chain.',
-    status: 'inactive',
-    images: ['https://images.unsplash.com/photo-1589128777073-263566ae5e4d?w=800'],
-    createdBy: 'Admin User',
-    createdAt: '2024-03-10T15:30:00Z',
-    updatedAt: '2024-03-28T11:45:00Z',
+    salesAccount: 'revenue',
+    salesDescription: 'Platinum earrings with diamonds',
+    purchasePrice: 25000,
+    purchaseDescription: 'Direct purchase',
+    purchaseAccount: 'cogs',
+    preferredVendor: 'supplier_b',
+    status: 'out_of_stock',
+    description: 'Elegant platinum earrings',
+    images: ['https://via.placeholder.com/200x200/E5E4E2/FFFFFF?text=Earrings'],
+    createdBy: 'admin',
+    createdAt: '2024-01-20T16:45:00Z',
+    updatedAt: '2024-03-15T09:30:00Z'
   },
   {
-    id: '6',
-    itemCode: 'SILV-RING-006',
-    itemName: 'Silver Gemstone Ring',
-    itemType: 'Silver',
-    category: 'Rings',
-    brand: 'Silver Art',
-    designCode: 'SR-2024-006',
-    metalType: 'Silver',
-    purity: '925',
-    grossWeight: 8.5,
-    stoneWeight: 2.0,
-    netWeight: 6.5,
+    id: '4',
+    itemCode: 'GOLD-BANG-004',
+    itemName: 'Gold Bangles Set',
+    itemType: 'Gold',
+    category: 'Bangles',
+    brand: 'Golden Touch',
+    designCode: 'GB-2024-004',
+    metalType: 'Gold',
+    purity: '18K',
+    grossWeight: 12.5,
+    stoneWeight: 0,
+    netWeight: 12.5,
     unit: 'g',
     diamondPieces: 0,
     caratWeight: 0,
     mcType: 'fixed',
     mcValue: 800,
-    goldRate: 0,
-    sellingPrice: 12000,
-    mrp: 15000,
+    goldRate: 4500,
+    sellingPrice: 55000,
+    mrp: 62000,
     currency: 'INR',
     openingStock: 8,
-    reorderLevel: 2,
-    hsnCode: '71131100',
-    gstPercentage: 12,
-    description: 'Beautiful silver ring with gemstone.',
-    status: 'active',
-    images: ['https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800'],
-    createdBy: 'Admin User',
-    createdAt: '2024-03-15T10:00:00Z',
-    updatedAt: '2024-04-01T12:00:00Z',
+    reorderLevel: 4,
+    hsnCode: '71131911',
+    gstPercentage: 18,
+    salesAccount: 'sales',
+    salesDescription: 'Gold bangles set',
+    purchasePrice: 46000,
+    purchaseDescription: 'Bulk purchase',
+    purchaseAccount: 'purchases',
+    preferredVendor: 'wholesaler',
+    status: 'low_stock',
+    description: 'Gold bangles set for special occasions',
+    images: ['https://via.placeholder.com/200x200/FFD700/FFFFFF?text=Bangles'],
+    createdBy: 'admin',
+    createdAt: '2024-03-01T11:00:00Z',
+    updatedAt: '2024-03-22T15:00:00Z'
   },
   {
-    id: '7',
-    itemCode: 'GOLD-BRAC-007',
-    itemName: 'Gold Chain Bracelet',
+    id: '5',
+    itemCode: 'GOLD-PEN-005',
+    itemName: 'Gold Pendant',
     itemType: 'Gold',
-    category: 'Bracelets',
-    brand: 'Gold Trends',
-    designCode: 'GB-2024-007',
+    category: 'Pendants',
+    brand: 'Precious Gold',
+    designCode: 'GP-2024-005',
     metalType: 'Gold',
-    purity: '18K',
-    grossWeight: 15.0,
-    stoneWeight: 0,
-    netWeight: 15.0,
+    purity: '22K',
+    grossWeight: 3.2,
+    stoneWeight: 0.3,
+    netWeight: 2.9,
     unit: 'g',
-    diamondPieces: 0,
-    caratWeight: 0,
+    diamondPieces: 3,
+    caratWeight: 0.15,
     mcType: 'percentage',
     mcValue: 12,
-    goldRate: 6500,
-    sellingPrice: 75000,
-    mrp: 85000,
+    goldRate: 5400,
+    sellingPrice: 18000,
+    mrp: 21000,
     currency: 'INR',
-    openingStock: 4,
-    reorderLevel: 2,
-    hsnCode: '71131910',
+    openingStock: 15,
+    reorderLevel: 5,
+    hsnCode: '71131911',
     gstPercentage: 18,
-    description: 'Elegant 18K gold chain bracelet.',
-    status: 'low_stock',
-    images: ['https://images.unsplash.com/photo-1603561596112-0a132b757442?w=800'],
-    createdBy: 'Admin User',
-    createdAt: '2024-04-01T09:00:00Z',
-    updatedAt: '2024-04-10T14:30:00Z',
-  },
-  {
-    id: '8',
-    itemCode: 'PLAT-EARR-008',
-    itemName: 'Platinum Drop Earrings',
-    itemType: 'Platinum',
-    category: 'Earrings',
-    brand: 'Platinum Luxe',
-    designCode: 'PE-2024-008',
-    metalType: 'Platinum',
-    purity: '950',
-    grossWeight: 6.2,
-    stoneWeight: 1.2,
-    netWeight: 5.0,
-    unit: 'g',
-    diamondPieces: 10,
-    caratWeight: 2.5,
-    mcType: 'percentage',
-    mcValue: 25,
-    goldRate: 0,
-    sellingPrice: 350000,
-    mrp: 380000,
-    currency: 'INR',
-    openingStock: 2,
-    reorderLevel: 1,
-    hsnCode: '71131940',
-    gstPercentage: 18,
-    description: 'Luxurious platinum drop earrings with diamonds.',
+    salesAccount: 'sales',
+    salesDescription: 'Gold pendant with diamonds',
+    purchasePrice: 14000,
+    purchaseDescription: 'Supplier purchase',
+    purchaseAccount: 'inventory',
+    preferredVendor: 'preferred_vendor',
     status: 'active',
-    images: ['https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800'],
-    createdBy: 'Admin User',
-    createdAt: '2024-04-05T11:00:00Z',
-    updatedAt: '2024-04-12T16:00:00Z',
-  },
+    description: 'Beautiful gold pendant',
+    images: ['https://via.placeholder.com/200x200/FFD700/FFFFFF?text=Pendant'],
+    createdBy: 'admin',
+    createdAt: '2024-02-25T13:20:00Z',
+    updatedAt: '2024-03-19T10:45:00Z'
+  }
 ];
 
 export const useItems = () => {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [importLoading, setImportLoading] = useState(false);
 
   // Load mock data
   useEffect(() => {
-    const loadItems = async () => {
-      await new Promise(resolve => setTimeout(resolve, 500));
+    setLoading(true);
+    // Simulate API call
+    setTimeout(() => {
       setItems(MOCK_ITEMS);
       setLoading(false);
-    };
-    loadItems();
+    }, 500);
   }, []);
 
   // Filter items
   const filteredItems = useMemo(() => {
     let filtered = items;
-    
+
+    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(item =>
-        item.itemName.toLowerCase().includes(query) ||
-        item.itemCode.toLowerCase().includes(query) ||
-        item.category?.toLowerCase().includes(query) ||
-        item.metalType?.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (item) =>
+          item.itemName.toLowerCase().includes(query) ||
+          item.itemCode.toLowerCase().includes(query) ||
+          item.category.toLowerCase().includes(query)
       );
     }
-    
+
+    // Status filter
     if (selectedStatus !== 'all') {
-      filtered = filtered.filter(item => item.status === selectedStatus);
+      filtered = filtered.filter((item) => item.status === selectedStatus);
     }
-    
+
     return filtered;
   }, [items, searchQuery, selectedStatus]);
 
   // Pagination
   const totalItems = filteredItems.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const currentItems = filteredItems.slice(startIndex, endIndex);
 
-  // Reset to first page when filters change
-  useEffect(() => {
+  // Handlers
+  const setSearchQueryWithReset = useCallback((query: string) => {
+    setSearchQuery(query);
     setCurrentPage(1);
-  }, [searchQuery, selectedStatus]);
+  }, []);
 
-  // Ensure current page is valid when total pages change
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [totalPages, currentPage]);
+  const setSelectedStatusWithReset = useCallback((status: string) => {
+    setSelectedStatus(status);
+    setCurrentPage(1);
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setItems(MOCK_ITEMS);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    setItems([...MOCK_ITEMS]);
     setLoading(false);
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-    setSelectedItems(prev => prev.filter(itemId => itemId !== id));
+    setItems((prev) => prev.filter((item) => item.id !== id));
+    setSelectedItems((prev) => prev.filter((itemId) => itemId !== id));
   }, []);
 
   const handleBulkDelete = useCallback(async () => {
-    setItems(prev => prev.filter(item => !selectedItems.includes(item.id)));
+    setItems((prev) => prev.filter((item) => !selectedItems.includes(item.id)));
     setSelectedItems([]);
   }, [selectedItems]);
 
-  const handleSelectAll = useCallback(() => {
-    if (selectedItems.length === currentItems.length && currentItems.length > 0) {
-      setSelectedItems([]);
+  const handleSelectAll = useCallback((checked: boolean) => {
+    if (checked) {
+      setSelectedItems(currentItems.map((item) => item.id));
     } else {
-      setSelectedItems(currentItems.map(item => item.id));
+      setSelectedItems([]);
     }
-  }, [selectedItems, currentItems]);
+  }, [currentItems]);
 
-  const handleSelectItem = useCallback((id: string) => {
-    setSelectedItems(prev =>
-      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
-    );
+  const handleSelectItem = useCallback((id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedItems((prev) => [...prev, id]);
+    } else {
+      setSelectedItems((prev) => prev.filter((itemId) => itemId !== id));
+    }
   }, []);
 
   const handleExport = useCallback(async () => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('Exporting items...', filteredItems);
+    console.log('Exporting items...');
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    alert(`Exported ${filteredItems.length} items`);
   }, [filteredItems]);
 
   const handleItemsPerPageChange = useCallback((newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage);
     setCurrentPage(1);
   }, []);
-
-  // Import function
-  const handleImport = useCallback(async (files: FileList) => {
-    setImportLoading(true);
-    try {
-      // Simulate import delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Log the files being imported
-      const fileNames: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        fileNames.push(files[i].name);
-        console.log(`Importing file: ${files[i].name}`);
-      }
-      
-      // TODO: Replace with actual import logic
-      // - Read the file content using FileReader
-      // - Parse CSV/Excel data using a library like xlsx or papaparse
-      // - Validate the data
-      // - Transform to Item format
-      // - Add items to the system
-      
-      // For demo: Add a mock imported item
-      const newItem: Item = {
-        id: `imported-${Date.now()}`,
-        itemCode: `IMP-${String(items.length + 1).padStart(3, '0')}`,
-        itemName: `Imported Item ${items.length + 1}`,
-        itemType: 'Gold',
-        category: 'Other',
-        brand: 'Imported',
-        designCode: `IMP-${Date.now()}`,
-        metalType: 'Gold',
-        purity: '22K',
-        grossWeight: 10,
-        stoneWeight: 0,
-        netWeight: 10,
-        unit: 'g',
-        diamondPieces: 0,
-        caratWeight: 0,
-        mcType: 'percentage',
-        mcValue: 10,
-        goldRate: 7500,
-        sellingPrice: 75000,
-        mrp: 85000,
-        currency: 'INR',
-        openingStock: 10,
-        reorderLevel: 5,
-        hsnCode: '71131910',
-        gstPercentage: 18,
-        description: `Imported from ${fileNames.join(', ')}`,
-        status: 'active',
-        images: [],
-        createdBy: 'Import User',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      setItems(prev => [...prev, newItem]);
-      console.log('Import completed successfully');
-      
-      return { success: true, count: 1 };
-    } catch (error) {
-      console.error('Import error:', error);
-      throw error;
-    } finally {
-      setImportLoading(false);
-    }
-  }, [items]);
 
   return {
     loading,
@@ -452,9 +318,8 @@ export const useItems = () => {
     selectedItems,
     selectedStatus,
     itemsPerPage,
-    importLoading,
-    setSearchQuery,
-    setSelectedStatus,
+    setSearchQuery: setSearchQueryWithReset,
+    setSelectedStatus: setSelectedStatusWithReset,
     setCurrentPage,
     handleRefresh,
     handleDelete,
@@ -463,6 +328,5 @@ export const useItems = () => {
     handleSelectItem,
     handleExport,
     handleItemsPerPageChange,
-    handleImport,
   };
 };

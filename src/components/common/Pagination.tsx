@@ -1,20 +1,23 @@
 // src/components/common/Pagination.tsx
 import React from 'react';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface PaginationProps {
+  /** Current active page (1-indexed) */
   currentPage: number;
+  /** Total number of pages */
   totalPages: number;
+  /** Total number of items */
   totalItems: number;
-  startIndex: number;
-  endIndex: number;
+  /** Number of items per page */
+  itemsPerPage: number;
+  /** Callback when page changes */
   onPageChange: (page: number) => void;
-  itemsPerPage?: number;
-  siblingCount?: number;
-  showFirstLast?: boolean;
-  showItemsPerPage?: boolean;
-  itemsPerPageOptions?: number[];
+  /** Callback when items per page changes */
   onItemsPerPageChange?: (itemsPerPage: number) => void;
+  /** Options for items per page dropdown */
+  itemsPerPageOptions?: number[];
+  /** Additional className for the container */
   className?: string;
 }
 
@@ -22,160 +25,132 @@ const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   totalItems,
-  startIndex,
-  endIndex,
+  itemsPerPage,
   onPageChange,
-  itemsPerPage = 10,
-  siblingCount = 1,
-  showFirstLast = true,
-  showItemsPerPage = true,
-  itemsPerPageOptions = [5, 10, 20, 50, 100],
   onItemsPerPageChange,
+  itemsPerPageOptions = [10, 20, 50, 100, 200],
   className = '',
 }) => {
-  // Generate page numbers
-  const getPageNumbers = () => {
-    const pageNumbers: (number | string)[] = [];
-    const totalPageNumbers = siblingCount * 2 + 3;
-    const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
-    const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
-    const shouldShowLeftDots = leftSiblingIndex > 2;
-    const shouldShowRightDots = rightSiblingIndex < totalPages - 1;
+  // Calculate the range of items being shown
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
 
-    if (totalPages <= totalPageNumbers) {
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxPagesToShow = 5;
+    
+    if (totalPages <= maxPagesToShow) {
       for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
+        pages.push(i);
       }
     } else {
-      pageNumbers.push(1);
-      if (shouldShowLeftDots) {
-        pageNumbers.push('...');
+      pages.push(1);
+      
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      
+      if (currentPage <= 3) {
+        end = Math.min(totalPages - 1, 4);
       }
-      for (let i = leftSiblingIndex; i <= rightSiblingIndex; i++) {
-        pageNumbers.push(i);
+      
+      if (currentPage >= totalPages - 2) {
+        start = Math.max(2, totalPages - 3);
       }
-      if (shouldShowRightDots) {
-        pageNumbers.push('...');
+      
+      if (start > 2) {
+        pages.push('...');
       }
-      pageNumbers.push(totalPages);
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      if (end < totalPages - 1) {
+        pages.push('...');
+      }
+      
+      pages.push(totalPages);
     }
-
-    return pageNumbers;
+    
+    return pages;
   };
 
-  const pageNumbers = getPageNumbers();
-
-  // Don't render if only one page
-  if (totalPages <= 1 && !showItemsPerPage) {
-    return null;
-  }
-
   return (
-    <div className={`px-4 py-3 border-t border-gray-200 flex flex-wrap items-center justify-between gap-4 ${className}`}>
-      {/* Left side - Showing records info */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="text-sm text-gray-500">
-          Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} Records
-        </div>
-        
-        {/* Items per page selector */}
-        {showItemsPerPage && onItemsPerPageChange && (
+    <div className={`flex items-center justify-end gap-4 px-4 py-3 bg-white border-t border-gray-200 ${className}`}>
+      {/* Items per page dropdown and range info */}
+      <div className="flex items-center gap-3">
+        {onItemsPerPageChange && totalItems > 0 && (
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-500">Show:</label>
             <select
               value={itemsPerPage}
               onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-              className="px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
             >
               {itemsPerPageOptions.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {option} per page
                 </option>
               ))}
             </select>
           </div>
         )}
+
+        {/* Range info */}
+        {totalItems > 0 && (
+          <span className="text-sm text-gray-600">
+            {startIndex} - {endIndex}
+          </span>
+        )}
       </div>
 
-      {/* Right side - Pagination controls */}
-      <div className="flex items-center gap-2">
-        {/* First page button */}
-        {showFirstLast && (
-          <button
-            onClick={() => onPageChange(1)}
-            disabled={currentPage === 1}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
-            title="First page"
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </button>
-        )}
-
-        {/* Previous page button */}
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
-          title="Previous page"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-
-        {/* Page numbers */}
+      {/* Pagination controls */}
+      {totalPages > 1 && (
         <div className="flex items-center gap-1">
-          {pageNumbers.map((page, index) => {
-            if (page === '...') {
-              return (
-                <span
-                  key={`dots-${index}`}
-                  className="px-2 py-1 text-sm text-gray-400"
-                >
-                  …
-                </span>
-              );
-            }
-
-            const pageNumber = page as number;
-            const isActive = pageNumber === currentPage;
-
-            return (
-              <button
-                key={pageNumber}
-                onClick={() => onPageChange(pageNumber)}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-amber-500 text-white font-medium'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {pageNumber}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Next page button */}
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
-          title="Next page"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-
-        {/* Last page button */}
-        {showFirstLast && (
+          {/* Previous page button */}
           <button
-            onClick={() => onPageChange(totalPages)}
-            disabled={currentPage === totalPages}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
-            title="Last page"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="p-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            aria-label="Previous page"
           >
-            <ChevronsRight className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
-        )}
-      </div>
+
+          {/* Page numbers */}
+          <div className="flex items-center gap-0.5">
+            {getPageNumbers().map((page, index) => (
+              <React.Fragment key={index}>
+                {typeof page === 'number' ? (
+                  <button
+                    onClick={() => onPageChange(page)}
+                    className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                      page === currentPage
+                        ? 'bg-amber-500 text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                    aria-current={page === currentPage ? 'page' : undefined}
+                  >
+                    {page}
+                  </button>
+                ) : (
+                  <span className="px-1 text-gray-400 text-sm">…</span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Next page button */}
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="p-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            aria-label="Next page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

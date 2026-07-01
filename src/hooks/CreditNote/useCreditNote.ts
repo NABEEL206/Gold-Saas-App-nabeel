@@ -6,7 +6,6 @@ import type {
   CreditNoteStats,
   CreditNoteItem 
 } from '../../types/creditNote/CreditNoteTypes';
-
 // Mock data
 const MOCK_CREDIT_NOTES: CreditNote[] = [
   {
@@ -183,6 +182,7 @@ let creditNoteCounter = 5;
 
 export const useCreditNote = () => {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [filters, setFilters] = useState<CreditNoteFilters>({
     search: '',
@@ -262,6 +262,7 @@ export const useCreditNote = () => {
 
   // CRUD operations
   const createCreditNote = useCallback(async (data: any) => {
+    setSaving(true);
     return new Promise((resolve) => {
       setTimeout(() => {
         const newCreditNote: CreditNote = {
@@ -290,22 +291,30 @@ export const useCreditNote = () => {
           updatedAt: new Date().toISOString(),
         };
         setCreditNotes(prev => [newCreditNote, ...prev]);
+        setSaving(false);
         resolve(newCreditNote);
       }, 500);
     });
   }, []);
 
   const updateCreditNote = useCallback(async (id: string, data: any) => {
+    setSaving(true);
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         const index = creditNotes.findIndex((cn) => cn.id === id);
         if (index !== -1) {
-          const updated = { ...creditNotes[index], ...data, updatedAt: new Date().toISOString() };
+          const updated = { 
+            ...creditNotes[index], 
+            ...data, 
+            updatedAt: new Date().toISOString() 
+          };
           const newCreditNotes = [...creditNotes];
           newCreditNotes[index] = updated;
           setCreditNotes(newCreditNotes);
+          setSaving(false);
           resolve(updated);
         } else {
+          setSaving(false);
           reject(new Error('Credit note not found'));
         }
       }, 500);
@@ -341,6 +350,7 @@ export const useCreditNote = () => {
   }, [creditNotes]);
 
   const updateStatus = useCallback(async (id: string, status: CreditNote['status']) => {
+    setSaving(true);
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         const index = creditNotes.findIndex((cn) => cn.id === id);
@@ -349,8 +359,10 @@ export const useCreditNote = () => {
           const newCreditNotes = [...creditNotes];
           newCreditNotes[index] = updated;
           setCreditNotes(newCreditNotes);
+          setSaving(false);
           resolve(updated);
         } else {
+          setSaving(false);
           reject(new Error('Credit note not found'));
         }
       }, 500);
@@ -381,6 +393,7 @@ export const useCreditNote = () => {
 
   return {
     loading,
+    saving,
     creditNotes,
     currentItems,
     stats,

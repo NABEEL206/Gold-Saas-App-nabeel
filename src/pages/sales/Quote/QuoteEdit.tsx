@@ -1,4 +1,5 @@
 // src/pages/sales/Quote/QuoteEdit.tsx
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -13,16 +14,30 @@ import {
   Calendar,
   Package,
   Gem,
-  Trash2,
-  Plus,
 } from 'lucide-react';
 import { useQuotes } from '../../../hooks/Quote/useQuotes';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
+
+// Mock customers for dropdown
+const MOCK_CUSTOMERS = [
+  { id: '1', name: 'Rajesh Jewelers', email: 'rajesh@jewelers.com', phone: '+91-98765-43210', address: '123 Jewel Street, Mumbai' },
+  { id: '2', name: 'Priya Gold House', email: 'priya@goldhouse.com', phone: '+91-98765-43211', address: '456 Gold Road, Delhi' },
+  { id: '3', name: 'Suresh Gold Mart', email: 'suresh@goldmart.com', phone: '+91-98765-43212', address: '789 Diamond Avenue, Bangalore' },
+  { id: '4', name: 'Meera Jewel World', email: 'meera@jewelworld.com', phone: '+91-98765-43213', address: '321 Pearl Street, Chennai' },
+];
+
+// Convert customers to dropdown options
+const customerOptions: DropdownOption[] = MOCK_CUSTOMERS.map(customer => ({
+  value: customer.id,
+  label: customer.name,
+  group: 'Customers'
+}));
 
 const QuoteEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getQuote, loading } = useQuotes();
+  const { getQuote, updateQuote, loading } = useQuotes();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +52,21 @@ const QuoteEdit: React.FC = () => {
       }
     }
   }, [id, getQuote]);
+
+  // Handle customer selection
+  const handleCustomerSelect = (option: DropdownOption) => {
+    const customer = MOCK_CUSTOMERS.find(c => c.id === option.value);
+    if (customer && formData) {
+      setFormData({
+        ...formData,
+        customerId: customer.id,
+        customerName: customer.name,
+        customerEmail: customer.email || '',
+        customerPhone: customer.phone || '',
+        customerAddress: customer.address || '',
+      });
+    }
+  };
 
   const handleSubmit = async (status: 'draft' | 'sent') => {
     if (!formData) return;
@@ -76,6 +106,11 @@ const QuoteEdit: React.FC = () => {
       </div>
     );
   }
+
+  // Get selected customer value
+  const getSelectedCustomer = (): string | null => {
+    return formData.customerId || null;
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -118,7 +153,7 @@ const QuoteEdit: React.FC = () => {
         </div>
 
         {/* Customer Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6 overflow-visible">
           <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
             <User className="h-4 w-4 text-amber-500" />
             Customer Information
@@ -128,12 +163,17 @@ const QuoteEdit: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Customer Name *
               </label>
-              <input
-                type="text"
-                value={formData.customerName}
-                onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="Enter customer name"
+              <SearchableDropdown
+                options={customerOptions}
+                value={getSelectedCustomer()}
+                onChange={handleCustomerSelect}
+                placeholder="Search customer..."
+                triggerPlaceholder="Select a customer"
+                className="w-full max-w-full z-50"
+                resetSearchOnOpen={true}
+                showEmptyState={true}
+                emptyStateText="No customers found"
+                maxListHeight={280}
               />
             </div>
             <div>
@@ -325,7 +365,3 @@ const QuoteEdit: React.FC = () => {
 };
 
 export default QuoteEdit;
-
-function updateQuote(id: any, arg1: any) {
-  throw new Error('Function not implemented.');
-}

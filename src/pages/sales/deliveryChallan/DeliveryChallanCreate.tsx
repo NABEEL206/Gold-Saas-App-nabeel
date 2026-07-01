@@ -13,18 +13,32 @@ import {
   Users,
   AlertCircle,
   Truck as TruckIcon,
-  ChevronDown,
 } from 'lucide-react';
 import { useDeliveryChallan } from '../../../hooks/DeliveryChallan/useDeliveryChallan';
 import { useDeliveryChallanCreate } from '../../../hooks/DeliveryChallan/useDeliveryChallanCreate';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
+import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
-// Demo customers
-const DEMO_CUSTOMERS = [
-  { id: '1', name: 'Rajesh Jewelers', email: 'rajesh@jewelers.com', phone: '+91-98765-43210', gst: '22AAAAA0000A1Z5', address: '123, Jewelry Market, Mumbai' },
-  { id: '2', name: 'Priya Gold House', email: 'priya@goldhouse.com', phone: '+91-98765-43211', gst: '22BBBBB0000B1Z5', address: '45, Gold Street, Chennai' },
+// Mock customer data for dropdown
+const MOCK_CUSTOMERS: DropdownOption[] = [
+  { value: 'CUST-001', label: 'Rajesh Jewelers', group: 'Regular' },
+  { value: 'CUST-002', label: 'Priya Gold House', group: 'Regular' },
+  { value: 'CUST-003', label: 'Amit Diamond Co.', group: 'VIP' },
+  { value: 'CUST-004', label: 'Sneha Jewellery', group: 'Regular' },
+  { value: 'CUST-005', label: 'Vikram Gems', group: 'Corporate' },
+];
+
+// Mock product suggestions
+const MOCK_PRODUCTS = [
+  { id: '1', name: 'Gold Ring', code: 'GR-001', category: 'Ring', purity: '22K', price: 7500, description: '22K Gold Ring with diamond', unit: 'Pcs' },
+  { id: '2', name: 'Gold Chain', code: 'GC-001', category: 'Chain', purity: '22K', price: 4500, description: '22K Gold Chain with pendant', unit: 'Pcs' },
+  { id: '3', name: 'Gold Earrings', code: 'GE-001', category: 'Earring', purity: '22K', price: 3200, description: '22K Gold Earrings with pearl', unit: 'Pair' },
+  { id: '4', name: 'Diamond Ring', code: 'DR-001', category: 'Ring', purity: '18K', price: 8500, description: '18K Diamond Ring with 0.5ct diamond', unit: 'Pcs' },
+  { id: '5', name: 'Gold Bracelet', code: 'GB-001', category: 'Bracelet', purity: '22K', price: 3800, description: '22K Gold Bracelet with diamonds', unit: 'Pcs' },
+  { id: '6', name: 'Silver Necklace', code: 'SN-001', category: 'Necklace', purity: '18K', price: 2800, description: '18K Silver Necklace with chain', unit: 'Pcs' },
 ];
 
 const DeliveryChallanCreate: React.FC = () => {
@@ -46,25 +60,42 @@ const DeliveryChallanCreate: React.FC = () => {
   } = useDeliveryChallanCreate();
 
   const [savingForm, setSavingForm] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [items, setItems] = useState<ItemSelectionItem[]>(formData.items || []);
 
-  // Get selected customer details
-  const selectedCustomer = DEMO_CUSTOMERS.find(c => c.id === selectedCustomerId);
+  // Handle customer selection from dropdown
+  const handleCustomerSelect = (selectedOption: DropdownOption) => {
+    const customerDetails: Record<string, any> = {
+      'CUST-001': { name: 'Rajesh Jewelers', email: 'rajesh@jewelers.com', phone: '+91-98765-43210', address: '123, Jewelry Market, Mumbai', gst: '22AAAAA0000A1Z5' },
+      'CUST-002': { name: 'Priya Gold House', email: 'priya@goldhouse.com', phone: '+91-98765-43211', address: '45, Gold Street, Chennai', gst: '22BBBBB0000B1Z5' },
+      'CUST-003': { name: 'Amit Diamond Co.', email: 'amit@diamond.com', phone: '+91-98765-43212', address: '789, Diamond Plaza, Surat', gst: '22CCCCC0000C1Z5' },
+      'CUST-004': { name: 'Sneha Jewellery', email: 'sneha@jewellery.com', phone: '+91-98765-43213', address: '321, Jewel Lane, Jaipur', gst: '22DDDDD0000D1Z5' },
+      'CUST-005': { name: 'Vikram Gems', email: 'vikram@gems.com', phone: '+91-98765-43214', address: '654, Gem Tower, Mumbai', gst: '22EEEEE0000E1Z5' },
+    };
 
-  // Handle customer selection
-  const handleCustomerSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    setSelectedCustomerId(id);
-    const customer = DEMO_CUSTOMERS.find(c => c.id === id);
-    if (customer) {
-      updateFormData('customerId', customer.id);
-      updateFormData('customerName', customer.name);
-      updateFormData('customerEmail', customer.email);
-      updateFormData('customerPhone', customer.phone);
-      updateFormData('customerGst', customer.gst || '');
-      updateFormData('customerAddress', customer.address || '');
-      updateFormData('deliveryAddress', customer.address || '');
+    const details = customerDetails[selectedOption.value] || null;
+    if (details) {
+      updateFormData('customerId', selectedOption.value);
+      updateFormData('customerName', details.name || selectedOption.label);
+      updateFormData('customerEmail', details.email || '');
+      updateFormData('customerPhone', details.phone || '');
+      updateFormData('customerGst', details.gst || '');
+      updateFormData('customerAddress', details.address || '');
+      updateFormData('deliveryAddress', details.address || '');
+    } else {
+      updateFormData('customerId', selectedOption.value);
+      updateFormData('customerName', selectedOption.label);
     }
+  };
+
+  // Handle items change from ItemSelectionTable
+  const handleItemsChange = (newItems: ItemSelectionItem[]) => {
+    setItems(newItems);
+    updateFormData('items', newItems);
+  };
+
+  // Handle custom item add
+  const handleAddCustomItem = () => {
+    addItem();
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -83,21 +114,11 @@ const DeliveryChallanCreate: React.FC = () => {
     }
   };
 
-  // Handle items change from the reusable component
-  const handleItemsChange = (items: ItemSelectionItem[]) => {
-    updateFormData('items', items);
-  };
-
-  // Handle custom item add
-  const handleAddCustomItem = () => {
-    addItem();
-  };
-
   // Custom columns configuration for Delivery Challan
   const deliveryChallanColumns = {
     item: true,
     purity: true,
-    description: false,
+    description: true,
     grossWt: false,
     stoneWt: false,
     netWt: false,
@@ -201,7 +222,7 @@ const DeliveryChallanCreate: React.FC = () => {
             </div>
           </div>
 
-          {/* Customer Section - Simple Dropdown */}
+          {/* Customer Section - Using SearchableDropdown */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Users className="h-5 w-5 text-amber-500" />
@@ -211,44 +232,48 @@ const DeliveryChallanCreate: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Customer <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <select
-                  value={selectedCustomerId}
-                  onChange={handleCustomerSelect}
-                  className="w-full pl-9 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none bg-white"
-                >
-                  <option value="">Select a customer...</option>
-                  {DEMO_CUSTOMERS.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              </div>
+              <SearchableDropdown
+                options={MOCK_CUSTOMERS}
+                value={formData.customerId}
+                onChange={handleCustomerSelect}
+                placeholder="Search customer by name..."
+                triggerPlaceholder="Select or search customer..."
+                className="w-full max-w-full"
+                showEmptyState={true}
+                emptyStateText="No customers found"
+                resetSearchOnOpen={true}
+              />
+              {errors.customerId && (
+                <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> {errors.customerId}
+                </p>
+              )}
             </div>
 
-            {selectedCustomer && (
+            {formData.customerName && (
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50 rounded-lg">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{selectedCustomer.name}</p>
-                  <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
-                    <Mail className="h-4 w-4" /> {selectedCustomer.email}
-                  </p>
-                  <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
-                    <Phone className="h-4 w-4" /> {selectedCustomer.phone}
-                  </p>
-                </div>
-                <div>
-                  {selectedCustomer.gst && (
-                    <p className="text-sm text-gray-600 flex items-center gap-2">
-                      <FileText className="h-4 w-4" /> GST: {selectedCustomer.gst}
+                  <p className="text-sm font-medium text-gray-900">{formData.customerName}</p>
+                  {formData.customerEmail && (
+                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                      <Mail className="h-4 w-4" /> {formData.customerEmail}
                     </p>
                   )}
-                  {selectedCustomer.address && (
+                  {formData.customerPhone && (
                     <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
-                      <Building2 className="h-4 w-4" /> {selectedCustomer.address}
+                      <Phone className="h-4 w-4" /> {formData.customerPhone}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  {formData.customerGst && (
+                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                      <FileText className="h-4 w-4" /> GST: {formData.customerGst}
+                    </p>
+                  )}
+                  {formData.customerAddress && (
+                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                      <Building2 className="h-4 w-4" /> {formData.customerAddress}
                     </p>
                   )}
                 </div>
@@ -270,35 +295,45 @@ const DeliveryChallanCreate: React.FC = () => {
                 value={formData.deliveryAddress}
                 onChange={(e) => updateFormData('deliveryAddress', e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.deliveryAddress ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter delivery address..."
               />
+              {errors.deliveryAddress && (
+                <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> {errors.deliveryAddress}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Items Section - Using Reusable Component with custom columns */}
-          <ItemSelectionTable
-            items={formData.items}
-            onItemsChange={handleItemsChange}
-            productSuggestions={productSuggestions}
-            productSearch={productSearch}
-            onProductSearchChange={setProductSearch}
-            onAddCustomItem={handleAddCustomItem}
-            errors={errors}
-            columns={deliveryChallanColumns}
-            showPurity={true}
-            showDiscount={true}
-            showTax={true}
-            showUnit={true}
-            showSubtotalSection={true}
-            showTotalSection={true}
-            searchPlaceholder="Search jewelry items..."
-            addButtonLabel="Add Item"
-            title="Jewelry Items"
-            additionalCharges={[]}
-            autoAddDefaultRow={true}
-            addButtonAtBottom={true}
-          />
+        <ItemSelectionTable
+          items={items}
+          onItemsChange={handleItemsChange}
+          productSuggestions={productSuggestions}
+          productSearch={productSearch}
+          onProductSearchChange={setProductSearch}
+          // Remove onAddCustomItem prop
+          errors={errors}
+          columns={deliveryChallanColumns}
+          showJewelryFields={true}
+          showDescription={true}
+          showDiscount={true}
+          showTax={true}
+          showUnit={true}
+          showPurity={true}
+          showMakingCharges={false}
+          showWeightFields={false}
+          showSubtotalSection={true}
+          showTotalSection={true}
+          searchPlaceholder="Search jewelry items..."
+          addButtonLabel="Add Item"
+          title="Jewelry Items"
+          additionalCharges={[]}
+          autoAddDefaultRow={true}
+          addButtonAtBottom={true}
+        />
 
           {/* Transport Details */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -346,6 +381,27 @@ const DeliveryChallanCreate: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Payment Terms */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Terms</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+              <select
+                value={formData.paymentTerms}
+                onChange={(e) => updateFormData('paymentTerms', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <option value="Net 7">Net 7</option>
+                <option value="Net 15">Net 15</option>
+                <option value="Net 30">Net 30</option>
+                <option value="Net 45">Net 45</option>
+                <option value="Net 60">Net 60</option>
+                <option value="COD">COD</option>
+                <option value="Advance">Advance</option>
+              </select>
             </div>
           </div>
 

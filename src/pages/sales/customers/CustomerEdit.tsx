@@ -1,4 +1,5 @@
 // src/pages/Customer/CustomerEdit.tsx
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useCustomers } from '../../../hooks/customer/useCustomers';
 import type { CustomerFormData } from '../../../types/customer/CustomerTypes';
+import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 
 export const CustomerEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,14 +28,31 @@ export const CustomerEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const salutations = ['Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Prof.'];
-  const customerTypes = [
+  // Dropdown options
+  const salutationOptions: DropdownOption[] = [
+    { value: 'Mr.', label: 'Mr.' },
+    { value: 'Ms.', label: 'Ms.' },
+    { value: 'Mrs.', label: 'Mrs.' },
+    { value: 'Dr.', label: 'Dr.' },
+    { value: 'Prof.', label: 'Prof.' },
+  ];
+
+  const customerTypeOptions: DropdownOption[] = [
     { value: 'individual', label: 'Individual' },
     { value: 'business', label: 'Business' },
     { value: 'government', label: 'Government' },
     { value: 'non-profit', label: 'Non-Profit' },
   ];
-  const countries = ['India', 'USA', 'UK', 'Canada', 'Australia', 'UAE', 'Singapore'];
+
+  const countryOptions: DropdownOption[] = [
+    { value: 'India', label: 'India' },
+    { value: 'USA', label: 'USA' },
+    { value: 'UK', label: 'UK' },
+    { value: 'Canada', label: 'Canada' },
+    { value: 'Australia', label: 'Australia' },
+    { value: 'UAE', label: 'UAE' },
+    { value: 'Singapore', label: 'Singapore' },
+  ];
 
   useEffect(() => {
     if (id) {
@@ -100,6 +119,33 @@ export const CustomerEdit: React.FC = () => {
     }
   };
 
+  // Handle salutation selection
+  const handleSalutationSelect = (option: DropdownOption) => {
+    setFormData(prev => prev ? { ...prev, salutation: option.value as CustomerFormData['salutation'] } : null);
+  };
+
+  // Handle customer type selection
+  const handleCustomerTypeSelect = (option: DropdownOption) => {
+    setFormData(prev => prev ? { ...prev, customerType: option.value as CustomerFormData['customerType'] } : null);
+  };
+
+  // Handle country selection
+  const handleCountrySelect = (option: DropdownOption) => {
+    setFormData(prev => prev ? { ...prev, country: option.value as CustomerFormData['country'] } : null);
+  };
+
+  // Get selected values
+  const getSelectedSalutation = (): string | null => {
+    return formData?.salutation || null;
+  };
+
+  const getSelectedCustomerType = (): string | null => {
+    return formData?.customerType || null;
+  };
+
+  const getSelectedCountry = (): string | null => {
+    return formData?.country || null;
+  };
 
   if (error) {
     return (
@@ -170,16 +216,18 @@ export const CustomerEdit: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Salutation
                   </label>
-                  <select
-                    value={formData.salutation}
-                    onChange={(e) => setFormData({ ...formData, salutation: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select</option>
-                    {salutations.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  <SearchableDropdown
+                    options={salutationOptions}
+                    value={getSelectedSalutation()}
+                    onChange={handleSalutationSelect}
+                    placeholder="Search salutation..."
+                    triggerPlaceholder="Select"
+                    className="w-full max-w-full"
+                    resetSearchOnOpen={true}
+                    showEmptyState={true}
+                    emptyStateText="No salutations found"
+                    maxListHeight={200}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -189,7 +237,7 @@ export const CustomerEdit: React.FC = () => {
                     type="text"
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Enter first name"
                   />
                 </div>
@@ -201,7 +249,7 @@ export const CustomerEdit: React.FC = () => {
                     type="text"
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.lastName ? 'border-red-500' : 'border-gray-200'
                     }`}
                     placeholder="Enter last name"
@@ -224,15 +272,18 @@ export const CustomerEdit: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Customer Type <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={formData.customerType}
-                    onChange={(e) => setFormData({ ...formData, customerType: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {customerTypes.map(type => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
+                  <SearchableDropdown
+                    options={customerTypeOptions}
+                    value={getSelectedCustomerType()}
+                    onChange={handleCustomerTypeSelect}
+                    placeholder="Search type..."
+                    triggerPlaceholder="Select customer type"
+                    className="w-full max-w-full"
+                    resetSearchOnOpen={true}
+                    showEmptyState={true}
+                    emptyStateText="No types found"
+                    maxListHeight={200}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -242,7 +293,7 @@ export const CustomerEdit: React.FC = () => {
                     type="text"
                     value={formData.displayName}
                     onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.displayName ? 'border-red-500' : 'border-gray-200'
                     }`}
                     placeholder="Enter display name"
@@ -270,7 +321,7 @@ export const CustomerEdit: React.FC = () => {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.email ? 'border-red-500' : 'border-gray-200'
                     }`}
                     placeholder="customer@email.com"
@@ -288,7 +339,7 @@ export const CustomerEdit: React.FC = () => {
                     type="text"
                     value={formData.workPhone}
                     onChange={(e) => setFormData({ ...formData, workPhone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="022-1234567"
                   />
                 </div>
@@ -301,7 +352,7 @@ export const CustomerEdit: React.FC = () => {
                     type="text"
                     value={formData.mobileNumber}
                     onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.mobileNumber ? 'border-red-500' : 'border-gray-200'
                     }`}
                     placeholder="9876543210"
@@ -327,7 +378,7 @@ export const CustomerEdit: React.FC = () => {
                   <textarea
                     value={formData.billingAddress}
                     onChange={(e) => setFormData({ ...formData, billingAddress: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     rows={2}
                     placeholder="Enter billing address"
                   />
@@ -341,7 +392,7 @@ export const CustomerEdit: React.FC = () => {
                       type="text"
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Enter city"
                     />
                   </div>
@@ -353,7 +404,7 @@ export const CustomerEdit: React.FC = () => {
                       type="text"
                       value={formData.state}
                       onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Enter state"
                     />
                   </div>
@@ -365,7 +416,7 @@ export const CustomerEdit: React.FC = () => {
                       type="text"
                       value={formData.pincode}
                       onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Enter pincode"
                     />
                   </div>
@@ -373,15 +424,18 @@ export const CustomerEdit: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Country
                     </label>
-                    <select
-                      value={formData.country}
-                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {countries.map(country => (
-                        <option key={country} value={country}>{country}</option>
-                      ))}
-                    </select>
+                    <SearchableDropdown
+                      options={countryOptions}
+                      value={getSelectedCountry()}
+                      onChange={handleCountrySelect}
+                      placeholder="Search country..."
+                      triggerPlaceholder="Select country"
+                      className="w-full max-w-full"
+                      resetSearchOnOpen={true}
+                      showEmptyState={true}
+                      emptyStateText="No countries found"
+                      maxListHeight={200}
+                    />
                   </div>
                 </div>
               </div>
@@ -402,7 +456,7 @@ export const CustomerEdit: React.FC = () => {
                     type="number"
                     value={formData.openingBalance}
                     onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="0.00"
                   />
                 </div>
@@ -414,7 +468,7 @@ export const CustomerEdit: React.FC = () => {
                     type="number"
                     value={formData.creditLimit}
                     onChange={(e) => setFormData({ ...formData, creditLimit: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="0.00"
                   />
                 </div>
@@ -426,7 +480,7 @@ export const CustomerEdit: React.FC = () => {
                     type="text"
                     value={formData.gstNumber}
                     onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value.toUpperCase() })}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.gstNumber ? 'border-red-500' : 'border-gray-200'
                     }`}
                     placeholder="22AAAAA0000A1Z1"
@@ -443,7 +497,7 @@ export const CustomerEdit: React.FC = () => {
                     type="text"
                     value={formData.panNumber}
                     onChange={(e) => setFormData({ ...formData, panNumber: e.target.value.toUpperCase() })}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.panNumber ? 'border-red-500' : 'border-gray-200'
                     }`}
                     placeholder="ABCDE1234F"
@@ -464,7 +518,7 @@ export const CustomerEdit: React.FC = () => {
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 rows={3}
                 placeholder="Add any additional notes about the customer..."
               />
@@ -483,7 +537,7 @@ export const CustomerEdit: React.FC = () => {
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>

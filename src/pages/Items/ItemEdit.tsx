@@ -24,83 +24,85 @@ import {
   Eye,
   EyeOff,
   Trash2,
+  Plus,
 } from 'lucide-react';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import SearchableDropdown, { type DropdownOption } from '../../components/common/Searchabledropdown';
 import { useItemEdit } from '../../hooks/items/useItemEdit';
+import { useToastAndConfirm } from '../../hooks/ToastConfirmModal/useToastAndConfirm';
 
-// ==================== CONSTANTS ====================
-
-const ITEM_TYPES = [
-  { value: 'Gold', label: 'Gold' },
-  { value: 'Silver', label: 'Silver' },
-  { value: 'Diamond', label: 'Diamond' },
-  { value: 'Platinum', label: 'Platinum' },
-  { value: 'Other', label: 'Other' },
+// Constants with proper types for SearchableDropdown
+const ITEM_TYPE_OPTIONS: DropdownOption[] = [
+  { value: 'Gold', label: 'Gold', group: 'Metal' },
+  { value: 'Silver', label: 'Silver', group: 'Metal' },
+  { value: 'Diamond', label: 'Diamond', group: 'Stone' },
+  { value: 'Platinum', label: 'Platinum', group: 'Metal' },
+  { value: 'Other', label: 'Other', group: 'Other' },
 ];
 
-const CATEGORIES = [
-  { value: 'Rings', label: 'Rings' },
-  { value: 'Necklaces', label: 'Necklaces' },
-  { value: 'Earrings', label: 'Earrings' },
-  { value: 'Bracelets', label: 'Bracelets' },
-  { value: 'Pendants', label: 'Pendants' },
-  { value: 'Chains', label: 'Chains' },
-  { value: 'Bangles', label: 'Bangles' },
-  { value: 'Sets', label: 'Sets' },
-  { value: 'Other', label: 'Other' },
+const CATEGORY_OPTIONS: DropdownOption[] = [
+  { value: 'Rings', label: 'Rings', group: 'Jewelry' },
+  { value: 'Necklaces', label: 'Necklaces', group: 'Jewelry' },
+  { value: 'Earrings', label: 'Earrings', group: 'Jewelry' },
+  { value: 'Bracelets', label: 'Bracelets', group: 'Jewelry' },
+  { value: 'Pendants', label: 'Pendants', group: 'Jewelry' },
+  { value: 'Chains', label: 'Chains', group: 'Jewelry' },
+  { value: 'Bangles', label: 'Bangles', group: 'Jewelry' },
+  { value: 'Sets', label: 'Sets', group: 'Jewelry' },
+  { value: 'Other', label: 'Other', group: 'Jewelry' },
 ];
 
-const METAL_TYPES = [
-  { value: 'Gold', label: 'Gold' },
-  { value: 'Silver', label: 'Silver' },
-  { value: 'Platinum', label: 'Platinum' },
-  { value: 'Palladium', label: 'Palladium' },
-  { value: 'Rhodium', label: 'Rhodium' },
-  { value: 'Other', label: 'Other' },
+const METAL_TYPE_OPTIONS: DropdownOption[] = [
+  { value: 'Gold', label: 'Gold', group: 'Precious Metals' },
+  { value: 'Silver', label: 'Silver', group: 'Precious Metals' },
+  { value: 'Platinum', label: 'Platinum', group: 'Precious Metals' },
+  { value: 'Palladium', label: 'Palladium', group: 'Precious Metals' },
+  { value: 'Rhodium', label: 'Rhodium', group: 'Precious Metals' },
+  { value: 'Other', label: 'Other', group: 'Other' },
 ];
 
-const PURITIES = [
-  { value: '24K', label: '24K (99.9%)' },
-  { value: '22K', label: '22K (91.6%)' },
-  { value: '18K', label: '18K (75%)' },
-  { value: '14K', label: '14K (58.5%)' },
-  { value: '10K', label: '10K (41.7%)' },
-  { value: '999', label: '999 (Fine Silver)' },
-  { value: '958', label: '958 (Britannia Silver)' },
-  { value: '925', label: '925 (Sterling Silver)' },
-  { value: '900', label: '900 (Coin Silver)' },
-  { value: '950', label: '950 (Platinum)' },
-  { value: '850', label: '850 (Platinum)' },
+const PURITY_OPTIONS: DropdownOption[] = [
+  { value: '24K', label: '24K (99.9%)', group: 'Gold' },
+  { value: '22K', label: '22K (91.6%)', group: 'Gold' },
+  { value: '18K', label: '18K (75%)', group: 'Gold' },
+  { value: '14K', label: '14K (58.5%)', group: 'Gold' },
+  { value: '10K', label: '10K (41.7%)', group: 'Gold' },
+  { value: '999', label: '999 (Fine Silver)', group: 'Silver' },
+  { value: '958', label: '958 (Britannia Silver)', group: 'Silver' },
+  { value: '925', label: '925 (Sterling Silver)', group: 'Silver' },
+  { value: '900', label: '900 (Coin Silver)', group: 'Silver' },
+  { value: '950', label: '950 (Platinum)', group: 'Platinum' },
+  { value: '850', label: '850 (Platinum)', group: 'Platinum' },
 ];
 
-const UNITS = [
-  { value: 'g', label: 'Grams (g)' },
-  { value: 'kg', label: 'Kilograms (kg)' },
-  { value: 'oz', label: 'Ounces (oz)' },
-  { value: 'ct', label: 'Carats (ct)' },
-  { value: 'mg', label: 'Milligrams (mg)' },
-  { value: 'pc', label: 'Pieces (pc)' },
+const UNIT_OPTIONS: DropdownOption[] = [
+  { value: 'g', label: 'Grams (g)', group: 'Weight' },
+  { value: 'kg', label: 'Kilograms (kg)', group: 'Weight' },
+  { value: 'oz', label: 'Ounces (oz)', group: 'Weight' },
+  { value: 'ct', label: 'Carats (ct)', group: 'Weight' },
+  { value: 'mg', label: 'Milligrams (mg)', group: 'Weight' },
+  { value: 'pc', label: 'Pieces (pc)', group: 'Count' },
 ];
 
-const GST_PERCENTAGES = [
-  { value: '0', label: '0%' },
-  { value: '5', label: '5%' },
-  { value: '12', label: '12%' },
-  { value: '18', label: '18%' },
-  { value: '28', label: '28%' },
+const GST_OPTIONS: DropdownOption[] = [
+  { value: '0', label: '0%', group: 'GST' },
+  { value: '5', label: '5%', group: 'GST' },
+  { value: '12', label: '12%', group: 'GST' },
+  { value: '18', label: '18%', group: 'GST' },
+  { value: '28', label: '28%', group: 'GST' },
 ];
 
-const CURRENCIES = [
-  { value: 'INR', label: 'INR' },
-  { value: 'USD', label: 'USD' },
-  { value: 'EUR', label: 'EUR' },
-  { value: 'GBP', label: 'GBP' },
-  { value: 'AED', label: 'AED' },
+const CURRENCY_OPTIONS: DropdownOption[] = [
+  { value: 'INR', label: 'INR', group: 'Currency' },
+  { value: 'USD', label: 'USD', group: 'Currency' },
+  { value: 'EUR', label: 'EUR', group: 'Currency' },
+  { value: 'GBP', label: 'GBP', group: 'Currency' },
+  { value: 'AED', label: 'AED', group: 'Currency' },
 ];
 
-const MC_TYPES = [
-  { value: 'fixed', label: 'Fixed' },
-  { value: 'percentage', label: 'Percentage' },
+const MC_TYPE_OPTIONS: DropdownOption[] = [
+  { value: 'fixed', label: 'Fixed', group: 'Making Charge' },
+  { value: 'percentage', label: 'Percentage', group: 'Making Charge' },
 ];
 
 // ==================== COMPONENTS ====================
@@ -156,7 +158,7 @@ const Section = ({
   );
 };
 
-// Input Field Component
+// Input Field Component with SearchableDropdown support
 const InputField = ({ 
   label, 
   name, 
@@ -170,19 +172,21 @@ const InputField = ({
   options,
   readOnly = false,
   disabled = false,
+  onCustomValueChange,
 }: {
   label: string;
   name: string;
   value: string | number;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  type?: 'text' | 'number' | 'select' | 'textarea';
+  type?: 'text' | 'number' | 'select' | 'textarea' | 'searchable-select';
   placeholder?: string;
   required?: boolean;
   error?: string;
   step?: string;
-  options?: Array<{ value: string; label: string }>;
+  options?: DropdownOption[];
   readOnly?: boolean;
   disabled?: boolean;
+  onCustomValueChange?: (value: string) => void;
 }) => {
   const baseClasses = `w-full px-3 py-2 border ${error ? 'border-red-500' : 'border-gray-300'} 
     rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent 
@@ -190,14 +194,64 @@ const InputField = ({
 
   const labelClasses = "block text-sm font-medium text-gray-700 mb-1";
 
-  return (
-    <div>
-      <label className={labelClasses}>
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
-      
-      {type === 'textarea' ? (
+  if (type === 'searchable-select' && options) {
+    return (
+      <div>
+        <label className={labelClasses}>
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <SearchableDropdown
+              options={options}
+              value={value as string}
+              onChange={(option) => {
+                const event = {
+                  target: { name, value: option.value }
+                } as React.ChangeEvent<HTMLInputElement>;
+                onChange(event);
+              }}
+              placeholder={`Search ${label.toLowerCase()}...`}
+              triggerPlaceholder={`Select ${label.toLowerCase()}`}
+              disabled={disabled}
+              className="w-full"
+            />
+          </div>
+          {onCustomValueChange && (
+            <button
+              type="button"
+              onClick={() => {
+                const customValue = prompt(`Enter custom ${label.toLowerCase()}:`);
+                if (customValue && customValue.trim()) {
+                  onCustomValueChange(customValue.trim());
+                }
+              }}
+              className="flex-shrink-0 px-3 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors text-sm flex items-center gap-1"
+              disabled={disabled}
+            >
+              <Plus className="h-4 w-4" />
+              Custom
+            </button>
+          )}
+        </div>
+        {error && (
+          <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'textarea') {
+    return (
+      <div>
+        <label className={labelClasses}>
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
         <textarea
           name={name}
           value={value}
@@ -208,7 +262,23 @@ const InputField = ({
           disabled={disabled}
           readOnly={readOnly}
         />
-      ) : type === 'select' && options ? (
+        {error && (
+          <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'select' && options) {
+    return (
+      <div>
+        <label className={labelClasses}>
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
         <select
           name={name}
           value={value}
@@ -223,20 +293,33 @@ const InputField = ({
             </option>
           ))}
         </select>
-      ) : (
-        <input
-          type={type}
-          name={name}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          step={step}
-          className={baseClasses}
-          disabled={disabled}
-          readOnly={readOnly}
-        />
-      )}
-      
+        {error && (
+          <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label className={labelClasses}>
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        step={step}
+        className={baseClasses}
+        disabled={disabled}
+        readOnly={readOnly}
+      />
       {error && (
         <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
           <AlertCircle className="h-3 w-3" />
@@ -284,6 +367,7 @@ const ToggleCheckbox = ({
 const ItemEdit: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { success, error, withConfirmation } = useToastAndConfirm();
   
   const {
     loading,
@@ -308,13 +392,41 @@ const ItemEdit: React.FC = () => {
     validateForm,
   } = useItemEdit();
 
-  // Local states
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showMetalInfo, setShowMetalInfo] = useState(false);
   const [showWeightInfo, setShowWeightInfo] = useState(false);
   const [showDiamondInfo, setShowDiamondInfo] = useState(false);
   const [showPricingInfo, setShowPricingInfo] = useState(false);
   const [showInventoryInfo, setShowInventoryInfo] = useState(false);
+
+  // Custom value handlers for searchable dropdowns
+  const handleCustomCategory = useCallback((customValue: string) => {
+    const event = {
+      target: { name: 'category', value: customValue }
+    } as React.ChangeEvent<HTMLInputElement>;
+    handleInputChange(event);
+  }, [handleInputChange]);
+
+  const handleCustomItemType = useCallback((customValue: string) => {
+    const event = {
+      target: { name: 'itemType', value: customValue }
+    } as React.ChangeEvent<HTMLInputElement>;
+    handleInputChange(event);
+  }, [handleInputChange]);
+
+  const handleCustomMetalType = useCallback((customValue: string) => {
+    const event = {
+      target: { name: 'metalType', value: customValue }
+    } as React.ChangeEvent<HTMLInputElement>;
+    handleInputChange(event);
+  }, [handleInputChange]);
+
+  const handleCustomPurity = useCallback((customValue: string) => {
+    const event = {
+      target: { name: 'purity', value: customValue }
+    } as React.ChangeEvent<HTMLInputElement>;
+    handleInputChange(event);
+  }, [handleInputChange]);
 
   // Fetch item on mount
   useEffect(() => {
@@ -341,6 +453,7 @@ const ItemEdit: React.FC = () => {
       e.preventDefault();
       
       if (!validateForm()) {
+        error('Please fix the validation errors');
         const firstError = Object.keys(errors)[0];
         const element = document.querySelector(`[name="${firstError}"]`);
         if (element) {
@@ -352,29 +465,62 @@ const ItemEdit: React.FC = () => {
 
       try {
         await updateItem();
+        success('Item updated successfully!');
         navigate('/items');
-      } catch (error) {
-        console.error('Error updating item:', error);
+      } catch (err) {
+        console.error('Error updating item:', err);
+        error('Failed to update item. Please try again.');
       }
     },
-    [validateForm, errors, updateItem, navigate]
+    [validateForm, errors, updateItem, navigate, success, error]
   );
 
   const handleDelete = async () => {
     if (!item) return;
-    if (window.confirm(`Are you sure you want to delete "${item.itemName}"?`)) {
-      setDeleteLoading(true);
-      try {
-        await deleteItem();
-        navigate('/items');
-      } finally {
-        setDeleteLoading(false);
-      }
-    }
+    
+    withConfirmation(
+      {
+        title: 'Delete Item',
+        message: `Are you sure you want to delete "${item.itemName}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(true);
+        try {
+          await deleteItem();
+          success(`"${item.itemName}" deleted successfully!`);
+          navigate('/items');
+        } catch (err) {
+          console.error('Error deleting item:', err);
+          error(`Failed to delete "${item.itemName}"`);
+        } finally {
+          setDeleteLoading(false);
+        }
+      },
+      undefined,
+      `Failed to delete "${item.itemName}"`
+    );
   };
 
   const handleNavigateBack = () => navigate('/items');
-  const handleNavigateCancel = () => navigate('/items');
+  
+  const handleNavigateCancel = () => {
+    withConfirmation(
+      {
+        title: 'Discard Changes',
+        message: 'You have unsaved changes. Are you sure you want to leave?',
+        confirmText: 'Leave',
+        cancelText: 'Stay',
+        variant: 'warning',
+      },
+      async () => {
+        navigate('/items');
+      }
+    );
+  };
+
   const handleViewItem = () => {
     if (item) {
       navigate(`/items/${item.id}`);
@@ -383,7 +529,6 @@ const ItemEdit: React.FC = () => {
 
   // ==================== RENDER ====================
 
-  // Loading State
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -392,7 +537,6 @@ const ItemEdit: React.FC = () => {
     );
   }
 
-  // Error State
   if (!item) {
     return (
       <div className="p-6">
@@ -412,10 +556,9 @@ const ItemEdit: React.FC = () => {
     );
   }
 
-  // Main Render
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      {/* ===== HEADER ===== */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <button
@@ -471,7 +614,7 @@ const ItemEdit: React.FC = () => {
         </div>
       </div>
 
-      {/* ===== FORM ===== */}
+      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Basic Information */}
         <Section
@@ -508,24 +651,26 @@ const ItemEdit: React.FC = () => {
             <InputField
               label="Item Type"
               name="itemType"
-              type="select"
+              type="searchable-select"
               value={formData.itemType}
               onChange={handleInputChange}
               required
               error={errors.itemType}
-              options={ITEM_TYPES}
+              options={ITEM_TYPE_OPTIONS}
               disabled={saving}
+              onCustomValueChange={handleCustomItemType}
             />
             <InputField
               label="Category"
               name="category"
-              type="select"
+              type="searchable-select"
               value={formData.category}
               onChange={handleInputChange}
               required
               error={errors.category}
-              options={CATEGORIES}
+              options={CATEGORY_OPTIONS}
               disabled={saving}
+              onCustomValueChange={handleCustomCategory}
             />
             <InputField
               label="Brand"
@@ -571,24 +716,26 @@ const ItemEdit: React.FC = () => {
                 <InputField
                   label="Metal Type"
                   name="metalType"
-                  type="select"
+                  type="searchable-select"
                   value={formData.metalType}
                   onChange={handleInputChange}
                   required={showMetalInfo}
                   error={errors.metalType}
-                  options={METAL_TYPES}
+                  options={METAL_TYPE_OPTIONS}
                   disabled={saving}
+                  onCustomValueChange={handleCustomMetalType}
                 />
                 <InputField
                   label="Purity/Karat"
                   name="purity"
-                  type="select"
+                  type="searchable-select"
                   value={formData.purity}
                   onChange={handleInputChange}
                   required={showMetalInfo}
                   error={errors.purity}
-                  options={PURITIES}
+                  options={PURITY_OPTIONS}
                   disabled={saving}
+                  onCustomValueChange={handleCustomPurity}
                 />
               </div>
             </div>
@@ -652,10 +799,10 @@ const ItemEdit: React.FC = () => {
                 <InputField
                   label="Unit"
                   name="unit"
-                  type="select"
+                  type="searchable-select"
                   value={formData.unit}
                   onChange={handleManualChange}
-                  options={UNITS}
+                  options={UNIT_OPTIONS}
                   disabled={saving}
                 />
               </div>
@@ -730,10 +877,10 @@ const ItemEdit: React.FC = () => {
                 <InputField
                   label="MC Type"
                   name="mcType"
-                  type="select"
+                  type="searchable-select"
                   value={formData.mcType}
                   onChange={handleInputChange}
-                  options={MC_TYPES}
+                  options={MC_TYPE_OPTIONS}
                   disabled={saving}
                 />
                 <InputField
@@ -824,19 +971,22 @@ const ItemEdit: React.FC = () => {
                       disabled={saving}
                       className="w-full pl-16 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
                     />
-                    <select
-                      name="currency"
-                      value={formData.currency}
-                      onChange={handleManualChange}
-                      disabled={saving}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 px-2 py-1 text-sm border-0 bg-transparent focus:ring-0 disabled:opacity-50"
-                    >
-                      {CURRENCIES.map((curr) => (
-                        <option key={curr.value} value={curr.value}>
-                          {curr.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 w-24">
+                      <SearchableDropdown
+                        options={CURRENCY_OPTIONS}
+                        value={formData.currency || 'INR'}
+                        onChange={(option) => {
+                          const event = {
+                            target: { name: 'currency', value: option.value }
+                          } as React.ChangeEvent<HTMLInputElement>;
+                          handleManualChange(event);
+                        }}
+                        placeholder="Currency"
+                        triggerPlaceholder="Currency"
+                        disabled={saving}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -957,10 +1107,10 @@ const ItemEdit: React.FC = () => {
                 <InputField
                   label="GST %"
                   name="gstPercentage"
-                  type="select"
+                  type="searchable-select"
                   value={formData.gstPercentage}
                   onChange={handleManualChange}
-                  options={GST_PERCENTAGES}
+                  options={GST_OPTIONS}
                   disabled={saving}
                 />
               </div>

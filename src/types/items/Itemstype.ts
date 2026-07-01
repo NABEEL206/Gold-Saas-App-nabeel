@@ -89,11 +89,11 @@ export interface ItemFormData {
   goldRate: string;
   sellingPrice: string;
   
-  // Sales Information - Simplified
+  // Sales Information
   salesAccount?: string;
   salesDescription?: string;
   
-  // Purchase Information - Simplified
+  // Purchase Information
   purchasePrice?: string;
   purchaseDescription?: string;
   purchaseAccount?: string;
@@ -105,12 +105,9 @@ export interface ItemFormData {
   hsnCode: string;
   gstPercentage: string;
   
-  // Sales fields (keeping for compatibility)
   currency?: string;
   mrp?: string;
   description?: string;
-  
-  // Tracking
   tagNumber?: string;
   barcode?: string;
 }

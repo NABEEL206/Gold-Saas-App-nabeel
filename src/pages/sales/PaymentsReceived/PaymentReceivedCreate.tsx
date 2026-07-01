@@ -19,22 +19,40 @@ import {
 } from 'lucide-react';
 import { usePaymentReceived } from '../../../hooks/PaymentReceived/usePaymentReceived';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import SearchableDropdown from '../../../components/common/Searchabledropdown';
+import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 
-// Demo customers
-const DEMO_CUSTOMERS = [
-  { id: '1', name: 'Rajesh Jewelers', email: 'rajesh@jewelers.com', phone: '+91-98765-43210' },
-  { id: '2', name: 'Priya Gold House', email: 'priya@goldhouse.com', phone: '+91-98765-43211' },
-  { id: '3', name: 'Suresh Gold Mart', email: 'suresh@goldmart.com', phone: '+91-98765-43212' },
-  { id: '4', name: 'Meera Jewel World', email: 'meera@jewelworld.com', phone: '+91-98765-43213' },
+// Demo customers as DropdownOption[]
+const DEMO_CUSTOMERS: DropdownOption[] = [
+  { value: '1', label: 'Rajesh Jewelers', group: 'Regular' },
+  { value: '2', label: 'Priya Gold House', group: 'Regular' },
+  { value: '3', label: 'Suresh Gold Mart', group: 'VIP' },
+  { value: '4', label: 'Meera Jewel World', group: 'Regular' },
 ];
 
-// Demo invoices
-const DEMO_INVOICES = [
-  { id: '1', number: 'INV-000001', amount: 29500 },
-  { id: '2', number: 'INV-000002', amount: 50445 },
-  { id: '3', number: 'INV-000003', amount: 37760 },
-  { id: '4', number: 'INV-000004', amount: 12862 },
+// Customer details mapping
+const CUSTOMER_DETAILS: Record<string, any> = {
+  '1': { name: 'Rajesh Jewelers', email: 'rajesh@jewelers.com', phone: '+91-98765-43210' },
+  '2': { name: 'Priya Gold House', email: 'priya@goldhouse.com', phone: '+91-98765-43211' },
+  '3': { name: 'Suresh Gold Mart', email: 'suresh@goldmart.com', phone: '+91-98765-43212' },
+  '4': { name: 'Meera Jewel World', email: 'meera@jewelworld.com', phone: '+91-98765-43213' },
+};
+
+// Demo invoices as DropdownOption[]
+const DEMO_INVOICES: DropdownOption[] = [
+  { value: '1', label: 'INV-000001 - ₹29,500', group: 'Pending' },
+  { value: '2', label: 'INV-000002 - ₹50,445', group: 'Pending' },
+  { value: '3', label: 'INV-000003 - ₹37,760', group: 'Completed' },
+  { value: '4', label: 'INV-000004 - ₹12,862', group: 'Pending' },
 ];
+
+// Invoice details mapping
+const INVOICE_DETAILS: Record<string, any> = {
+  '1': { number: 'INV-000001', amount: 29500 },
+  '2': { number: 'INV-000002', amount: 50445 },
+  '3': { number: 'INV-000003', amount: 37760 },
+  '4': { number: 'INV-000004', amount: 12862 },
+};
 
 const PaymentReceivedCreate: React.FC = () => {
   const navigate = useNavigate();
@@ -59,29 +77,35 @@ const PaymentReceivedCreate: React.FC = () => {
     status: 'completed' as const,
   });
 
-  const handleCustomerSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    const customer = DEMO_CUSTOMERS.find(c => c.id === id);
-    if (customer) {
+  // Handle customer selection from dropdown
+  const handleCustomerSelect = (selectedOption: DropdownOption) => {
+    const details = CUSTOMER_DETAILS[selectedOption.value];
+    if (details) {
       setFormData({
         ...formData,
-        customerId: customer.id,
-        customerName: customer.name,
-        customerEmail: customer.email,
-        customerPhone: customer.phone,
+        customerId: selectedOption.value,
+        customerName: details.name,
+        customerEmail: details.email,
+        customerPhone: details.phone,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        customerId: selectedOption.value,
+        customerName: selectedOption.label,
       });
     }
   };
 
-  const handleInvoiceSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    const invoice = DEMO_INVOICES.find(inv => inv.id === id);
-    if (invoice) {
+  // Handle invoice selection from dropdown
+  const handleInvoiceSelect = (selectedOption: DropdownOption) => {
+    const details = INVOICE_DETAILS[selectedOption.value];
+    if (details) {
       setFormData({
         ...formData,
-        invoiceId: invoice.id,
-        invoiceNumber: invoice.number,
-        amount: invoice.amount,
+        invoiceId: selectedOption.value,
+        invoiceNumber: details.number,
+        amount: details.amount,
       });
     }
   };
@@ -167,23 +191,17 @@ const PaymentReceivedCreate: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Customer <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <select
-                  value={formData.customerId}
-                  onChange={handleCustomerSelect}
-                  className={`w-full pl-9 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none bg-white ${
-                    errors.customerId ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select a customer...</option>
-                  {DEMO_CUSTOMERS.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} - {customer.email}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableDropdown
+                options={DEMO_CUSTOMERS}
+                value={formData.customerId}
+                onChange={handleCustomerSelect}
+                placeholder="Search customer by name..."
+                triggerPlaceholder="Select or search customer..."
+                className="w-full max-w-full"
+                showEmptyState={true}
+                emptyStateText="No customers found"
+                resetSearchOnOpen={true}
+              />
               {errors.customerId && (
                 <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" /> {errors.customerId}
@@ -210,21 +228,17 @@ const PaymentReceivedCreate: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Invoice (Optional)
                 </label>
-                <div className="relative">
-                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <select
-                    value={formData.invoiceId}
-                    onChange={handleInvoiceSelect}
-                    className="w-full pl-9 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none bg-white"
-                  >
-                    <option value="">Select an invoice...</option>
-                    {DEMO_INVOICES.map((invoice) => (
-                      <option key={invoice.id} value={invoice.id}>
-                        {invoice.number} - ₹{invoice.amount.toLocaleString()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <SearchableDropdown
+                  options={DEMO_INVOICES}
+                  value={formData.invoiceId}
+                  onChange={handleInvoiceSelect}
+                  placeholder="Search invoice by number..."
+                  triggerPlaceholder="Select or search invoice..."
+                  className="w-full max-w-full"
+                  showEmptyState={true}
+                  emptyStateText="No invoices found"
+                  resetSearchOnOpen={true}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
