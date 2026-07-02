@@ -27,6 +27,8 @@ import {
 import { usePaymentReceived } from '../../../hooks/PaymentReceived/usePaymentReceived';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { PaymentReceived } from '../../../types/paymentReceived/PaymentReceivedTypes';
 
 // Status Badge
@@ -184,11 +186,27 @@ const PaymentReceivedView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [payment, setPayment] = useState<PaymentReceived | null>(null);
   const [updating, setUpdating] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Use the toast and confirm hook
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
 
   useEffect(() => {
     if (id) {
       loadPayment(id);
+    } else {
+      showError('Invalid payment ID');
+      navigate('/sales/payments-received');
     }
   }, [id]);
 
@@ -205,6 +223,7 @@ const PaymentReceivedView: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading payment:', error);
+      showError('Failed to load payment details. Loading demo data.');
       // Generate dummy data on error
       const dummyData = generateDummyPayment(paymentId);
       setPayment(dummyData);
@@ -215,45 +234,81 @@ const PaymentReceivedView: React.FC = () => {
 
   const handleStatusUpdate = async (status: PaymentReceived['status']) => {
     if (!id) return;
-    if (window.confirm(`Mark this payment as ${status}?`)) {
-      setUpdating(true);
-      try {
-        await updateStatus(id, status);
-        await loadPayment(id);
-      } catch (error) {
-        console.error('Error updating status:', error);
-      } finally {
-        setUpdating(false);
+    
+    const statusLabels: Record<string, string> = {
+      completed: 'Mark as Completed',
+      pending: 'Mark as Pending',
+      failed: 'Mark as Failed',
+      refunded: 'Mark as Refunded',
+    };
+    
+    const actionLabel = statusLabels[status] || status;
+    const variant = status === 'failed' || status === 'refunded' ? 'danger' as const : 'primary' as const;
+    
+    await withConfirmation(
+      {
+        title: `${actionLabel} Payment`,
+        message: `Are you sure you want to ${actionLabel.toLowerCase()} this payment?`,
+        confirmText: actionLabel,
+        variant,
+      },
+      async () => {
+        setUpdating(true);
+        try {
+          await updateStatus(id, status);
+          await loadPayment(id);
+          success(`Payment ${status === 'completed' ? 'marked as completed' : `status updated to ${status}`} successfully.`);
+        } catch (error) {
+          console.error('Error updating status:', error);
+          showError('Failed to update payment status. Please try again.');
+        } finally {
+          setUpdating(false);
+        }
       }
-    }
+    );
   };
 
   const handleDelete = async () => {
     if (!id) return;
-    if (window.confirm('Are you sure you want to delete this payment?')) {
-      setDeleteLoading(true);
-      try {
-        await deletePayment(id);
-        navigate('/sales/payments-received');
-      } catch (error) {
-        console.error('Error deleting payment:', error);
-        setDeleteLoading(false);
+    
+    await withConfirmation(
+      {
+        title: 'Delete Payment',
+        message: 'Are you sure you want to delete this payment? This action cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Keep',
+        variant: 'danger',
+      },
+      async () => {
+        await withLoading(
+          async () => {
+            await deletePayment(id);
+            navigate('/sales/payments-received');
+          },
+          'Deleting payment...',
+          'Payment deleted successfully.',
+          'Failed to delete payment. Please try again.'
+        );
       }
-    }
+    );
   };
 
   const handleEdit = () => {
+    console.log('Edit clicked - Payment ID:', id);
     if (id) {
       navigate(`/sales/payments-received/${id}/edit`);
+    } else {
+      showError('Cannot edit: Invalid payment ID');
     }
   };
 
   const handlePrint = () => {
-    window.print();
+    success('Preparing document for printing...');
+    setTimeout(() => window.print(), 500);
   };
 
   const handleDownload = () => {
-    alert('Download functionality will be implemented');
+    warning('Download functionality will be implemented soon.');
   };
 
   // Dropdown items for three-dot menu
@@ -276,14 +331,9 @@ const PaymentReceivedView: React.FC = () => {
     },
     {
       label: 'Delete',
-      icon: deleteLoading ? (
-        <LoadingSpinner size="sm" />
-      ) : (
-        <Trash2 className="h-4 w-4 text-red-500" />
-      ),
+      icon: <Trash2 className="h-4 w-4 text-red-500" />,
       onClick: handleDelete,
       show: payment?.status === 'pending',
-      disabled: deleteLoading,
     },
     {
       label: 'Mark as Completed',
@@ -344,6 +394,16 @@ const PaymentReceivedView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Direct Edit Button for pending payments */}
+            {payment.status === 'pending' && (
+              <button
+                onClick={handleEdit}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+              >
+                <Edit className="h-4 w-4" />
+                Edit Payment
+              </button>
+            )}
             <ThreeDotDropdown
               items={dropdownItems.filter(item => item.show !== false)}
               position="right"
@@ -358,6 +418,12 @@ const PaymentReceivedView: React.FC = () => {
             <StatusBadge status={payment.status} />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {updating && (
+              <span className="text-xs text-gray-500 flex items-center gap-2">
+                <LoadingSpinner size="sm" />
+                Updating status...
+              </span>
+            )}
             <span className="text-xs text-gray-400">
               All actions available in ⋮ menu
             </span>
@@ -473,6 +539,19 @@ const PaymentReceivedView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

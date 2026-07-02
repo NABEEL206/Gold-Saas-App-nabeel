@@ -1,6 +1,6 @@
 // src/pages/purchases/PurchaseOrders/PurchaseOrders.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -25,6 +25,8 @@ import type { PurchaseOrder } from '../../../types/purchaseOrder/PurchaseOrderTy
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import { 
   PURCHASE_ORDER_STATUSES, 
@@ -86,100 +88,127 @@ const PurchaseOrders: React.FC = () => {
     fetchOrders,
   } = usePurchaseOrder({ page: 1, limit: 10 });
 
+  // Use the toast and confirm hook
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [orderToDelete, setOrderToDelete] = useState<PurchaseOrder | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
-  const handleView = (order: PurchaseOrder) => {
+  const handleView = useCallback((order: PurchaseOrder) => {
     navigate(`/purchases/orders/${order.id}`);
-  };
+  }, [navigate]);
 
-  const handleEdit = (order: PurchaseOrder) => {
-    navigate(`/purchases/orders/${order.id}/edit`);
-  };
 
-  const handleDeleteClick = (order: PurchaseOrder) => {
-    setOrderToDelete(order);
-    setShowDeleteModal(true);
-  };
+  // Single delete handler using confirmation modal
 
-  const handleDeleteConfirm = async () => {
-    if (orderToDelete) {
-      try {
-        await deleteOrder(orderToDelete.id);
-        setShowDeleteModal(false);
-        setOrderToDelete(null);
-      } catch (error) {
-        console.error('Error deleting purchase order:', error);
-      }
+  // Bulk delete handler using confirmation modal
+  const handleBulkDeleteAction = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select at least one purchase order to delete.');
+      return;
     }
-  };
 
-  const handleBulkDeleteAction = async () => {
-    if (selectedItems.length === 0) return;
-    if (window.confirm(`Delete ${selectedItems.length} purchase orders?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        for (const id of selectedItems) {
-          await deleteOrder(id);
+    await withConfirmation(
+      {
+        title: 'Delete Purchase Orders',
+        message: `Are you sure you want to delete ${selectedItems.length} purchase order(s)? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          for (const id of selectedItems) {
+            await deleteOrder(id);
+          }
+          success(`${selectedItems.length} purchase order(s) deleted successfully.`);
+          setSelectedItems([]);
+        } catch (error) {
+          console.error('Error deleting purchase orders:', error);
+          showError('Failed to delete purchase orders. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
         }
-        setSelectedItems([]);
-      } finally {
-        setBulkDeleteLoading(false);
       }
-    }
-  };
+    );
+  }, [selectedItems, withConfirmation, deleteOrder, success, showError]);
 
-  const handleExportAction = async (format: 'excel' | 'pdf') => {
+  const handleExportAction = useCallback(async (format: 'excel' | 'pdf') => {
     setExportLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log(`Exporting purchase orders as ${format}`);
+      success(`Purchase orders exported as ${format.toUpperCase()} successfully.`);
+    } catch (error) {
+      showError(`Failed to export as ${format.toUpperCase()}. Please try again.`);
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [success, showError]);
 
-  const handleImportAction = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       setImportLoading(true);
       try {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('Importing files:', files);
         await fetchOrders();
+        success('Purchase orders imported successfully.');
+      } catch (error) {
+        showError('Failed to import purchase orders. Please check the file format.');
       } finally {
         setImportLoading(false);
+        event.target.value = '';
       }
     }
-  };
+  }, [fetchOrders, success, showError]);
 
-  const handleRefreshClick = async () => {
+  const handleRefreshClick = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await fetchOrders();
+      success('Purchase orders list refreshed successfully.');
+    } catch (error) {
+      showError('Failed to refresh purchase orders list. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [fetchOrders, success, showError]);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === orders.length) {
       setSelectedItems([]);
     } else {
       setSelectedItems(orders.map(item => String(item.id)));
     }
-  };
+  }, [selectedItems.length, orders]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  };
+  }, []);
+
+  // Show error toast when error changes
+  React.useEffect(() => {
+    if (error) {
+      showError(error);
+    }
+  }, [error, showError]);
 
   // Format currency in Rupees
   const formatCurrency = (amount: number): string => {
@@ -276,15 +305,6 @@ const PurchaseOrders: React.FC = () => {
     );
   }
 
-  // Show refresh loading spinner
-  if (refreshLoading) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Refreshing purchase orders..." />
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
@@ -299,7 +319,11 @@ const PurchaseOrders: React.FC = () => {
             disabled={refreshLoading}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshLoading ? 'animate-spin' : ''}`} />
+            {refreshLoading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
             Refresh
           </button>
           <button
@@ -412,44 +436,23 @@ const PurchaseOrders: React.FC = () => {
           currentPage: pagination.page,
           totalPages: pagination.totalPages,
           totalItems: pagination.total,
-          startIndex: (pagination.page - 1) * pagination.limit,
-          endIndex: pagination.page * pagination.limit,
           onPageChange: changePage,
           itemsPerPage: pagination.limit,
         }}
       />
 
-      {/* Delete Modal */}
-      {showDeleteModal && orderToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-full">
-                <Trash className="h-6 w-6 text-red-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">Delete Purchase Order</h2>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete purchase order "<span className="font-medium">{orderToDelete.poNumber}</span>"? 
-              This action cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirmation Modal - Replaces the custom delete modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

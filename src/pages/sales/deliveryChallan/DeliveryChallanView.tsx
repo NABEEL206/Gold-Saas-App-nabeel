@@ -23,6 +23,8 @@ import {
 import { useDeliveryChallan } from '../../../hooks/DeliveryChallan/useDeliveryChallan';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { DeliveryChallan } from '../../../types/deliveryChallan/DeliveryChallanTypes';
 
 // Status Badge
@@ -96,11 +98,27 @@ const DeliveryChallanView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [challan, setChallan] = useState<DeliveryChallan | null>(null);
   const [updating, setUpdating] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Use the toast and confirm hook
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
 
   useEffect(() => {
     if (id) {
       loadChallan(id);
+    } else {
+      showError('Invalid delivery challan ID');
+      navigate('/sales/delivery-challan');
     }
   }, [id]);
 
@@ -127,6 +145,7 @@ const DeliveryChallanView: React.FC = () => {
       });
     } catch (error) {
       console.error('Error loading delivery challan:', error);
+      showError('Failed to load delivery challan. Please try again.');
       setChallan(null);
     } finally {
       setLoading(false);
@@ -135,48 +154,84 @@ const DeliveryChallanView: React.FC = () => {
 
   const handleStatusUpdate = async (status: DeliveryChallan['status']) => {
     if (!id) return;
-    if (window.confirm(`Mark this delivery challan as ${status}?`)) {
-      setUpdating(true);
-      try {
-        await updateStatus(id, status);
-        await loadChallan(id);
-      } catch (error) {
-        console.error('Error updating status:', error);
-      } finally {
-        setUpdating(false);
+    
+    const statusLabels: Record<string, string> = {
+      sent: 'Send',
+      delivered: 'Mark as Delivered',
+      cancelled: 'Cancel',
+      draft: 'Revert to Draft',
+    };
+    
+    const actionLabel = statusLabels[status] || status;
+    const variant = status === 'cancelled' ? 'danger' as const : status === 'delivered' ? 'primary' as const : 'warning' as const;
+    
+    await withConfirmation(
+      {
+        title: `${actionLabel} Challan`,
+        message: `Are you sure you want to ${actionLabel.toLowerCase()} this delivery challan?`,
+        confirmText: actionLabel,
+        variant,
+      },
+      async () => {
+        setUpdating(true);
+        try {
+          await updateStatus(id, status);
+          await loadChallan(id);
+          success(`Delivery challan ${status === 'cancelled' ? 'cancelled' : 'updated'} successfully.`);
+        } catch (err) {
+          showError(`Failed to update delivery challan status. Please try again.`);
+        } finally {
+          setUpdating(false);
+        }
       }
-    }
+    );
   };
 
   const handleDelete = async () => {
     if (!id) return;
-    if (window.confirm('Are you sure you want to delete this delivery challan?')) {
-      setDeleteLoading(true);
-      try {
-        await deleteChallan(id);
-        navigate('/sales/delivery-challan');
-      } catch (error) {
-        console.error('Error deleting challan:', error);
-        setDeleteLoading(false);
+    
+    await withConfirmation(
+      {
+        title: 'Delete Delivery Challan',
+        message: 'Are you sure you want to delete this delivery challan? This action cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Keep',
+        variant: 'danger',
+      },
+      async () => {
+        await withLoading(
+          async () => {
+            await deleteChallan(id);
+            navigate('/sales/delivery-challan');
+          },
+          'Deleting delivery challan...',
+          'Delivery challan deleted successfully.',
+          'Failed to delete delivery challan. Please try again.'
+        );
       }
-    }
+    );
   };
 
+  // Fixed: Direct navigation to edit page
   const handleEdit = () => {
+    console.log('Edit clicked - Challan ID:', id); // Debug log
     if (id) {
       navigate(`/sales/delivery-challan/${id}/edit`);
+    } else {
+      showError('Cannot edit: Invalid challan ID');
     }
   };
 
   const handlePrint = () => {
-    window.print();
+    success('Preparing document for printing...');
+    setTimeout(() => window.print(), 500);
   };
 
   const handleDownload = () => {
-    alert('Download functionality will be implemented');
+    warning('Download functionality will be implemented soon.');
   };
 
-  // Dropdown items for three-dot menu
+  // Dropdown items with proper configuration
   const dropdownItems = [
     {
       label: 'Print',
@@ -196,14 +251,9 @@ const DeliveryChallanView: React.FC = () => {
     },
     {
       label: 'Delete',
-      icon: deleteLoading ? (
-        <LoadingSpinner size="sm" />
-      ) : (
-        <Trash2 className="h-4 w-4 text-red-500" />
-      ),
+      icon: <Trash2 className="h-4 w-4 text-red-500" />,
       onClick: handleDelete,
       show: challan?.status === 'draft',
-      disabled: deleteLoading,
     },
     {
       label: 'Send Challan',
@@ -271,6 +321,16 @@ const DeliveryChallanView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Direct Edit Button for easier access */}
+            {challan.status === 'draft' && (
+              <button
+                onClick={handleEdit}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+              >
+                <Edit className="h-4 w-4" />
+                Edit Challan
+              </button>
+            )}
             <ThreeDotDropdown
               items={dropdownItems.filter(item => item.show !== false)}
               position="right"
@@ -285,6 +345,12 @@ const DeliveryChallanView: React.FC = () => {
             <StatusBadge status={challan.status} />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {updating && (
+              <span className="text-xs text-gray-500 flex items-center gap-2">
+                <LoadingSpinner size="sm" />
+                Updating status...
+              </span>
+            )}
             <span className="text-xs text-gray-400">
               All actions available in ⋮ menu
             </span>
@@ -486,6 +552,19 @@ const DeliveryChallanView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

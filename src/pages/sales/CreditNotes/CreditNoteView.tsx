@@ -23,6 +23,8 @@ import {
 import { useCreditNote } from '../../../hooks/CreditNote/useCreditNote';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { CreditNote } from '../../../types/creditNote/CreditNoteTypes';
 
 // Status Badge
@@ -226,11 +228,27 @@ const CreditNoteView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [creditNote, setCreditNote] = useState<CreditNote | null>(null);
   const [updating, setUpdating] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Use the toast and confirm hook
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
 
   useEffect(() => {
     if (id) {
       loadCreditNote(id);
+    } else {
+      showError('Invalid credit note ID');
+      navigate('/sales/credit-notes');
     }
   }, [id]);
 
@@ -246,6 +264,7 @@ const CreditNoteView: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading credit note:', error);
+      showError('Failed to load credit note. Loading demo data.');
       const dummyData = generateDummyCreditNote(creditNoteId);
       setCreditNote(dummyData);
     } finally {
@@ -255,45 +274,81 @@ const CreditNoteView: React.FC = () => {
 
   const handleStatusUpdate = async (status: CreditNote['status']) => {
     if (!id) return;
-    if (window.confirm(`Mark this credit note as ${status}?`)) {
-      setUpdating(true);
-      try {
-        await updateStatus(id, status);
-        await loadCreditNote(id);
-      } catch (error) {
-        console.error('Error updating status:', error);
-      } finally {
-        setUpdating(false);
+    
+    const statusLabels: Record<string, string> = {
+      draft: 'Revert to Draft',
+      sent: 'Send',
+      approved: 'Approve',
+      rejected: 'Reject',
+    };
+    
+    const actionLabel = statusLabels[status] || status;
+    const variant = status === 'rejected' ? 'danger' as const : status === 'approved' ? 'primary' as const : 'warning' as const;
+    
+    await withConfirmation(
+      {
+        title: `${actionLabel} Credit Note`,
+        message: `Are you sure you want to ${actionLabel.toLowerCase()} this credit note?`,
+        confirmText: actionLabel,
+        variant,
+      },
+      async () => {
+        setUpdating(true);
+        try {
+          await updateStatus(id, status);
+          await loadCreditNote(id);
+          success(`Credit note ${status === 'approved' ? 'approved' : `status updated to ${status}`} successfully.`);
+        } catch (error) {
+          console.error('Error updating status:', error);
+          showError('Failed to update credit note status. Please try again.');
+        } finally {
+          setUpdating(false);
+        }
       }
-    }
+    );
   };
 
   const handleDelete = async () => {
     if (!id) return;
-    if (window.confirm('Are you sure you want to delete this credit note?')) {
-      setDeleteLoading(true);
-      try {
-        await deleteCreditNote(id);
-        navigate('/sales/credit-notes');
-      } catch (error) {
-        console.error('Error deleting credit note:', error);
-        setDeleteLoading(false);
+    
+    await withConfirmation(
+      {
+        title: 'Delete Credit Note',
+        message: 'Are you sure you want to delete this credit note? This action cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Keep',
+        variant: 'danger',
+      },
+      async () => {
+        await withLoading(
+          async () => {
+            await deleteCreditNote(id);
+            navigate('/sales/credit-notes');
+          },
+          'Deleting credit note...',
+          'Credit note deleted successfully.',
+          'Failed to delete credit note. Please try again.'
+        );
       }
-    }
+    );
   };
 
   const handleEdit = () => {
+    console.log('Edit clicked - Credit Note ID:', id);
     if (id) {
       navigate(`/sales/credit-notes/${id}/edit`);
+    } else {
+      showError('Cannot edit: Invalid credit note ID');
     }
   };
 
   const handlePrint = () => {
-    window.print();
+    success('Preparing document for printing...');
+    setTimeout(() => window.print(), 500);
   };
 
   const handleDownload = () => {
-    alert('Download functionality will be implemented');
+    warning('Download functionality will be implemented soon.');
   };
 
   // Dropdown items for three-dot menu
@@ -316,14 +371,9 @@ const CreditNoteView: React.FC = () => {
     },
     {
       label: 'Delete',
-      icon: deleteLoading ? (
-        <LoadingSpinner size="sm" />
-      ) : (
-        <Trash2 className="h-4 w-4 text-red-500" />
-      ),
+      icon: <Trash2 className="h-4 w-4 text-red-500" />,
       onClick: handleDelete,
       show: creditNote?.status === 'draft',
-      disabled: deleteLoading,
     },
     {
       label: 'Send Credit Note',
@@ -391,6 +441,16 @@ const CreditNoteView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Direct Edit Button for draft credit notes */}
+            {creditNote.status === 'draft' && (
+              <button
+                onClick={handleEdit}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+              >
+                <Edit className="h-4 w-4" />
+                Edit Credit Note
+              </button>
+            )}
             <ThreeDotDropdown
               items={dropdownItems.filter(item => item.show !== false)}
               position="right"
@@ -405,6 +465,12 @@ const CreditNoteView: React.FC = () => {
             <StatusBadge status={creditNote.status} />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {updating && (
+              <span className="text-xs text-gray-500 flex items-center gap-2">
+                <LoadingSpinner size="sm" />
+                Updating status...
+              </span>
+            )}
             <span className="text-xs text-gray-400">
               All actions available in ⋮ menu
             </span>
@@ -550,6 +616,19 @@ const CreditNoteView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

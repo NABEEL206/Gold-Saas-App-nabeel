@@ -1,6 +1,6 @@
 // src/pages/Customer/CustomerCreate.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -17,10 +17,23 @@ import {
 import { useCustomers } from '../../../hooks/customer/useCustomers';
 import type { CustomerFormData } from '../../../types/customer/CustomerTypes';
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 
 export const CustomerCreate: React.FC = () => {
   const navigate = useNavigate();
   const { createCustomer, loading } = useCustomers();
+  const {
+    success,
+    error: showError,
+    confirm,
+    withConfirmation,
+    isOpen,
+    options,
+    isLoading,
+    handleConfirm,
+    handleCancel,
+  } = useToastAndConfirm();
 
   const [formData, setFormData] = useState<CustomerFormData>({
     salutation: '',
@@ -82,12 +95,12 @@ export const CustomerCreate: React.FC = () => {
     }
   }, [formData.firstName, formData.lastName]);
 
-  const validateForm = (): boolean => {
+  const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.lastName) newErrors.lastName = 'Last Name is required';
-    if (!formData.displayName) newErrors.displayName = 'Display Name is required';
-    if (!formData.mobileNumber) newErrors.mobileNumber = 'Mobile Number is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last Name is required';
+    if (!formData.displayName.trim()) newErrors.displayName = 'Display Name is required';
+    if (!formData.mobileNumber.trim()) newErrors.mobileNumber = 'Mobile Number is required';
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
@@ -100,39 +113,80 @@ export const CustomerCreate: React.FC = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    
+  const saveCustomer = useCallback(async () => {
     setSaving(true);
     try {
-      await createCustomer(formData);
-      navigate('/customers');
-    } catch (error) {
+      const result = await createCustomer(formData);
+      if (result.success) {
+        success('Customer created successfully!');
+        navigate('/customers', { replace: true });
+      } else {
+        showError(result.error || 'Failed to create customer. Please try again.');
+        setErrors({ submit: result.error || 'Failed to create customer. Please try again.' });
+      }
+    } catch (err) {
+      showError('Failed to create customer. Please try again.');
       setErrors({ submit: 'Failed to create customer. Please try again.' });
     } finally {
       setSaving(false);
     }
-  };
+  }, [formData, createCustomer, success, showError, navigate]);
 
-  // Handle salutation selection
-  const handleSalutationSelect = (option: DropdownOption) => {
-    setFormData({ ...formData, salutation: option.value as CustomerFormData['salutation'] });
-  };
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (saving) return;
+    
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return;
+    }
+    
+    await withConfirmation(
+      {
+        title: 'Create Customer',
+        message: 'Are you sure you want to create this customer?',
+        confirmText: 'Create Customer',
+        variant: 'primary',
+      },
+      saveCustomer,
+      undefined,
+      'Failed to create customer. Please try again.'
+    );
+  }, [saving, validateForm, showError, withConfirmation, saveCustomer]);
 
-  // Handle customer type selection
-  const handleCustomerTypeSelect = (option: DropdownOption) => {
-    setFormData({ ...formData, customerType: option.value as CustomerFormData['customerType'] });
-  };
+  const handleCancelClick = useCallback(async () => {
+    const confirmed = await confirm({
+      title: 'Discard Changes',
+      message: 'Are you sure you want to discard all changes? This action cannot be undone.',
+      confirmText: 'Discard',
+      cancelText: 'Keep Editing',
+      variant: 'warning',
+    });
+    
+    if (confirmed) {
+      navigate('/customers', { replace: true });
+    }
+  }, [confirm, navigate]);
 
-  // Handle country selection
-  const handleCountrySelect = (option: DropdownOption) => {
-    setFormData({ ...formData, country: option.value as CustomerFormData['country'] });
-  };
+  const handleSalutationSelect = useCallback((option: DropdownOption) => {
+    setFormData(prev => ({ ...prev, salutation: option.value as CustomerFormData['salutation'] }));
+  }, []);
 
-  // Get selected values
+  const handleCustomerTypeSelect = useCallback((option: DropdownOption) => {
+    setFormData(prev => ({ ...prev, customerType: option.value as CustomerFormData['customerType'] }));
+  }, []);
+
+  const handleCountrySelect = useCallback((option: DropdownOption) => {
+    setFormData(prev => ({ ...prev, country: option.value as CustomerFormData['country'] }));
+  }, []);
+
+  const handleInputChange = useCallback((field: keyof CustomerFormData, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
   const getSelectedSalutation = (): string | null => {
     return formData.salutation || null;
   };
@@ -151,7 +205,7 @@ export const CustomerCreate: React.FC = () => {
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => navigate('/customers')}
+            onClick={handleCancelClick}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="h-5 w-5 text-gray-600" />
@@ -204,7 +258,7 @@ export const CustomerCreate: React.FC = () => {
                   <input
                     type="text"
                     value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Enter first name"
                   />
@@ -216,7 +270,7 @@ export const CustomerCreate: React.FC = () => {
                   <input
                     type="text"
                     value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.lastName ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -260,7 +314,7 @@ export const CustomerCreate: React.FC = () => {
                   <input
                     type="text"
                     value={formData.displayName}
-                    onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                    onChange={(e) => handleInputChange('displayName', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.displayName ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -288,7 +342,7 @@ export const CustomerCreate: React.FC = () => {
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.email ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -306,7 +360,7 @@ export const CustomerCreate: React.FC = () => {
                   <input
                     type="text"
                     value={formData.workPhone}
-                    onChange={(e) => setFormData({ ...formData, workPhone: e.target.value })}
+                    onChange={(e) => handleInputChange('workPhone', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="022-1234567"
                   />
@@ -319,7 +373,7 @@ export const CustomerCreate: React.FC = () => {
                   <input
                     type="text"
                     value={formData.mobileNumber}
-                    onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
+                    onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.mobileNumber ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -345,7 +399,7 @@ export const CustomerCreate: React.FC = () => {
                   </label>
                   <textarea
                     value={formData.billingAddress}
-                    onChange={(e) => setFormData({ ...formData, billingAddress: e.target.value })}
+                    onChange={(e) => handleInputChange('billingAddress', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     rows={2}
                     placeholder="Enter billing address"
@@ -359,7 +413,7 @@ export const CustomerCreate: React.FC = () => {
                     <input
                       type="text"
                       value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Enter city"
                     />
@@ -371,7 +425,7 @@ export const CustomerCreate: React.FC = () => {
                     <input
                       type="text"
                       value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      onChange={(e) => handleInputChange('state', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Enter state"
                     />
@@ -383,7 +437,7 @@ export const CustomerCreate: React.FC = () => {
                     <input
                       type="text"
                       value={formData.pincode}
-                      onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                      onChange={(e) => handleInputChange('pincode', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Enter pincode"
                     />
@@ -423,7 +477,7 @@ export const CustomerCreate: React.FC = () => {
                   <input
                     type="number"
                     value={formData.openingBalance}
-                    onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => handleInputChange('openingBalance', parseFloat(e.target.value) || 0)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="0.00"
                   />
@@ -435,7 +489,7 @@ export const CustomerCreate: React.FC = () => {
                   <input
                     type="number"
                     value={formData.creditLimit}
-                    onChange={(e) => setFormData({ ...formData, creditLimit: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => handleInputChange('creditLimit', parseFloat(e.target.value) || 0)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="0.00"
                   />
@@ -447,7 +501,7 @@ export const CustomerCreate: React.FC = () => {
                   <input
                     type="text"
                     value={formData.gstNumber}
-                    onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value.toUpperCase() })}
+                    onChange={(e) => handleInputChange('gstNumber', e.target.value.toUpperCase())}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.gstNumber ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -464,7 +518,7 @@ export const CustomerCreate: React.FC = () => {
                   <input
                     type="text"
                     value={formData.panNumber}
-                    onChange={(e) => setFormData({ ...formData, panNumber: e.target.value.toUpperCase() })}
+                    onChange={(e) => handleInputChange('panNumber', e.target.value.toUpperCase())}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.panNumber ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -485,7 +539,7 @@ export const CustomerCreate: React.FC = () => {
               </h2>
               <textarea
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) => handleInputChange('notes', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 rows={3}
                 placeholder="Add any additional notes about the customer..."
@@ -497,7 +551,7 @@ export const CustomerCreate: React.FC = () => {
           <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
             <button
               type="button"
-              onClick={() => navigate('/customers')}
+              onClick={handleCancelClick}
               className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cancel
@@ -522,6 +576,19 @@ export const CustomerCreate: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title={options?.title}
+        message={options?.message || ''}
+        confirmText={options?.confirmText}
+        cancelText={options?.cancelText}
+        isLoading={isLoading}
+        variant={options?.variant}
+      />
     </div>
   );
 };

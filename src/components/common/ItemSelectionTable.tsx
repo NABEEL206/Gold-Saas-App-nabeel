@@ -1,53 +1,35 @@
 // src/components/common/ItemSelectionTable.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import {
-  Plus,
-  Trash2,
-  Search,
-  ChevronDown,
-  AlertCircle,
+  Plus, Trash2, ChevronDown, AlertCircle,
+  X, ImageOff,
 } from 'lucide-react';
+import SearchableDropdown, { type DropdownOption } from './Searchabledropdown';
 
-// Tax rate options
+// ─── Static options ─────────────────────────────────────────────────────────
 export const TAX_RATES = [
-  { value: 0, label: '0%' },
-  { value: 3, label: '3%' },
-  { value: 5, label: '5%' },
-  { value: 12, label: '12%' },
-  { value: 18, label: '18%' },
-  { value: 28, label: '28%' },
+  { value: 0,  label: '0%'  }, { value: 3,  label: '3%'  },
+  { value: 5,  label: '5%'  }, { value: 12, label: '12%' },
+  { value: 18, label: '18%' }, { value: 28, label: '28%' },
 ];
-
-// Purity options for jewelry
 export const PURITY_OPTIONS = [
-  { value: '24K', label: '24K' },
-  { value: '22K', label: '22K' },
-  { value: '18K', label: '18K' },
-  { value: '14K', label: '14K' },
+  { value: '24K', label: '24K' }, { value: '22K', label: '22K' },
+  { value: '18K', label: '18K' }, { value: '14K', label: '14K' },
   { value: '10K', label: '10K' },
 ];
-
-// Unit options
 export const UNIT_OPTIONS = [
-  { value: 'Pcs', label: 'Pcs' },
-  { value: 'Gm', label: 'Gm' },
-  { value: 'Kg', label: 'Kg' },
-  { value: 'Tola', label: 'Tola' },
-  { value: 'Gram', label: 'Gram' },
-  { value: 'Mg', label: 'Mg' },
-  { value: 'Carat', label: 'Carat' },
-  { value: 'Ratti', label: 'Ratti' },
-  { value: 'Mtr', label: 'Mtr' },
-  { value: 'Set', label: 'Set' },
+  { value: 'Pcs',  label: 'Pcs'  }, { value: 'Gm',   label: 'Gm'   },
+  { value: 'Kg',   label: 'Kg'   }, { value: 'Tola', label: 'Tola' },
+  { value: 'Gram', label: 'Gram' }, { value: 'Mg',   label: 'Mg'   },
+  { value: 'Carat',label: 'Carat'}, { value: 'Set',  label: 'Set'  },
   { value: 'Pair', label: 'Pair' },
 ];
-
-// Discount type options
 export const DISCOUNT_TYPES = [
   { value: 'percentage', label: '%' },
-  { value: 'fixed', label: '₹' },
+  { value: 'fixed',      label: '₹' },
 ];
 
+// ─── Types ───────────────────────────────────────────────────────────────────
 export interface ItemSelectionItem {
   id?: string;
   productId: string;
@@ -67,6 +49,11 @@ export interface ItemSelectionItem {
   netWt?: number;
   makingCharges?: number;
   stoneCharges?: number;
+  sku?: string;
+  stock?: number;
+  category?: string;
+  weight?: number;
+  wastagePercentage?: number;
   [key: string]: any;
 }
 
@@ -77,7 +64,11 @@ export interface ItemSelectionTableProps {
   onItemRemove?: (index: number) => void;
   onItemUpdate?: (index: number, field: string, value: any) => void;
   errors?: Record<string, string>;
-  productSuggestions?: Array<{ id: string; name: string; code?: string; category?: string; purity?: string; price?: number; description?: string; sku?: string; stock?: number; unit?: string }>;
+  productSuggestions?: Array<{
+    id: string; name: string; code?: string; category?: string;
+    purity?: string; price?: number; description?: string;
+    sku?: string; stock?: number; unit?: string;
+  }>;
   productSearch?: string;
   onProductSearchChange?: (value: string) => void;
   onProductSelect?: (product: any) => void;
@@ -97,20 +88,11 @@ export interface ItemSelectionTableProps {
   title?: string;
   className?: string;
   columns?: {
-    item?: boolean;
-    purity?: boolean;
-    description?: boolean;
-    grossWt?: boolean;
-    stoneWt?: boolean;
-    netWt?: boolean;
-    qty?: boolean;
-    unit?: boolean;
-    rate?: boolean;
-    making?: boolean;
-    discount?: boolean;
-    tax?: boolean;
-    amount?: boolean;
-    action?: boolean;
+    item?: boolean; purity?: boolean; description?: boolean;
+    grossWt?: boolean; stoneWt?: boolean; netWt?: boolean;
+    qty?: boolean; unit?: boolean; rate?: boolean;
+    making?: boolean; discount?: boolean; tax?: boolean;
+    amount?: boolean; action?: boolean;
   };
   showSubtotalSection?: boolean;
   additionalCharges?: { label: string; value: number }[];
@@ -122,6 +104,122 @@ export interface ItemSelectionTableProps {
   addButtonAtBottom?: boolean;
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function recalc(it: ItemSelectionItem): ItemSelectionItem {
+  const qty   = Number(it.quantity)      || 0;
+  const rate  = Number(it.rate)          || 0;
+  const mc    = Number(it.makingCharges) || 0;
+  const sc    = Number(it.stoneCharges)  || 0;
+  const gross = qty * rate + mc + sc;
+  const d     = Number(it.discount) || 0;
+  const disc  = it.discountType === 'fixed' ? d : (gross * d) / 100;
+  const after = Math.max(gross - disc, 0);
+  const tax   = (after * (Number(it.taxRate) || 0)) / 100;
+  return { ...it, taxAmount: tax, total: after + tax };
+}
+
+function fmt(n: number) {
+  return (Number.isFinite(n) ? n : 0).toLocaleString('en-IN', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
+}
+
+function toStr(v: number | string | undefined): string {
+  if (v === undefined || v === null || v === 0 || v === '') return '';
+  return String(v);
+}
+
+// ─── Shared input styles - SUPER COMPACT ─────────────────────────────────────
+const BASE_INPUT =
+  'h-7 w-full min-w-[60px] rounded border border-gray-200 bg-white px-2 text-xs ' +
+  'text-gray-900 placeholder:text-gray-400 transition-all duration-200 ' +
+  'focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100/60 ' +
+  'disabled:bg-gray-50 disabled:text-gray-400';
+
+const ERR_INPUT = 'border-red-400 focus:border-red-500 focus:ring-red-100/60';
+
+const CELL = 'px-2 py-1 align-top';
+
+// ─── Field components ──────────────────────────────────────────────────────
+
+/** Numeric text field - super compact */
+const TF: React.FC<{
+  value: number | string | undefined;
+  onChange: (raw: string) => void;
+  placeholder?: string;
+  align?: 'left' | 'right';
+  error?: boolean;
+  disabled?: boolean;
+  className?: string;
+  step?: string;
+}> = ({ value, onChange, placeholder = '0', align = 'right', error, disabled, className = '', step = 'any' }) => (
+  <input
+    type="number"
+    step={step}
+    value={value === 0 || value === undefined ? '' : String(value)}
+    disabled={disabled}
+    placeholder={placeholder}
+    onChange={(e) => onChange(e.target.value)}
+    className={`${BASE_INPUT} ${error ? ERR_INPUT : ''} ${align === 'right' ? 'text-right tabular-nums' : ''} ${className}`}
+  />
+);
+
+/** Select with chevron - super compact */
+const SF: React.FC<{
+  value: string | number | undefined;
+  onChange: (v: string) => void;
+  options: Array<{ value: string | number; label: string }>;
+  error?: boolean;
+  className?: string;
+}> = ({ value, onChange, options, error, className = '' }) => (
+  <div className={`relative ${className}`}>
+    <select
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value)}
+      className={`${BASE_INPUT} appearance-none pr-6 cursor-pointer ${error ? ERR_INPUT : ''}`}
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
+    <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+  </div>
+);
+
+/** Discount dropdown with type selector - super compact */
+const DiscountInput: React.FC<{
+  value: number | string | undefined;
+  discountType: 'percentage' | 'fixed';
+  onValueChange: (raw: string) => void;
+  onTypeChange: (v: 'percentage' | 'fixed') => void;
+  error?: boolean;
+}> = ({ value, discountType, onValueChange, onTypeChange, error }) => (
+  <div className="flex items-center gap-1">
+    <div className="relative flex-1 min-w-[60px]">
+      <input
+        type="number"
+        step="any"
+        value={value === 0 || value === undefined ? '' : String(value)}
+        placeholder="0"
+        onChange={(e) => onValueChange(e.target.value)}
+        className={`${BASE_INPUT} ${error ? ERR_INPUT : ''} text-right tabular-nums pr-10`}
+      />
+      <div className="absolute right-0.5 top-1/2 -translate-y-1/2">
+        <select
+          value={discountType}
+          onChange={(e) => onTypeChange(e.target.value as 'percentage' | 'fixed')}
+          className="h-5 rounded border-0 bg-transparent px-1 text-[10px] font-medium text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-100"
+        >
+          {DISCOUNT_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  </div>
+);
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
   items,
   onItemsChange,
@@ -130,819 +228,430 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
   onItemUpdate,
   errors = {},
   productSuggestions = [],
-  productSearch: externalProductSearch = '',
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  productSearch: _ps = '',
   onProductSearchChange,
   onProductSelect,
   onAddCustomItem,
   showJewelryFields = false,
-  showDescription = false,
+  showDescription = true,
   showUnit = true,
   showDiscount = true,
   showTax = true,
   showMakingCharges = false,
   showWeightFields = false,
-  showPurity = true,
+  showPurity = false,
   simpleMode = false,
   loading = false,
-  searchPlaceholder = 'Search items...',
+  searchPlaceholder = 'Type or click to select an item.',
   addButtonLabel = 'Add Item',
-  title = 'Items',
+  title = 'Item Table',
   className = '',
-  columns: customColumns,
+  columns,
   showSubtotalSection = true,
   additionalCharges = [],
   headerDiscount = 0,
   headerDiscountType = 'percentage',
   showTotalSection = true,
   unitOptions = UNIT_OPTIONS,
-  autoAddDefaultRow = true,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  autoAddDefaultRow: _aar = true,
   addButtonAtBottom = true,
 }) => {
-  const [localSearch, setLocalSearch] = useState(externalProductSearch || '');
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const jewelry = showJewelryFields && !simpleMode;
+  const on = (k: keyof NonNullable<typeof columns>, fb: boolean) =>
+    columns?.[k] !== undefined ? !!columns[k] : fb;
 
-  // Auto add default row when items is empty
-  useEffect(() => {
-    if (autoAddDefaultRow && !hasInitialized && items.length === 0 && !loading) {
-      const defaultItem: ItemSelectionItem = {
-        productId: `default_${Date.now()}`,
-        productName: '',
-        description: '',
-        quantity: 1,
-        unit: 'Pcs',
-        rate: 0,
-        discount: 0,
-        discountType: 'percentage',
-        taxRate: 18,
-        taxAmount: 0,
-        total: 0,
-        purity: '22K',
-      };
-      
-      if (showJewelryFields) {
-        defaultItem.grossWt = 0;
-        defaultItem.stoneWt = 0;
-        defaultItem.netWt = 0;
-        defaultItem.makingCharges = 0;
-        defaultItem.stoneCharges = 0;
-      }
-      
-      onItemsChange([defaultItem]);
-      setHasInitialized(true);
-    }
-  }, [autoAddDefaultRow, items.length, loading, showJewelryFields, onItemsChange, hasInitialized]);
-
-  // Reset initialization when items become empty
-  useEffect(() => {
-    if (items.length === 0) {
-      setHasInitialized(false);
-    }
-  }, [items.length]);
-
-  // Sync local search with external prop
-  useEffect(() => {
-    if (externalProductSearch !== localSearch) {
-      setLocalSearch(externalProductSearch);
-    }
-  }, [externalProductSearch]);
-
-  const calculateItemBreakdown = (item: ItemSelectionItem) => {
-    let baseAmount = 0;
-    
-    if (showJewelryFields && item.netWt !== undefined) {
-      baseAmount = (item.netWt || 0) * (item.rate || 0) + (item.makingCharges || 0);
-    } else {
-      baseAmount = (item.quantity || 1) * (item.rate || 0);
-    }
-    
-    let discountAmount = 0;
-    if (item.discountType === 'fixed') {
-      discountAmount = item.discount || 0;
-    } else {
-      discountAmount = baseAmount * ((item.discount || 0) / 100);
-    }
-    
-    const afterDiscount = baseAmount - discountAmount;
-    const taxAmount = afterDiscount * ((item.taxRate || 0) / 100);
-    const total = afterDiscount + taxAmount;
-    
-    return { baseAmount, discountAmount, taxAmount, total };
+  const show = {
+    item:    on('item',        true),
+    purity:  on('purity',      jewelry && showPurity),
+    desc:    on('description', showDescription),
+    grossWt: on('grossWt',     jewelry && showWeightFields),
+    stoneWt: on('stoneWt',     jewelry && showWeightFields),
+    netWt:   on('netWt',       jewelry && showWeightFields),
+    qty:     on('qty',         true),
+    unit:    on('unit',        showUnit),
+    rate:    on('rate',        true),
+    making:  on('making',      jewelry && showMakingCharges),
+    disc:    on('discount',    showDiscount),
+    tax:     on('tax',         showTax),
+    amount:  on('amount',      true),
+    action:  on('action',      true),
   };
 
-  const calculateItemTotal = (item: ItemSelectionItem): number => {
-    const breakdown = calculateItemBreakdown(item);
-    return breakdown.total;
+  // Convert product suggestions to SearchableDropdown options
+  const productOptions: DropdownOption[] = productSuggestions.map((p) => ({
+    value: p.id,
+    label: p.name,
+    group: p.category,
+  }));
+
+  const updateItem = (idx: number, field: string, raw: string | number) => {
+    const num = typeof raw === 'string'
+      ? (raw === '' ? 0 : Number(raw))
+      : raw;
+    const updated = recalc({ ...items[idx], [field]: num });
+    if (onItemUpdate) { onItemUpdate(idx, field, num); return; }
+    onItemsChange(items.map((it, i) => (i === idx ? updated : it)));
   };
 
-  const handleItemChange = (index: number, field: string, value: any) => {
-    const updatedItems = [...items];
-    const item = { ...updatedItems[index] };
-    
-    (item as any)[field] = value;
-    
-    if (showJewelryFields) {
-      if (field === 'grossWt' || field === 'stoneWt') {
-        const grossWt = field === 'grossWt' ? parseFloat(value) || 0 : item.grossWt || 0;
-        const stoneWt = field === 'stoneWt' ? parseFloat(value) || 0 : item.stoneWt || 0;
-        item.netWt = grossWt - stoneWt;
-      }
-    }
-    
-    if (!item.discountType) {
-      item.discountType = 'percentage';
-    }
-    
-    item.taxAmount = 0;
-    item.total = calculateItemTotal(item);
-    
-    updatedItems[index] = item;
-    onItemsChange(updatedItems);
-    
-    if (onItemUpdate) {
-      onItemUpdate(index, field, value);
-    }
+  const removeItem = (idx: number) => {
+    if (onItemRemove) { onItemRemove(idx); return; }
+    onItemsChange(items.filter((_, i) => i !== idx));
   };
 
-  const handleProductSelect = (product: any, index: number) => {
-    const newItem: ItemSelectionItem = {
-      productId: product.id,
-      productName: product.name,
-      description: product.description || '',
-      quantity: 1,
-      unit: product.unit || 'Pcs',
-      rate: product.price || 0,
-      discount: 0,
-      discountType: 'percentage',
-      taxRate: 18,
-      taxAmount: 0,
-      total: 0,
-      purity: product.purity || '22K',
+  const updateAmount = (idx: number, raw: string) => {
+    const num = raw === '' ? 0 : Number(raw);
+    const total = isNaN(num) ? 0 : num;
+    if (onItemUpdate) { onItemUpdate(idx, 'total', total); return; }
+    onItemsChange(items.map((it, i) => (i === idx ? { ...it, total } : it)));
+  };
+
+  const addItem = () => {
+    if (onAddCustomItem) { onAddCustomItem(); return; }
+    const blank: ItemSelectionItem = {
+      productId: `new_${Date.now()}`, productName: '',
+      quantity: 1, unit: unitOptions[0]?.value ?? 'Pcs',
+      rate: 0, discount: 0, discountType: 'percentage',
+      taxRate: 0, taxAmount: 0, total: 0,
     };
-    
-    if (showJewelryFields) {
-      newItem.grossWt = 0;
-      newItem.stoneWt = 0;
-      newItem.netWt = 0;
-      newItem.makingCharges = 0;
-      newItem.stoneCharges = 0;
-    }
-    
-    newItem.total = calculateItemTotal(newItem);
-    
-    const updatedItems = [...items];
-    updatedItems[index] = newItem;
-    onItemsChange(updatedItems);
-    
-    if (onItemAdd) {
-      onItemAdd(newItem);
-    }
-    if (onProductSelect) {
-      onProductSelect(product);
-    }
-    
-    if (onProductSearchChange) {
-      onProductSearchChange('');
-    }
-    
-    setLocalSearch('');
+    if (onItemAdd) onItemAdd(blank);
+    onItemsChange([...items, blank]);
   };
 
-  const handleAddCustomItem = () => {
-    if (onAddCustomItem) {
-      onAddCustomItem();
-      return;
+  // Keep exactly one blank row always available at the bottom
+  const hasTrailingEmptyRow =
+    items.length > 0 && !items[items.length - 1].productName;
+
+  React.useEffect(() => {
+    if (loading) return;
+    if (items.length === 0 || !hasTrailingEmptyRow) {
+      addItem();
     }
-    
-    const newItem: ItemSelectionItem = {
-      productId: `custom_${Date.now()}`,
-      productName: '',
-      description: '',
-      quantity: 1,
-      unit: 'Pcs',
-      rate: 0,
-      discount: 0,
-      discountType: 'percentage',
-      taxRate: 18,
-      taxAmount: 0,
-      total: 0,
-      purity: '22K',
-    };
-    
-    if (showJewelryFields) {
-      newItem.grossWt = 0;
-      newItem.stoneWt = 0;
-      newItem.netWt = 0;
-      newItem.makingCharges = 0;
-      newItem.stoneCharges = 0;
-    }
-    
-    const updatedItems = [...items, newItem];
-    onItemsChange(updatedItems);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length, hasTrailingEmptyRow, loading]);
 
-  const handleRemoveItem = (index: number) => {
-    if (autoAddDefaultRow && items.length <= 1) {
-      const updatedItems = [...items];
-      const clearedItem = { ...updatedItems[index] };
-      clearedItem.productName = '';
-      clearedItem.rate = 0;
-      clearedItem.discount = 0;
-      clearedItem.quantity = 1;
-      clearedItem.total = 0;
-      clearedItem.taxAmount = 0;
-      
-      if (showJewelryFields) {
-        clearedItem.grossWt = 0;
-        clearedItem.stoneWt = 0;
-        clearedItem.netWt = 0;
-        clearedItem.makingCharges = 0;
-        clearedItem.stoneCharges = 0;
-      }
-      
-      updatedItems[index] = clearedItem;
-      onItemsChange(updatedItems);
-      return;
-    }
-    
-    const updatedItems = items.filter((_, i) => i !== index);
-    onItemsChange(updatedItems);
-    if (onItemRemove) {
-      onItemRemove(index);
-    }
-  };
-
-  const handleSearchChange = (index: number, value: string) => {
-    setLocalSearch(value);
-    handleItemChange(index, 'productName', value);
-    if (onProductSearchChange) {
-      onProductSearchChange(value);
-    }
-  };
-
-  const subtotal = items.reduce((sum, item) => {
-    const breakdown = calculateItemBreakdown(item);
-    return sum + breakdown.baseAmount;
-  }, 0);
-  
-  const totalDiscount = items.reduce((sum, item) => {
-    const breakdown = calculateItemBreakdown(item);
-    return sum + breakdown.discountAmount;
-  }, 0);
-  
-  const totalTax = items.reduce((sum, item) => {
-    const breakdown = calculateItemBreakdown(item);
-    return sum + breakdown.taxAmount;
-  }, 0);
-  
-  const grandTotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
-
-  let headerDiscountAmount = 0;
-  if (headerDiscount > 0) {
-    if (headerDiscountType === 'fixed') {
-      headerDiscountAmount = headerDiscount;
-    } else {
-      headerDiscountAmount = grandTotal * (headerDiscount / 100);
-    }
-  }
-
-  const additionalChargesTotal = additionalCharges.reduce((sum, charge) => sum + charge.value, 0);
-  const finalTotal = grandTotal - headerDiscountAmount + additionalChargesTotal;
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
-
-  const formatWeight = (value: number) => {
-    if (value === undefined || value === null) return '0.000';
-    return value.toFixed(3);
-  };
-
-  const getVisibleColumns = () => {
-    if (customColumns) {
-      return {
-        item: customColumns.item !== undefined ? customColumns.item : true,
-        purity: customColumns.purity !== undefined ? customColumns.purity : (showJewelryFields && showPurity),
-        description: customColumns.description !== undefined ? customColumns.description : showDescription,
-        grossWt: customColumns.grossWt !== undefined ? customColumns.grossWt : (showWeightFields && showJewelryFields),
-        stoneWt: customColumns.stoneWt !== undefined ? customColumns.stoneWt : (showWeightFields && showJewelryFields),
-        netWt: customColumns.netWt !== undefined ? customColumns.netWt : (showWeightFields && showJewelryFields),
-        qty: customColumns.qty !== undefined ? customColumns.qty : true,
-        unit: customColumns.unit !== undefined ? customColumns.unit : showUnit,
-        rate: customColumns.rate !== undefined ? customColumns.rate : true,
-        making: customColumns.making !== undefined ? customColumns.making : (showMakingCharges && showJewelryFields),
-        discount: customColumns.discount !== undefined ? customColumns.discount : showDiscount,
-        tax: customColumns.tax !== undefined ? customColumns.tax : showTax,
-        amount: customColumns.amount !== undefined ? customColumns.amount : true,
-        action: customColumns.action !== undefined ? customColumns.action : true,
-      };
-    }
-
-    if (simpleMode) {
-      return {
-        item: true,
-        purity: showPurity,
-        description: false,
-        grossWt: false,
-        stoneWt: false,
-        netWt: false,
-        qty: true,
-        unit: showUnit,
-        rate: true,
-        making: false,
-        discount: showDiscount,
-        tax: showTax,
-        amount: true,
-        action: true,
-      };
-    }
-    
-    return {
-      item: true,
-      purity: showJewelryFields && showPurity,
-      description: showDescription,
-      grossWt: showWeightFields && showJewelryFields,
-      stoneWt: showWeightFields && showJewelryFields,
-      netWt: showWeightFields && showJewelryFields,
-      qty: true,
-      unit: showUnit,
-      rate: true,
-      making: showMakingCharges && showJewelryFields,
-      discount: showDiscount,
-      tax: showTax,
-      amount: true,
-      action: true,
-    };
-  };
-
-  const columns = getVisibleColumns();
-
-  // Create datalist options
-  const datalistId = `item-suggestions-${Date.now()}`;
+  // totals
+  const totals = useMemo(() => {
+    const sub  = items.reduce((s, it) =>
+      s + (Number(it.quantity)||0)*(Number(it.rate)||0)
+        + (Number(it.makingCharges)||0) + (Number(it.stoneCharges)||0), 0);
+    const disc = items.reduce((s, it) => {
+      const g = (Number(it.quantity)||0)*(Number(it.rate)||0)
+              + (Number(it.makingCharges)||0) + (Number(it.stoneCharges)||0);
+      const d = Number(it.discount)||0;
+      return s + (it.discountType==='fixed' ? d : (g*d)/100);
+    }, 0);
+    const tax   = items.reduce((s, it) => s + (Number(it.taxAmount)||0), 0);
+    const grand = items.reduce((s, it) => s + (Number(it.total)||0), 0);
+    const addCh = additionalCharges.reduce((s, c) => s + (Number(c.value)||0), 0);
+    const hd    = headerDiscountType==='fixed'
+      ? headerDiscount
+      : ((sub - disc) * headerDiscount) / 100;
+    return { sub, disc, tax, grand, addCh, hd, final: grand - hd + addCh };
+  }, [items, additionalCharges, headerDiscount, headerDiscountType]);
 
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
-      {title && (
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span>{title}</span>
-          {items.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-gray-500">
-              ({items.length} items)
-            </span>
-          )}
-        </h2>
-      )}
+    <div className={`w-full overflow-hidden rounded-lg border border-gray-200 bg-white ${className}`}>
 
-      {errors.items && (
-        <p className="mb-4 text-sm text-red-500 flex items-center gap-1">
-          <AlertCircle className="h-3 w-3" /> {errors.items}
-        </p>
-      )}
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between border-b px-3 py-2">
+        <h2 className="text-sm font-semibold text-gray-800">{title}</h2>
+      </div>
 
-      {/* Items Table */}
-      {items.length > 0 && (
-        <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-100 border-b-2 border-gray-300">
-                  {columns.item && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '200px' }}>
-                      Item
-                    </th>
-                  )}
-                  {columns.purity && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '70px' }}>
-                      Purity
-                    </th>
-                  )}
-                  {columns.description && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '120px' }}>
-                      Description
-                    </th>
-                  )}
-                  {columns.grossWt && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '80px' }}>
-                      Gross Wt
-                    </th>
-                  )}
-                  {columns.stoneWt && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '80px' }}>
-                      Stone Wt
-                    </th>
-                  )}
-                  {columns.netWt && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '80px' }}>
-                      Net Wt
-                    </th>
-                  )}
-                  {columns.qty && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '100px' }}>
-                      Qty
-                    </th>
-                  )}
-                  {columns.rate && !columns.unit && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '90px' }}>
-                      Rate
-                    </th>
-                  )}
-                  {columns.making && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '80px' }}>
-                      Making
-                    </th>
-                  )}
-                  {columns.discount && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '100px' }}>
-                      Discount
-                    </th>
-                  )}
-                  {columns.tax && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '70px' }}>
-                      Tax %
-                    </th>
-                  )}
-                  {columns.amount && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '110px' }}>
-                      Amount
-                    </th>
-                  )}
-                  {columns.action && (
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap" style={{ minWidth: '40px' }}>
-                      Action
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {items.map((item, index) => {
-                  const itemTotal = calculateItemTotal(item);
-                  const errorKey = `item_${index}`;
-                  const hasError = errors[errorKey] || errors[`${errorKey}_productName`] || errors[`${errorKey}_quantity`];
-                  
-                  return (
-                    <tr key={index} className={`hover:bg-gray-50 transition-colors ${hasError ? 'bg-red-50' : ''}`}>
-                      {columns.item && (
-                        <td className="px-2 py-2">
-                          <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                            <input
-                              type="text"
-                              value={item.productName}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                handleSearchChange(index, val);
-                                // Check if value matches any product
-                                const matched = productSuggestions.find(p => p.name === val);
-                                if (matched) {
-                                  handleProductSelect(matched, index);
-                                }
-                              }}
-                              className={`w-full pl-7 pr-7 py-1.5 border rounded text-left focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm ${
-                                errors[`${errorKey}_productName`] ? 'border-red-500' : 'border-gray-300'
-                              }`}
-                              placeholder={searchPlaceholder}
-                              list={`${datalistId}-${index}`}
-                              autoComplete="off"
-                            />
-                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-                            <datalist id={`${datalistId}-${index}`}>
-                              {productSuggestions.map((product) => (
-                                <option key={product.id} value={product.name}>
-                                  {product.code && `(${product.code})`} {product.purity && `${product.purity}`}
-                                </option>
-                              ))}
-                            </datalist>
-                          </div>
-                          {errors[`${errorKey}_productName`] && (
-                            <p className="mt-1 text-xs text-red-500">{errors[`${errorKey}_productName`]}</p>
+      {/* ── Column Headers ── */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse" style={{ minWidth: 1200 }}>
+          <thead>
+            <tr className="border-b bg-gray-50/80 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              {show.item    && <th className="border-r px-2 py-1.5 text-left min-w-[320px]">Item Details</th>}
+              {show.grossWt && <th className="border-r px-2 py-1.5 text-right w-24">Gross Wt</th>}
+              {show.stoneWt && <th className="border-r px-2 py-1.5 text-right w-24">Stone Wt</th>}
+              {show.netWt   && <th className="border-r px-2 py-1.5 text-right w-24">Net Wt</th>}
+              {show.qty     && <th className="border-r px-2 py-1.5 text-right w-28">Qty</th>}
+              {show.unit    && <th className="border-r px-2 py-1.5 text-left w-24">Unit</th>}
+              {show.rate    && <th className="border-r px-2 py-1.5 text-right w-32">Rate</th>}
+              {show.making  && <th className="border-r px-2 py-1.5 text-right w-32">Making</th>}
+              {show.disc    && <th className="border-r px-2 py-1.5 text-right w-36">Discount</th>}
+              {show.tax     && <th className="border-r px-2 py-1.5 text-left w-24">Tax</th>}
+              {show.amount  && <th className="px-2 py-1.5 text-right w-44">Amount</th>}
+            </tr>
+          </thead>
+
+          <tbody>
+            {/* loading */}
+            {loading && [...Array(2)].map((_, i) => (
+              <tr key={i} className="border-b border-gray-100">
+                <td colSpan={Object.values(show).filter(Boolean).length + 1} className="px-2 py-1">
+                  <div className="h-7 w-full animate-pulse rounded bg-gray-100" />
+                </td>
+              </tr>
+            ))}
+
+            {/* rows */}
+            {!loading && items.map((item, idx) => {
+              const e   = (f: string) => errors[`items.${idx}.${f}`] || errors[`${idx}.${f}`];
+
+              return (
+                <tr key={item.id ?? idx} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/40 transition-colors">
+
+                  {/* ITEM DETAILS */}
+                  {show.item && (
+                    <td className="border-r px-2 py-1 align-top min-w-[320px]">
+                      <div className="flex items-start gap-2">
+                        {/* thumbnail - smaller */}
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-100 text-gray-400">
+                          <ImageOff size={12} />
+                        </div>
+
+                        {/* name + description */}
+                        <div className="min-w-0 flex-1">
+                          <SearchableDropdown
+                            options={productOptions}
+                            value={
+                              item.productId && productOptions.some(o => o.value === item.productId)
+                                ? item.productId
+                                : null
+                            }
+                            onChange={(opt) => {
+                              const prod = productSuggestions.find((p) => p.id === opt.value);
+                              if (prod) {
+                                const filled = recalc({
+                                  ...item,
+                                  productId:   prod.id,
+                                  productName: prod.name,
+                                  description: prod.description ?? item.description ?? '',
+                                  unit:        prod.unit ?? item.unit ?? 'Pcs',
+                                  rate:        prod.price ?? item.rate,
+                                  purity:      prod.purity ?? item.purity,
+                                  sku:         prod.code ?? item.sku,
+                                  stock:       prod.stock ?? item.stock,
+                                });
+                                onItemsChange(items.map((it, i) => i === idx ? filled : it));
+                                onProductSelect?.(prod);
+                                onProductSearchChange?.('');
+                              }
+                            }}
+                            placeholder={searchPlaceholder}
+                            triggerPlaceholder={item.productName || searchPlaceholder}
+                            resetSearchOnOpen
+                            showEmptyState
+                            emptyStateText="No matching items"
+                          />
+                          
+                          {/* Purity - below item select */}
+                          {show.purity && (
+                            <div className="mt-1 flex items-center gap-1.5">
+                              <span className="text-[10px] font-medium text-gray-500">Purity:</span>
+                              <SF value={item.purity}
+                                onChange={(v) => updateItem(idx, 'purity', v)}
+                                options={PURITY_OPTIONS} 
+                                error={!!e('purity')} 
+                                className="max-w-[90px]"
+                              />
+                            </div>
                           )}
-                        </td>
-                      )}
-                      
-                      {columns.purity && (
-                        <td className="px-2 py-2">
-                          <select
-                            value={item.purity || '22K'}
-                            onChange={(e) => handleItemChange(index, 'purity', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
-                          >
-                            {PURITY_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
-                        </td>
-                      )}
-                      
-                      {columns.description && (
-                        <td className="px-2 py-2">
-                          <input
-                            type="text"
-                            value={item.description || ''}
-                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
-                            placeholder="Description"
-                          />
-                        </td>
-                      )}
-                      
-                      {columns.grossWt && (
-                        <td className="px-2 py-2">
-                          <input
-                            type="number"
-                            value={item.grossWt !== undefined ? item.grossWt : ''}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              handleItemChange(index, 'grossWt', val);
-                            }}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
-                            step="0.001"
-                            placeholder="0.000"
-                          />
-                        </td>
-                      )}
-                      
-                      {columns.stoneWt && (
-                        <td className="px-2 py-2">
-                          <input
-                            type="number"
-                            value={item.stoneWt !== undefined ? item.stoneWt : ''}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              handleItemChange(index, 'stoneWt', val);
-                            }}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
-                            step="0.001"
-                            placeholder="0.000"
-                          />
-                        </td>
-                      )}
-                      
-                      {columns.netWt && (
-                        <td className="px-2 py-2">
-                          <input
-                            type="text"
-                            value={formatWeight(item.netWt || 0)}
-                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-center bg-gray-50 text-gray-700 font-medium text-sm"
-                            disabled
-                          />
-                        </td>
-                      )}
-                      
-                      {columns.qty && (
-                        <td className="px-2 py-2">
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              value={item.quantity || 1}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value) || 1;
-                                handleItemChange(index, 'quantity', val);
-                              }}
-                              className={`w-full min-w-[50px] px-2 py-1.5 border rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm ${
-                                errors[`${errorKey}_quantity`] ? 'border-red-500' : 'border-gray-300'
-                              }`}
-                              min="1"
-                              step="1"
-                              placeholder="0"
-                            />
-                            {showUnit && (
-                              <select
-                                value={item.unit || 'Pcs'}
-                                onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
-                                className="w-14 px-1 py-1.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm bg-white"
-                              >
-                                {unitOptions.map((opt) => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                            )}
-                          </div>
-                          {errors[`${errorKey}_quantity`] && (
-                            <p className="mt-1 text-xs text-red-500">{errors[`${errorKey}_quantity`]}</p>
+
+                          {(item.sku || item.stock !== undefined) && (
+                            <div className="mt-0.5 flex gap-2 text-[10px] text-gray-400">
+                              {item.sku && <span>SKU: {item.sku}</span>}
+                              {item.stock !== undefined && <span>· Stock: {item.stock}</span>}
+                            </div>
                           )}
-                        </td>
-                      )}
-                      
-                      {columns.rate && !columns.unit && (
-                        <td className="px-2 py-2">
-                          <input
-                            type="number"
-                            value={item.rate || ''}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              handleItemChange(index, 'rate', val);
-                            }}
-                            className={`w-full px-2 py-1.5 border rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm ${
-                              errors[`${errorKey}_rate`] ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                            step="0.01"
-                            placeholder="0.00"
-                          />
-                          {errors[`${errorKey}_rate`] && (
-                            <p className="mt-1 text-xs text-red-500">{errors[`${errorKey}_rate`]}</p>
+                          
+                          {/* Description - smaller */}
+                          {show.desc && (
+                            <div className="mt-1">
+                              <textarea
+                                value={item.description ?? ''}
+                                rows={1}
+                                placeholder="Add description"
+                                onChange={(e) => updateItem(idx, 'description', e.target.value)}
+                                className="w-full resize-none rounded border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-700 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100/60"
+                              />
+                            </div>
                           )}
-                        </td>
+                          {e('productName') && (
+                            <p className="mt-0.5 flex items-center gap-1 text-[10px] text-red-500">
+                              <AlertCircle className="h-2.5 w-2.5" />{e('productName')}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  )}
+
+                  {/* GROSS WT */}
+                  {show.grossWt && (
+                    <td className={`border-r ${CELL} w-24`}>
+                      <TF value={toStr(item.grossWt)} placeholder="0"
+                        onChange={(v) => updateItem(idx, 'grossWt', v)} error={!!e('grossWt')} step="0.001" />
+                    </td>
+                  )}
+
+                  {/* STONE WT */}
+                  {show.stoneWt && (
+                    <td className={`border-r ${CELL} w-24`}>
+                      <TF value={toStr(item.stoneWt)} placeholder="0"
+                        onChange={(v) => updateItem(idx, 'stoneWt', v)} error={!!e('stoneWt')} step="0.001" />
+                    </td>
+                  )}
+
+                  {/* NET WT */}
+                  {show.netWt && (
+                    <td className={`border-r ${CELL} w-24`}>
+                      <TF value={toStr(item.netWt)} placeholder="0"
+                        onChange={(v) => updateItem(idx, 'netWt', v)} error={!!e('netWt')} step="0.001" />
+                    </td>
+                  )}
+
+                  {/* QUANTITY */}
+                  {show.qty && (
+                    <td className={`border-r ${CELL} w-28`}>
+                      <TF value={toStr(item.quantity)} placeholder="1"
+                        onChange={(v) => updateItem(idx, 'quantity', v)} error={!!e('quantity')} step="any" />
+                      {e('quantity') && (
+                        <p className="mt-0.5 flex items-center gap-1 text-[10px] text-red-500">
+                          <AlertCircle className="h-2.5 w-2.5" />{e('quantity')}
+                        </p>
                       )}
-                      
-                      {columns.making && (
-                        <td className="px-2 py-2">
-                          <input
-                            type="number"
-                            value={item.makingCharges !== undefined ? item.makingCharges : ''}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              handleItemChange(index, 'makingCharges', val);
-                            }}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
-                            step="0.01"
-                            placeholder="0.00"
-                          />
-                        </td>
-                      )}
-                      
-                      {columns.discount && (
-                        <td className="px-2 py-2">
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              value={item.discount || ''}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value) || 0;
-                                handleItemChange(index, 'discount', val);
-                              }}
-                              className="w-full min-w-[50px] px-2 py-1.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                            />
-                            <select
-                              value={item.discountType || 'percentage'}
-                              onChange={(e) => {
-                                const val = e.target.value as 'percentage' | 'fixed';
-                                handleItemChange(index, 'discountType', val);
-                              }}
-                              className="w-10 px-1 py-1.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm bg-white"
-                            >
-                              {DISCOUNT_TYPES.map((opt) => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </td>
-                      )}
-                      
-                      {columns.tax && (
-                        <td className="px-2 py-2">
-                          <select
-                            value={item.taxRate || 0}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value);
-                              handleItemChange(index, 'taxRate', val);
-                            }}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
-                          >
-                            {TAX_RATES.map((tax) => (
-                              <option key={tax.value} value={tax.value}>
-                                {tax.label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                      )}
-                      
-                      {columns.amount && (
-                        <td className="px-2 py-2">
-                          <input
-                            type="text"
-                            value={formatCurrency(itemTotal)}
-                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-center bg-amber-50 text-amber-700 font-semibold text-sm"
-                            disabled
-                          />
-                        </td>
-                      )}
-                      
-                      {columns.action && (
-                        <td className="px-2 py-2 text-center">
+                    </td>
+                  )}
+
+                  {/* UNIT */}
+                  {show.unit && (
+                    <td className={`border-r ${CELL} w-24`}>
+                      <SF value={item.unit}
+                        onChange={(v) => updateItem(idx, 'unit', v)}
+                        options={unitOptions} error={!!e('unit')} />
+                    </td>
+                  )}
+
+                  {/* RATE */}
+                  {show.rate && (
+                    <td className={`border-r ${CELL} w-32`}>
+                      <TF value={toStr(item.rate)} placeholder="0"
+                        onChange={(v) => updateItem(idx, 'rate', v)} error={!!e('rate')} step="any" />
+                    </td>
+                  )}
+
+                  {/* MAKING */}
+                  {show.making && (
+                    <td className={`border-r ${CELL} w-32`}>
+                      <TF value={toStr(item.makingCharges)} placeholder="0"
+                        onChange={(v) => updateItem(idx, 'makingCharges', v)} error={!!e('makingCharges')} step="any" />
+                    </td>
+                  )}
+
+                  {/* DISCOUNT - with dropdown */}
+                  {show.disc && (
+                    <td className={`border-r ${CELL} w-36`}>
+                      <DiscountInput
+                        value={toStr(item.discount)}
+                        discountType={item.discountType ?? 'percentage'}
+                        onValueChange={(v) => updateItem(idx, 'discount', v)}
+                        onTypeChange={(v) => updateItem(idx, 'discountType', v)}
+                        error={!!e('discount')}
+                      />
+                    </td>
+                  )}
+
+                  {/* TAX */}
+                  {show.tax && (
+                    <td className={`border-r ${CELL} w-24`}>
+                      <SF value={item.taxRate}
+                        onChange={(v) => updateItem(idx, 'taxRate', v)}
+                        options={TAX_RATES} error={!!e('taxRate')} />
+                    </td>
+                  )}
+
+                  {/* AMOUNT + actions */}
+                  {show.amount && (
+                    <td className={`${CELL} w-44`}>
+                      <div className="flex items-center gap-1">
+                        <TF
+                          value={toStr(item.total)}
+                          placeholder="0"
+                          onChange={(v) => updateAmount(idx, v)}
+                          error={!!e('total')}
+                          className="flex-1 !h-7 text-xs font-semibold text-gray-900"
+                          step="any"
+                        />
+                        {show.action && (
                           <button
                             type="button"
-                            onClick={() => handleRemoveItem(index)}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                            onClick={() => removeItem(idx)}
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-200 text-red-500 hover:bg-red-50 transition-colors"
+                            title="Delete row"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-          {/* Subtotal Section */}
-          {showSubtotalSection && items.length > 0 && (
-            <div className="mt-4 pt-4 border-t-2 border-gray-300">
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex items-center gap-8 text-sm">
-                  <span className="text-gray-600 font-medium">Subtotal:</span>
-                  <span className="font-semibold text-gray-900 min-w-[130px] text-right">
-                    {formatCurrency(subtotal)}
-                  </span>
-                </div>
-                
-                {totalDiscount > 0 && (
-                  <div className="flex items-center gap-8 text-sm">
-                    <span className="text-green-600 font-medium">Total Discount:</span>
-                    <span className="font-semibold text-green-600 min-w-[130px] text-right">
-                      -{formatCurrency(totalDiscount)}
-                    </span>
-                  </div>
-                )}
-                
-                {totalTax > 0 && (
-                  <div className="flex items-center gap-8 text-sm">
-                    <span className="text-blue-600 font-medium">Total Tax:</span>
-                    <span className="font-semibold text-blue-600 min-w-[130px] text-right">
-                      {formatCurrency(totalTax)}
-                    </span>
-                  </div>
-                )}
-
-                {additionalCharges.map((charge, index) => (
-                  <div key={index} className="flex items-center gap-8 text-sm">
-                    <span className="text-gray-600 font-medium">{charge.label}:</span>
-                    <span className="font-semibold text-gray-900 min-w-[130px] text-right">
-                      {formatCurrency(charge.value)}
-                    </span>
-                  </div>
-                ))}
-
-                {headerDiscount > 0 && (
-                  <div className="flex items-center gap-8 text-sm">
-                    <span className="text-red-600 font-medium">
-                      Discount ({headerDiscountType === 'percentage' ? `${headerDiscount}%` : 'Fixed'}):
-                    </span>
-                    <span className="font-semibold text-red-600 min-w-[130px] text-right">
-                      -{formatCurrency(headerDiscountAmount)}
-                    </span>
-                  </div>
-                )}
-
-                {showTotalSection && (
-                  <div className="flex items-center gap-8 pt-2 border-t-2 border-gray-200 mt-1">
-                    <span className="text-lg font-bold text-gray-900">Grand Total:</span>
-                    <span className="text-lg font-bold text-amber-600 min-w-[130px] text-right">
-                      {formatCurrency(finalTotal)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Add Item Button - Bottom */}
-          {addButtonAtBottom && (
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={handleAddCustomItem}
-                className="px-4 py-2 text-sm text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-50 transition-colors flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                {addButtonLabel}
-              </button>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Empty State with Add Button */}
-      {items.length === 0 && !loading && (
-        <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-          <p className="text-gray-500">No items added yet</p>
-          <p className="text-sm text-gray-400 mt-1">Click the button below to add an item</p>
+      {/* ── Add button ── */}
+      {!loading && addButtonAtBottom && (
+        <div className="border-t border-gray-100 px-3 py-1.5">
           <button
             type="button"
-            onClick={handleAddCustomItem}
-            className="mt-4 px-4 py-2 text-sm text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-50 transition-colors flex items-center gap-2 mx-auto"
+            onClick={addItem}
+            className="inline-flex items-center gap-1 rounded border border-dashed border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
           >
-            <Plus className="h-4 w-4" />
-            {addButtonLabel}
+            <Plus className="h-3.5 w-3.5" /> {addButtonLabel}
           </button>
         </div>
       )}
 
-      {loading && (
-        <div className="text-center py-8">
-          <p className="text-gray-500">Loading...</p>
+      {/* ── Totals ── */}
+      {showSubtotalSection && items.length > 0 && (
+        <div className="border-t border-gray-200 bg-gray-50/60 px-3 py-2">
+          <div className="flex flex-col items-end gap-1">
+            <Row label="Subtotal"       value={`₹${fmt(totals.sub)}`} />
+            {totals.disc > 0 && (
+              <Row label="Discount" value={`−₹${fmt(totals.disc)}`} valueClass="text-green-600" />
+            )}
+            {totals.tax > 0 && (
+              <Row label="Tax" value={`+₹${fmt(totals.tax)}`} valueClass="text-blue-600" />
+            )}
+            {additionalCharges.map((c, i) => (
+              <Row key={i} label={c.label} value={`+₹${fmt(Number(c.value)||0)}`} />
+            ))}
+            {headerDiscount > 0 && (
+              <Row
+                label={`Header Discount (${headerDiscountType==='percentage' ? `${headerDiscount}%` : '₹'+headerDiscount})`}
+                value={`−₹${fmt(totals.hd)}`}
+                valueClass="text-red-500"
+              />
+            )}
+            {showTotalSection && (
+              <div className="mt-1 flex w-64 items-center justify-between rounded border border-amber-200 bg-amber-50 px-3 py-1.5">
+                <span className="text-xs font-semibold text-gray-800">Grand Total</span>
+                <span className="text-sm font-bold tabular-nums text-amber-600">₹{fmt(totals.final)}</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 };
+
+// small helper row for totals section
+const Row: React.FC<{ label: string; value: string; valueClass?: string }> = ({
+  label, value, valueClass = 'text-gray-800',
+}) => (
+  <div className="flex w-64 items-center justify-between text-xs">
+    <span className="text-gray-500">{label}</span>
+    <span className={`tabular-nums font-medium ${valueClass}`}>{value}</span>
+  </div>
+);
 
 export default ItemSelectionTable;

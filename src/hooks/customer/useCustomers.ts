@@ -1,5 +1,5 @@
 // src/hooks/customer/useCustomers.ts
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Customer, CustomerFilters, CustomerStats, CustomerFormData } from '../../types/customer/CustomerTypes';
 
 // Mock data - Replace with actual API calls
@@ -106,16 +106,24 @@ export const useCustomers = () => {
     totalCreditLimit: 0,
   });
 
+  // Use ref to track if initial fetch has been done
+  const isInitialFetchDone = useRef(false);
+
   // Calculate pagination
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-  // Get customer by ID
-  const getCustomer = useCallback((id: string): Customer | null => {
-    const found = customers.find(c => c.id === id);
-    return found || null;
-  }, [customers]);
+  // Calculate stats
+  const calculateStats = useCallback((data: Customer[]) => {
+    setStats({
+      totalCustomers: data.length,
+      active: data.filter(c => c.status === 'active').length,
+      inactive: data.filter(c => c.status === 'inactive').length,
+      totalOpeningBalance: data.reduce((sum, c) => sum + c.openingBalance, 0),
+      totalCreditLimit: data.reduce((sum, c) => sum + c.creditLimit, 0),
+    });
+  }, []);
 
   // Fetch customers
   const fetchCustomers = useCallback(async () => {
@@ -130,18 +138,13 @@ export const useCustomers = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [calculateStats]);
 
-  // Calculate stats
-  const calculateStats = (data: Customer[]) => {
-    setStats({
-      totalCustomers: data.length,
-      active: data.filter(c => c.status === 'active').length,
-      inactive: data.filter(c => c.status === 'inactive').length,
-      totalOpeningBalance: data.reduce((sum, c) => sum + c.openingBalance, 0),
-      totalCreditLimit: data.reduce((sum, c) => sum + c.creditLimit, 0),
-    });
-  };
+  // Get customer by ID
+  const getCustomer = useCallback((id: string): Customer | null => {
+    const found = customers.find(c => c.id === id);
+    return found || null;
+  }, [customers]);
 
   // Apply filters
   const applyFilters = useCallback(() => {
@@ -185,7 +188,7 @@ export const useCustomers = () => {
   }, [customers, filters, currentPage, itemsPerPage]);
 
   // Create customer
-  const createCustomer = useCallback(async (data: CustomerFormData) => {
+  const createCustomer = useCallback(async (data: CustomerFormData): Promise<{ success: boolean; data?: Customer; error?: string }> => {
     try {
       await new Promise(resolve => setTimeout(resolve, 800));
       const newCustomer: Customer = {
@@ -203,10 +206,10 @@ export const useCustomers = () => {
       console.error('Error creating customer:', error);
       return { success: false, error: 'Failed to create customer' };
     }
-  }, [customers]);
+  }, [customers.length]);
 
   // Update customer
-  const updateCustomer = useCallback(async (id: string, data: Partial<CustomerFormData>) => {
+  const updateCustomer = useCallback(async (id: string, data: Partial<CustomerFormData>): Promise<{ success: boolean; error?: string }> => {
     try {
       await new Promise(resolve => setTimeout(resolve, 800));
       setCustomers(prev => prev.map(c =>
@@ -222,7 +225,7 @@ export const useCustomers = () => {
   }, []);
 
   // Delete customer
-  const deleteCustomer = useCallback(async (id: string) => {
+  const deleteCustomer = useCallback(async (id: string): Promise<{ success: boolean; error?: string }> => {
     try {
       await new Promise(resolve => setTimeout(resolve, 800));
       setCustomers(prev => prev.filter(c => c.id !== id));
@@ -234,7 +237,7 @@ export const useCustomers = () => {
   }, []);
 
   // Bulk delete
-  const handleBulkDelete = useCallback(async (ids: string[]) => {
+  const handleBulkDelete = useCallback(async (ids: string[]): Promise<{ success: boolean; error?: string }> => {
     try {
       await new Promise(resolve => setTimeout(resolve, 800));
       setCustomers(prev => prev.filter(c => !ids.includes(c.id)));
@@ -246,19 +249,23 @@ export const useCustomers = () => {
   }, []);
 
   // Export
-  const handleExport = useCallback(async (format: 'excel' | 'pdf') => {
+  const handleExport = useCallback(async (format: 'excel' | 'pdf'): Promise<{ success: boolean; error?: string }> => {
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log(`Exporting customers as ${format.toUpperCase()}`);
-      alert(`Customers exported as ${format.toUpperCase()} successfully!`);
+      // Simulate file download
+      const link = document.createElement('a');
+      link.download = `customers.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+      link.click();
+      return { success: true };
     } catch (error) {
       console.error('Error exporting:', error);
-      alert('Export failed');
+      return { success: false, error: 'Export failed' };
     }
   }, []);
 
   // Import
-  const handleImport = useCallback(async (files: FileList) => {
+  const handleImport = useCallback(async (files: FileList): Promise<{ success: boolean; count?: number; error?: string }> => {
     setImportLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -299,19 +306,17 @@ export const useCustomers = () => {
       };
       
       setCustomers(prev => [...prev, newCustomer]);
-      alert(`Imported ${files.length} file(s) successfully!`);
       return { success: true, count: files.length };
     } catch (error) {
       console.error('Error importing:', error);
-      alert('Import failed');
-      throw error;
+      return { success: false, error: 'Import failed' };
     } finally {
       setImportLoading(false);
     }
-  }, [customers]);
+  }, [customers.length]);
 
   // Refresh
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = useCallback(async (): Promise<void> => {
     await fetchCustomers();
   }, [fetchCustomers]);
 
@@ -322,7 +327,7 @@ export const useCustomers = () => {
   }, []);
 
   // Update status
-  const handleStatusUpdate = useCallback(async (id: string, status: Customer['status']) => {
+  const handleStatusUpdate = useCallback(async (id: string, status: Customer['status']): Promise<{ success: boolean; error?: string }> => {
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
       setCustomers(prev => prev.map(c =>
@@ -337,15 +342,20 @@ export const useCustomers = () => {
     }
   }, []);
 
-  // Initial fetch
+  // Initial fetch - only runs once
   useEffect(() => {
-    fetchCustomers();
+    if (!isInitialFetchDone.current) {
+      isInitialFetchDone.current = true;
+      fetchCustomers();
+    }
   }, [fetchCustomers]);
 
   // Apply filters when dependencies change
   useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
+    if (customers.length > 0) {
+      applyFilters();
+    }
+  }, [customers, filters, currentPage, itemsPerPage, applyFilters]);
 
   return {
     // State
@@ -375,7 +385,7 @@ export const useCustomers = () => {
     handleExport,
     handleImport,
     handleRefresh,
-    getCustomer, // ADDED: Get a single customer by ID
+    getCustomer,
     handleStatusUpdate,
     fetchCustomers,
   };

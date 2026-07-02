@@ -1,6 +1,6 @@
 // src/pages/purchases/Vendors/Vendors.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -21,6 +21,8 @@ import type { Vendor } from '../../../types/Vendor/VendorType';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 
 // Status Badge
@@ -53,100 +55,157 @@ const Vendors: React.FC = () => {
     fetchVendors,
   } = useVendor({ page: 1, limit: 10 });
 
+  // Use the toast and confirm hook
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
-  const handleView = (vendor: Vendor) => {
+  const handleView = useCallback((vendor: Vendor) => {
     navigate(`/purchases/vendors/${vendor.id}`);
-  };
+  }, [navigate]);
 
-  const handleEdit = (vendor: Vendor) => {
+  const handleEdit = useCallback((vendor: Vendor) => {
     navigate(`/purchases/vendors/${vendor.id}/edit`);
-  };
+  }, [navigate]);
 
-  const handleDeleteClick = (vendor: Vendor) => {
-    setVendorToDelete(vendor);
-    setShowDeleteModal(true);
-  };
+  // Single delete handler using confirmation modal
+  const handleDeleteClick = useCallback(async (vendor: Vendor) => {
+    const vendorId = String(vendor.id);
 
-  const handleDeleteConfirm = async () => {
-    if (vendorToDelete) {
-      try {
-        await deleteVendor(vendorToDelete.id);
-        setShowDeleteModal(false);
-        setVendorToDelete(null);
-      } catch (error) {
-        console.error('Error deleting vendor:', error);
-      }
-    }
-  };
-
-  const handleBulkDeleteAction = async () => {
-    if (selectedItems.length === 0) return;
-    if (window.confirm(`Delete ${selectedItems.length} vendors?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        for (const id of selectedItems) {
-          await deleteVendor(id);
+    await withConfirmation(
+      {
+        title: 'Delete Vendor',
+        message: `Are you sure you want to delete "${vendor.name}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(vendorId);
+        try {
+          await deleteVendor(vendor.id);
+          setSelectedItems(prev => prev.filter(item => item !== vendorId));
+          success(`Vendor "${vendor.name}" deleted successfully.`);
+        } catch (error) {
+          console.error('Error deleting vendor:', error);
+          showError('Failed to delete vendor. Please try again.');
+        } finally {
+          setDeleteLoading(null);
         }
-        setSelectedItems([]);
-      } finally {
-        setBulkDeleteLoading(false);
       }
-    }
-  };
+    );
+  }, [withConfirmation, deleteVendor, success, showError]);
 
-  const handleExportAction = async (format: 'excel' | 'pdf') => {
+  // Bulk delete handler using confirmation modal
+  const handleBulkDeleteAction = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select at least one vendor to delete.');
+      return;
+    }
+
+    await withConfirmation(
+      {
+        title: 'Delete Vendors',
+        message: `Are you sure you want to delete ${selectedItems.length} vendor(s)? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          for (const id of selectedItems) {
+            await deleteVendor(id);
+          }
+          success(`${selectedItems.length} vendor(s) deleted successfully.`);
+          setSelectedItems([]);
+        } catch (error) {
+          console.error('Error deleting vendors:', error);
+          showError('Failed to delete vendors. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
+        }
+      }
+    );
+  }, [selectedItems, withConfirmation, deleteVendor, success, showError]);
+
+  const handleExportAction = useCallback(async (format: 'excel' | 'pdf') => {
     setExportLoading(true);
     try {
+      // Replace with actual export logic
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log(`Exporting vendors as ${format}`);
+      success(`Vendors exported as ${format.toUpperCase()} successfully.`);
+    } catch (error) {
+      showError(`Failed to export as ${format.toUpperCase()}. Please try again.`);
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [success, showError]);
 
-  const handleImportAction = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       setImportLoading(true);
       try {
+        // Replace with actual import logic
         await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('Importing files:', files);
         await fetchVendors();
+        success('Vendors imported successfully.');
+      } catch (error) {
+        showError('Failed to import vendors. Please check the file format.');
       } finally {
         setImportLoading(false);
+        event.target.value = '';
       }
     }
-  };
+  }, [fetchVendors, success, showError]);
 
-  const handleRefreshClick = async () => {
+  const handleRefreshClick = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await fetchVendors();
+      success('Vendor list refreshed successfully.');
+    } catch (error) {
+      showError('Failed to refresh vendor list. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [fetchVendors, success, showError]);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === vendors.length) {
       setSelectedItems([]);
     } else {
       setSelectedItems(vendors.map(item => String(item.id)));
     }
-  };
+  }, [selectedItems.length, vendors]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  };
+  }, []);
+
+  // Show error toast when error changes
+  React.useEffect(() => {
+    if (error) {
+      showError(error);
+    }
+  }, [error, showError]);
 
   // Columns
   const columns: TableColumn<Vendor>[] = [
@@ -234,10 +293,15 @@ const Vendors: React.FC = () => {
       onClick: () => handleEdit(vendor),
     },
     {
-      label: 'Delete',
-      icon: <Trash className="h-4 w-4 text-red-500" />,
+      label: deleteLoading === vendor.id ? 'Deleting...' : 'Delete',
+      icon: deleteLoading === vendor.id ? (
+        <LoadingSpinner size="sm" />
+      ) : (
+        <Trash className="h-4 w-4 text-red-500" />
+      ),
       onClick: () => handleDeleteClick(vendor),
       danger: true,
+      disabled: deleteLoading === vendor.id,
     },
   ];
 
@@ -246,15 +310,6 @@ const Vendors: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <LoadingSpinner size="lg" text="Loading vendors..." />
-      </div>
-    );
-  }
-
-  // Show refresh loading spinner (full page overlay)
-  if (refreshLoading) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Refreshing vendors..." />
       </div>
     );
   }
@@ -273,7 +328,11 @@ const Vendors: React.FC = () => {
             disabled={refreshLoading}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshLoading ? 'animate-spin' : ''}`} />
+            {refreshLoading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
             Refresh
           </button>
           <button
@@ -368,44 +427,23 @@ const Vendors: React.FC = () => {
           currentPage: pagination.page,
           totalPages: pagination.totalPages,
           totalItems: pagination.total,
-          startIndex: (pagination.page - 1) * pagination.limit,
-          endIndex: pagination.page * pagination.limit,
           onPageChange: changePage,
           itemsPerPage: pagination.limit,
         }}
       />
 
-      {/* Delete Modal */}
-      {showDeleteModal && vendorToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-full">
-                <Trash className="h-6 w-6 text-red-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">Delete Vendor</h2>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete "<span className="font-medium">{vendorToDelete.name}</span>"? 
-              This action cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirmation Modal - Replaces the custom delete modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

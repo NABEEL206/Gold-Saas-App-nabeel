@@ -1,6 +1,6 @@
 // src/pages/Customer/CustomerEdit.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -13,20 +13,35 @@ import {
   CreditCard,
   FileText,
   AlertCircle,
+  Loader,
 } from 'lucide-react';
 import { useCustomers } from '../../../hooks/customer/useCustomers';
 import type { CustomerFormData } from '../../../types/customer/CustomerTypes';
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 
 export const CustomerEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getCustomer, updateCustomer, loading } = useCustomers();
+  const {
+    success,
+    error: showError,
+    confirm,
+    withConfirmation,
+    isOpen,
+    options,
+    isLoading,
+    handleConfirm,
+    handleCancel,
+  } = useToastAndConfirm();
 
   const [formData, setFormData] = useState<CustomerFormData | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Dropdown options
   const salutationOptions: DropdownOption[] = [
@@ -54,8 +69,15 @@ export const CustomerEdit: React.FC = () => {
     { value: 'Singapore', label: 'Singapore' },
   ];
 
+  // Load customer data
   useEffect(() => {
-    if (id) {
+    if (!id) {
+      setPageError('No customer ID provided');
+      setInitialLoading(false);
+      return;
+    }
+
+    const loadCustomer = () => {
       const customer = getCustomer(id);
       if (customer) {
         setFormData({
@@ -78,63 +100,135 @@ export const CustomerEdit: React.FC = () => {
           panNumber: customer.panNumber || '',
           notes: customer.notes || '',
         });
-      } else {
-        setError('Customer not found');
+        setPageError(null);
+        setInitialLoading(false);
+        return true;
       }
+      return false;
+    };
+
+    if (!loadCustomer()) {
+      const timer = setTimeout(() => {
+        if (!loadCustomer()) {
+          setPageError('Customer not found');
+          setInitialLoading(false);
+        }
+      }, 1000);
+      
+      return () => clearTimeout(timer);
     }
   }, [id, getCustomer]);
 
-  const validateForm = (): boolean => {
+  const validateForm = useCallback((): boolean => {
+    if (!formData) return false;
+    
     const newErrors: Record<string, string> = {};
     
-    if (!formData?.lastName) newErrors.lastName = 'Last Name is required';
-    if (!formData?.displayName) newErrors.displayName = 'Display Name is required';
-    if (!formData?.mobileNumber) newErrors.mobileNumber = 'Mobile Number is required';
-    if (formData?.email && !/\S+@\S+\.\S+/.test(formData.email)) {
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last Name is required';
+    if (!formData.displayName.trim()) newErrors.displayName = 'Display Name is required';
+    if (!formData.mobileNumber.trim()) newErrors.mobileNumber = 'Mobile Number is required';
+    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
-    if (formData?.gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.gstNumber)) {
+    if (formData.gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.gstNumber)) {
       newErrors.gstNumber = 'Invalid GST number format';
     }
-    if (formData?.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
+    if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
       newErrors.panNumber = 'Invalid PAN number format';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData || !validateForm()) return;
+  const updateCustomerData = useCallback(async () => {
+    if (!formData || !id) return;
     
     setSaving(true);
     try {
-      await updateCustomer(id!, formData);
-      navigate('/customers');
-    } catch (error) {
+      const result = await updateCustomer(id, formData);
+      if (result.success) {
+        success('Customer updated successfully!');
+        navigate('/customers', { replace: true });
+      } else {
+        showError(result.error || 'Failed to update customer. Please try again.');
+        setErrors({ submit: result.error || 'Failed to update customer. Please try again.' });
+      }
+    } catch (err) {
+      showError('Failed to update customer. Please try again.');
       setErrors({ submit: 'Failed to update customer. Please try again.' });
     } finally {
       setSaving(false);
     }
-  };
+  }, [formData, id, updateCustomer, success, showError, navigate]);
 
-  // Handle salutation selection
-  const handleSalutationSelect = (option: DropdownOption) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (saving) return;
+    
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return;
+    }
+    
+    await withConfirmation(
+      {
+        title: 'Update Customer',
+        message: 'Are you sure you want to update this customer?',
+        confirmText: 'Update Customer',
+        variant: 'primary',
+      },
+      updateCustomerData,
+      undefined,
+      'Failed to update customer. Please try again.'
+    );
+  }, [saving, validateForm, showError, withConfirmation, updateCustomerData]);
+
+  const handleBackClick = useCallback(async () => {
+    const confirmed = await confirm({
+      title: 'Discard Changes',
+      message: 'Are you sure you want to discard all changes? This action cannot be undone.',
+      confirmText: 'Discard',
+      cancelText: 'Keep Editing',
+      variant: 'warning',
+    });
+    
+    if (confirmed) {
+      navigate('/customers', { replace: true });
+    }
+  }, [confirm, navigate]);
+
+  const handleCancelClick = useCallback(async () => {
+    const confirmed = await confirm({
+      title: 'Discard Changes',
+      message: 'Are you sure you want to discard all changes? This action cannot be undone.',
+      confirmText: 'Discard',
+      cancelText: 'Keep Editing',
+      variant: 'warning',
+    });
+    
+    if (confirmed) {
+      navigate('/customers', { replace: true });
+    }
+  }, [confirm, navigate]);
+
+  const handleSalutationSelect = useCallback((option: DropdownOption) => {
     setFormData(prev => prev ? { ...prev, salutation: option.value as CustomerFormData['salutation'] } : null);
-  };
+  }, []);
 
-  // Handle customer type selection
-  const handleCustomerTypeSelect = (option: DropdownOption) => {
+  const handleCustomerTypeSelect = useCallback((option: DropdownOption) => {
     setFormData(prev => prev ? { ...prev, customerType: option.value as CustomerFormData['customerType'] } : null);
-  };
+  }, []);
 
-  // Handle country selection
-  const handleCountrySelect = (option: DropdownOption) => {
+  const handleCountrySelect = useCallback((option: DropdownOption) => {
     setFormData(prev => prev ? { ...prev, country: option.value as CustomerFormData['country'] } : null);
-  };
+  }, []);
 
-  // Get selected values
+  const handleInputChange = useCallback((field: keyof CustomerFormData, value: string | number) => {
+    setFormData(prev => prev ? { ...prev, [field]: value } : null);
+  }, []);
+
   const getSelectedSalutation = (): string | null => {
     return formData?.salutation || null;
   };
@@ -147,30 +241,45 @@ export const CustomerEdit: React.FC = () => {
     return formData?.country || null;
   };
 
-  if (error) {
+  // Loading state
+  if (loading || initialLoading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="h-8 w-8 text-amber-500 animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Loading customer details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (pageError) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-md mx-auto">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-700 mb-2">Customer Not Found</h3>
-          <p className="text-sm text-red-600">{error}</p>
+          <h3 className="text-lg font-semibold text-red-700 mb-2">Error</h3>
+          <p className="text-sm text-red-600">{pageError}</p>
           <button
-            onClick={() => navigate('/customers')}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            onClick={() => navigate('/customers', { replace: true })}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
-            Go Back
+            Go Back to Customers
           </button>
         </div>
       </div>
     );
   }
 
+  // No form data
   if (!formData) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="max-w-4xl mx-auto">
           <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-200 text-center">
-            <p className="text-sm text-gray-500">{loading ? 'Loading customer details...' : 'Preparing customer form...'}</p>
+            <Loader className="h-6 w-6 text-amber-500 animate-spin mx-auto mb-3" />
+            <p className="text-sm text-gray-500">Preparing customer form...</p>
           </div>
         </div>
       </div>
@@ -183,7 +292,7 @@ export const CustomerEdit: React.FC = () => {
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => navigate('/customers')}
+            onClick={handleBackClick}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="h-5 w-5 text-gray-600" />
@@ -236,7 +345,7 @@ export const CustomerEdit: React.FC = () => {
                   <input
                     type="text"
                     value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Enter first name"
                   />
@@ -248,7 +357,7 @@ export const CustomerEdit: React.FC = () => {
                   <input
                     type="text"
                     value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.lastName ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -292,7 +401,7 @@ export const CustomerEdit: React.FC = () => {
                   <input
                     type="text"
                     value={formData.displayName}
-                    onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                    onChange={(e) => handleInputChange('displayName', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.displayName ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -320,7 +429,7 @@ export const CustomerEdit: React.FC = () => {
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.email ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -338,7 +447,7 @@ export const CustomerEdit: React.FC = () => {
                   <input
                     type="text"
                     value={formData.workPhone}
-                    onChange={(e) => setFormData({ ...formData, workPhone: e.target.value })}
+                    onChange={(e) => handleInputChange('workPhone', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="022-1234567"
                   />
@@ -351,7 +460,7 @@ export const CustomerEdit: React.FC = () => {
                   <input
                     type="text"
                     value={formData.mobileNumber}
-                    onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
+                    onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.mobileNumber ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -377,7 +486,7 @@ export const CustomerEdit: React.FC = () => {
                   </label>
                   <textarea
                     value={formData.billingAddress}
-                    onChange={(e) => setFormData({ ...formData, billingAddress: e.target.value })}
+                    onChange={(e) => handleInputChange('billingAddress', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     rows={2}
                     placeholder="Enter billing address"
@@ -391,7 +500,7 @@ export const CustomerEdit: React.FC = () => {
                     <input
                       type="text"
                       value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Enter city"
                     />
@@ -403,7 +512,7 @@ export const CustomerEdit: React.FC = () => {
                     <input
                       type="text"
                       value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      onChange={(e) => handleInputChange('state', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Enter state"
                     />
@@ -415,7 +524,7 @@ export const CustomerEdit: React.FC = () => {
                     <input
                       type="text"
                       value={formData.pincode}
-                      onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                      onChange={(e) => handleInputChange('pincode', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Enter pincode"
                     />
@@ -455,7 +564,7 @@ export const CustomerEdit: React.FC = () => {
                   <input
                     type="number"
                     value={formData.openingBalance}
-                    onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => handleInputChange('openingBalance', parseFloat(e.target.value) || 0)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="0.00"
                   />
@@ -467,7 +576,7 @@ export const CustomerEdit: React.FC = () => {
                   <input
                     type="number"
                     value={formData.creditLimit}
-                    onChange={(e) => setFormData({ ...formData, creditLimit: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => handleInputChange('creditLimit', parseFloat(e.target.value) || 0)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="0.00"
                   />
@@ -479,7 +588,7 @@ export const CustomerEdit: React.FC = () => {
                   <input
                     type="text"
                     value={formData.gstNumber}
-                    onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value.toUpperCase() })}
+                    onChange={(e) => handleInputChange('gstNumber', e.target.value.toUpperCase())}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.gstNumber ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -496,7 +605,7 @@ export const CustomerEdit: React.FC = () => {
                   <input
                     type="text"
                     value={formData.panNumber}
-                    onChange={(e) => setFormData({ ...formData, panNumber: e.target.value.toUpperCase() })}
+                    onChange={(e) => handleInputChange('panNumber', e.target.value.toUpperCase())}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.panNumber ? 'border-red-500' : 'border-gray-200'
                     }`}
@@ -517,7 +626,7 @@ export const CustomerEdit: React.FC = () => {
               </h2>
               <textarea
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) => handleInputChange('notes', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 rows={3}
                 placeholder="Add any additional notes about the customer..."
@@ -529,7 +638,7 @@ export const CustomerEdit: React.FC = () => {
           <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
             <button
               type="button"
-              onClick={() => navigate('/customers')}
+              onClick={handleCancelClick}
               className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cancel
@@ -541,7 +650,7 @@ export const CustomerEdit: React.FC = () => {
             >
               {saving ? (
                 <>
-                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <Loader className="h-4 w-4 animate-spin" />
                   Updating...
                 </>
               ) : (
@@ -554,6 +663,19 @@ export const CustomerEdit: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title={options?.title}
+        message={options?.message || ''}
+        confirmText={options?.confirmText}
+        cancelText={options?.cancelText}
+        isLoading={isLoading}
+        variant={options?.variant}
+      />
     </div>
   );
 };

@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Save,
   Trash2,
-  User,
   Mail,
   Phone,
   Hash,
@@ -22,6 +21,8 @@ import { useProformaInvoice } from '../../../hooks/Proforma/useProformaInvoice';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 import type { ProformaInvoiceFormData } from '../../../types/proforma/ProformaInvoiceType';
@@ -54,10 +55,23 @@ const ProformaInvoiceEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getInvoice, updateInvoiceStatus, deleteInvoice } = useProformaInvoice();
-  
+
+  const {
+    success,
+    error: showError,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [formData, setFormData] = useState<ProformaInvoiceFormData | null>(null);
+  const [initialFormData, setInitialFormData] = useState<string>('');
   const [loadingData, setLoadingData] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<File[]>([]);
   const [items, setItems] = useState<ItemSelectionItem[]>([]);
@@ -126,7 +140,7 @@ const ProformaInvoiceEdit: React.FC = () => {
         try {
           const invoice = await getInvoice(id);
           if (invoice) {
-            setFormData({
+            const loaded: ProformaInvoiceFormData = {
               invoiceNumber: invoice.invoiceNumber,
               invoiceDate: invoice.invoiceDate,
               validUntil: invoice.validUntil,
@@ -143,7 +157,9 @@ const ProformaInvoiceEdit: React.FC = () => {
               termsAndConditions: invoice.termsAndConditions,
               status: invoice.status,
               discount: invoice.discount || 0,
-            });
+            };
+            setFormData(loaded);
+            setInitialFormData(JSON.stringify(loaded));
 
             // Convert items to ItemSelectionItem format
             if (invoice.items && invoice.items.length > 0) {
@@ -165,10 +181,11 @@ const ProformaInvoiceEdit: React.FC = () => {
               setItems(convertedItems);
             }
           } else {
+            showError('Proforma invoice not found.');
             navigate('/sales/proforma');
           }
         } catch (err) {
-          console.error('Failed to load invoice:', err);
+          showError('Failed to load proforma invoice.');
           navigate('/sales/proforma');
         } finally {
           setLoadingData(false);
@@ -176,7 +193,12 @@ const ProformaInvoiceEdit: React.FC = () => {
       }
     };
     loadInvoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, getInvoice, navigate]);
+
+  const hasUnsavedChanges = Boolean(
+    formData && initialFormData && JSON.stringify(formData) !== initialFormData
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -194,7 +216,7 @@ const ProformaInvoiceEdit: React.FC = () => {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData?.customerName) {
       newErrors.customerName = 'Customer name is required';
     }
@@ -210,7 +232,7 @@ const ProformaInvoiceEdit: React.FC = () => {
     if (formData?.items.length === 0) {
       newErrors.items = 'At least one item is required';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -218,8 +240,9 @@ const ProformaInvoiceEdit: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData) return;
-    
+
     if (!validateForm()) {
+      showError('Please fix the errors in the form and try again.');
       return;
     }
 
@@ -232,23 +255,59 @@ const ProformaInvoiceEdit: React.FC = () => {
         ...formData,
         files,
       });
+      success('Proforma invoice updated successfully.');
       navigate('/sales/proforma');
     } catch (err) {
-      setErrors({ submit: err instanceof Error ? err.message : 'Failed to update invoice' });
+      const message = err instanceof Error ? err.message : 'Failed to update invoice';
+      setErrors({ submit: message });
+      showError(message);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this proforma invoice?')) {
-      try {
-        await deleteInvoice(id!);
-        navigate('/sales/proforma');
-      } catch (err) {
-        console.error('Failed to delete invoice:', err);
+  // Delete handler using confirmation modal instead of window.confirm
+  const handleDelete = () => {
+    withConfirmation(
+      {
+        title: 'Delete Proforma Invoice',
+        message: 'Are you sure you want to delete this proforma invoice? This action cannot be undone.',
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleting(true);
+        try {
+          await deleteInvoice(id!);
+          success('Proforma invoice deleted successfully.');
+          navigate('/sales/proforma');
+        } catch (err) {
+          showError('Failed to delete proforma invoice. Please try again.');
+        } finally {
+          setDeleting(false);
+        }
       }
+    );
+  };
+
+  // Cancel handler - confirm before discarding unsaved changes
+  const handleCancel = () => {
+    if (!hasUnsavedChanges) {
+      navigate('/sales/proforma');
+      return;
     }
+
+    withConfirmation(
+      {
+        title: 'Discard Changes',
+        message: 'You have unsaved changes. Are you sure you want to discard them?',
+        confirmText: 'Discard',
+        variant: 'danger',
+      },
+      async () => {
+        navigate('/sales/proforma');
+      }
+    );
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -258,10 +317,12 @@ const ProformaInvoiceEdit: React.FC = () => {
       const oversizedFiles = newFiles.filter(f => f.size > 10 * 1024 * 1024);
       if (oversizedFiles.length > 0) {
         setErrors(prev => ({ ...prev, files: 'Some files exceed the 10MB limit' }));
+        showError('Some files exceed the 10MB limit.');
         return;
       }
       if (files.length + newFiles.length > 5) {
         setErrors(prev => ({ ...prev, files: 'Maximum 5 files allowed' }));
+        showError('Maximum 5 files allowed.');
         return;
       }
       setFiles(prev => [...prev, ...newFiles]);
@@ -307,7 +368,7 @@ const ProformaInvoiceEdit: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/sales/proforma')}
+              onClick={handleCancel}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -329,15 +390,20 @@ const ProformaInvoiceEdit: React.FC = () => {
               <button
                 type="button"
                 onClick={handleDelete}
-                className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Trash2 className="h-4 w-4" />
+                {deleting ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
                 Delete
               </button>
             )}
             <button
               type="button"
-              onClick={() => navigate('/sales/proforma')}
+              onClick={handleCancel}
               className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cancel
@@ -608,7 +674,7 @@ const ProformaInvoiceEdit: React.FC = () => {
                 </div>
                 <span className="text-sm font-semibold text-gray-700">Attach Files</span>
               </div>
-              
+
               {isEditable && (
                 <div className="flex items-center gap-3">
                   <label className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:border-amber-400 hover:bg-amber-50 transition-all">
@@ -654,6 +720,19 @@ const ProformaInvoiceEdit: React.FC = () => {
       </div>
 
       {saving && <LoadingSpinner fullScreen text="Saving changes..." />}
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

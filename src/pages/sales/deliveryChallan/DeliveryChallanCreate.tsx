@@ -19,6 +19,8 @@ import { useDeliveryChallanCreate } from '../../../hooks/DeliveryChallan/useDeli
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
@@ -59,8 +61,24 @@ const DeliveryChallanCreate: React.FC = () => {
     updateFormData,
   } = useDeliveryChallanCreate();
 
+  const {
+    success,
+    error: showError,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [savingForm, setSavingForm] = useState(false);
   const [items, setItems] = useState<ItemSelectionItem[]>(formData.items || []);
+
+  // Whether the user has entered anything worth confirming before discarding
+  const hasUnsavedChanges = Boolean(
+    formData.customerId || items.length > 0 || formData.notes || formData.termsAndConditions
+  );
 
   // Handle customer selection from dropdown
   const handleCustomerSelect = (selectedOption: DropdownOption) => {
@@ -98,6 +116,26 @@ const DeliveryChallanCreate: React.FC = () => {
     addItem();
   };
 
+  // Cancel handler - confirm before discarding unsaved changes
+  const handleCancel = () => {
+    if (!hasUnsavedChanges) {
+      navigate('/sales/delivery-challan');
+      return;
+    }
+
+    withConfirmation(
+      {
+        title: 'Discard Delivery Challan',
+        message: 'You have unsaved changes. Are you sure you want to discard this delivery challan?',
+        confirmText: 'Discard',
+        variant: 'danger',
+      },
+      async () => {
+        navigate('/sales/delivery-challan');
+      }
+    );
+  };
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -105,10 +143,13 @@ const DeliveryChallanCreate: React.FC = () => {
       if (data) {
         setSavingForm(true);
         await createChallan(data);
+        success('Delivery challan created successfully.');
         navigate('/sales/delivery-challan');
+      } else {
+        showError('Please fix the errors in the form and try again.');
       }
     } catch (error) {
-      console.error('Error saving delivery challan:', error);
+      showError('Failed to create delivery challan. Please try again.');
     } finally {
       setSavingForm(false);
     }
@@ -139,7 +180,7 @@ const DeliveryChallanCreate: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/sales/delivery-challan')}
+              onClick={handleCancel}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -154,7 +195,7 @@ const DeliveryChallanCreate: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/sales/delivery-challan')}
+              onClick={handleCancel}
               className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cancel
@@ -164,8 +205,17 @@ const DeliveryChallanCreate: React.FC = () => {
               disabled={savingForm}
               className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
-              <Save className="h-4 w-4" />
-              Save Challan
+              {savingForm ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save Challan
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -432,6 +482,21 @@ const DeliveryChallanCreate: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {savingForm && <LoadingSpinner fullScreen text="Creating delivery challan..." />}
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

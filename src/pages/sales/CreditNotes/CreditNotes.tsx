@@ -1,5 +1,5 @@
 // src/pages/sales/CreditNotes/CreditNotes.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -21,8 +21,19 @@ import { useCreditNote } from '../../../hooks/CreditNote/useCreditNote';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { CreditNote } from '../../../types/creditNote/CreditNoteTypes';
+
+const STATUS_FILTER_OPTIONS: DropdownOption[] = [
+  { value: '', label: 'All Status' },
+  { value: 'draft',    label: 'Draft' },
+  { value: 'sent',     label: 'Sent' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+];
 
 // Status Badge
 const StatusBadge: React.FC<{ status: CreditNote['status'] }> = ({ status }) => {
@@ -63,82 +74,175 @@ const CreditNotes: React.FC = () => {
     updateStatus,
   } = useCreditNote();
 
+  // Use the toast and confirm hook
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
 
-  const handleView = (creditNote: CreditNote) => {
+  const handleView = useCallback((creditNote: CreditNote) => {
     navigate(`/sales/credit-notes/${creditNote.id}/view`);
-  };
+  }, [navigate]);
 
-  const handleEdit = (creditNote: CreditNote) => {
+  const handleEdit = useCallback((creditNote: CreditNote) => {
     navigate(`/sales/credit-notes/${creditNote.id}/edit`);
-  };
+  }, [navigate]);
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this credit note?')) {
-      setDeleteLoading(id);
-      try {
-        await deleteCreditNote(id);
-        setSelectedItems(prev => prev.filter(item => item !== id));
-      } finally {
-        setDeleteLoading(null);
+  // Single delete handler using confirmation modal
+  const handleDelete = useCallback(async (creditNote: CreditNote) => {
+    await withConfirmation(
+      {
+        title: 'Delete Credit Note',
+        message: `Are you sure you want to delete credit note ${creditNote.creditNoteNumber}? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(creditNote.id!);
+        try {
+          await deleteCreditNote(creditNote.id!);
+          setSelectedItems(prev => prev.filter(item => item !== creditNote.id));
+          success('Credit note deleted successfully.');
+        } catch (err) {
+          showError('Failed to delete credit note. Please try again.');
+        } finally {
+          setDeleteLoading(null);
+        }
       }
-    }
-  };
+    );
+  }, [withConfirmation, deleteCreditNote, success, showError]);
 
-  const handleStatusUpdate = async (id: string, status: CreditNote['status']) => {
-    if (window.confirm(`Mark this credit note as ${status}?`)) {
-      await updateStatus(id, status);
-    }
-  };
+  // Status update handler using confirmation modal
+  const handleStatusUpdate = useCallback(async (creditNote: CreditNote, status: CreditNote['status']) => {
+    const statusLabels: Record<string, string> = {
+      draft: 'Revert to Draft',
+      sent: 'Send',
+      approved: 'Approve',
+      rejected: 'Reject',
+    };
+    
+    const actionLabel = statusLabels[status] || status;
+    const variant = status === 'rejected' ? 'danger' as const : status === 'approved' ? 'primary' as const : 'warning' as const;
+    
+    await withConfirmation(
+      {
+        title: `${actionLabel} Credit Note`,
+        message: `Are you sure you want to ${actionLabel.toLowerCase()} credit note ${creditNote.creditNoteNumber}?`,
+        confirmText: actionLabel,
+        variant,
+      },
+      async () => {
+        setStatusUpdating(creditNote.id!);
+        try {
+          await updateStatus(creditNote.id!, status);
+          success(`Credit note ${creditNote.creditNoteNumber} ${status === 'approved' ? 'approved' : `status updated to ${status}`} successfully.`);
+        } catch (err) {
+          showError('Failed to update credit note status. Please try again.');
+        } finally {
+          setStatusUpdating(null);
+        }
+      }
+    );
+  }, [withConfirmation, updateStatus, success, showError]);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === currentItems.length) {
       setSelectedItems([]);
     } else {
       setSelectedItems(currentItems.map(item => item.id!));
     }
-  };
+  }, [selectedItems.length, currentItems]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  };
+  }, []);
 
-  const handleRefreshWithLoading = async () => {
+  const handleRefreshWithLoading = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await handleRefresh();
+      success('Credit notes list refreshed successfully.');
+    } catch (err) {
+      showError('Failed to refresh. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [handleRefresh, success, showError]);
 
-  const handleExportWithLoading = async (format: 'pdf' | 'excel') => {
+  const handleExportWithLoading = useCallback(async (format: 'pdf' | 'excel') => {
     setExportLoading(true);
     try {
       await handleExport(format);
+      success(`Credit notes exported as ${format.toUpperCase()} successfully.`);
+    } catch (err) {
+      showError(`Failed to export as ${format.toUpperCase()}. Please try again.`);
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [handleExport, success, showError]);
 
-  const handleBulkDeleteWithLoading = async () => {
-    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} credit notes?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        await Promise.all(selectedItems.map(id => deleteCreditNote(id)));
-        setSelectedItems([]);
-      } finally {
-        setBulkDeleteLoading(false);
-      }
+  // Bulk delete handler using confirmation modal
+  const handleBulkDeleteWithLoading = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select at least one credit note to delete.');
+      return;
     }
-  };
+
+    await withConfirmation(
+      {
+        title: 'Delete Credit Notes',
+        message: `Are you sure you want to delete ${selectedItems.length} credit note(s)? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          await Promise.all(selectedItems.map(id => deleteCreditNote(id)));
+          success(`${selectedItems.length} credit note(s) deleted successfully.`);
+          setSelectedItems([]);
+        } catch (err) {
+          showError('Failed to delete credit notes. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
+        }
+      }
+    );
+  }, [selectedItems, withConfirmation, deleteCreditNote, success, showError]);
+
+  const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    setImportLoading(true);
+    try {
+      await handleImport(files);
+      success('Credit notes imported successfully.');
+    } catch (err) {
+      showError('Failed to import credit notes. Please check the file format.');
+    } finally {
+      setImportLoading(false);
+      event.target.value = '';
+    }
+  }, [handleImport, success, showError]);
 
   // Columns
   const columns: TableColumn<CreditNote>[] = [
@@ -184,7 +288,9 @@ const CreditNotes: React.FC = () => {
       key: 'reason',
       header: 'Reason',
       render: (item) => (
-        <span className="text-sm text-gray-600 truncate max-w-[150px] block">{item.reason}</span>
+        <span className="text-sm text-gray-600 truncate max-w-[150px] block" title={item.reason}>
+          {item.reason}
+        </span>
       ),
     },
     {
@@ -275,16 +381,7 @@ const CreditNotes: React.FC = () => {
           <ThreeDotDropdown
             items={dropdownItems}
             position="right"
-            onImport={(event) => {
-              if (event.target.files) {
-                setImportLoading(true);
-                try {
-                  handleImport(event.target.files);
-                } finally {
-                  setImportLoading(false);
-                }
-              }
-            }}
+            onImport={handleImportAction}
             importLabel="Import Credit Notes"
             importIcon={
               importLoading ? (
@@ -308,7 +405,7 @@ const CreditNotes: React.FC = () => {
               <input
                 type="text"
                 placeholder="Search by credit note #, customer or invoice..."
-                value={filters.search}
+                value={filters.search || ''}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
@@ -316,22 +413,20 @@ const CreditNotes: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-gray-400" />
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            >
-              <option value="">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="sent">Sent</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
+            <SearchableDropdown
+              options={STATUS_FILTER_OPTIONS}
+              value={filters.status || ''}
+              onChange={(option) => setFilters({ ...filters, status: option.value })}
+              triggerPlaceholder="All Status"
+              placeholder="Search status..."
+              className="w-40"
+              resetSearchOnOpen
+            />
           </div>
           <div className="flex items-center gap-2">
             <input
               type="date"
-              value={filters.dateFrom}
+              value={filters.dateFrom || ''}
               onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="Start Date"
@@ -339,7 +434,7 @@ const CreditNotes: React.FC = () => {
             <span className="text-gray-400">to</span>
             <input
               type="date"
-              value={filters.dateTo}
+              value={filters.dateTo || ''}
               onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="End Date"
@@ -364,11 +459,22 @@ const CreditNotes: React.FC = () => {
           currentPage,
           totalPages,
           totalItems,
-          startIndex,
-          endIndex,
           onPageChange: setCurrentPage,
           itemsPerPage: itemsPerPage || 5,
         }}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
       />
     </div>
   );

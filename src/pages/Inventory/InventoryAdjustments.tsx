@@ -21,6 +21,7 @@ import ThreeDotDropdown from '../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../components/common/ReusableTable';
 import type { TableColumn } from '../../components/common/ReusableTable';
 import { useInventoryAdjustments } from '../../hooks/inventory/useInventoryAdjustments';
+import { useToast } from '../../components/common/Toast';
 import type { InventoryAdjustment } from '../../types/inventory/InventoryAdjustmentTypes';
 
 // Status Badge Component
@@ -73,6 +74,7 @@ const TypeBadge: React.FC<{ type: InventoryAdjustment['type'] }> = ({ type }) =>
 
 const InventoryAdjustments: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const {
     loading,
     currentItems,
@@ -115,6 +117,9 @@ const InventoryAdjustments: React.FC = () => {
       try {
         await handleDelete(id);
         setSelectedItems(prev => prev.filter(itemId => itemId !== id));
+        toast.success('Adjustment deleted successfully.');
+      } catch {
+        toast.error('Failed to delete adjustment. Please try again.');
       } finally {
         setDeleteLoading(null);
       }
@@ -128,6 +133,9 @@ const InventoryAdjustments: React.FC = () => {
       try {
         await handleBulkDelete(selectedItems);
         setSelectedItems([]);
+        toast.success(`${selectedItems.length} adjustment(s) deleted successfully.`);
+      } catch {
+        toast.error('Failed to delete adjustments. Please try again.');
       } finally {
         setBulkDeleteLoading(false);
       }
@@ -139,6 +147,9 @@ const InventoryAdjustments: React.FC = () => {
     try {
       await handleRefresh();
       setSelectedItems([]);
+      toast.success('Adjustments refreshed.');
+    } catch {
+      toast.error('Failed to refresh. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
@@ -148,6 +159,9 @@ const InventoryAdjustments: React.FC = () => {
     setExportLoading(format);
     try {
       await handleExport(format);
+      toast.success(`Exported as ${format.toUpperCase()} successfully.`);
+    } catch {
+      toast.error(`Failed to export as ${format.toUpperCase()}.`);
     } finally {
       setExportLoading(null);
     }
@@ -160,10 +174,10 @@ const InventoryAdjustments: React.FC = () => {
       try {
         await handleImport(files);
         await handleRefresh();
-        alert(`Successfully imported ${files.length} file(s)`);
+        toast.success(`Successfully imported ${files.length} file(s).`);
       } catch (error) {
         console.error('Import error:', error);
-        alert('Failed to import files. Please check the file format.');
+        toast.error('Failed to import. Please check the file format.');
       } finally {
         setImportLoading(false);
       }

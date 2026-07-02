@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Save,
-  User,
   Mail,
   Phone,
   FileText,
@@ -19,6 +18,8 @@ import { useProformaInvoiceCreate } from '../../../hooks/Proforma/useProformaInv
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
@@ -60,9 +61,25 @@ const ProformaInvoiceCreate: React.FC = () => {
     handleSubmit,
   } = useProformaInvoiceCreate();
 
+  const {
+    success,
+    error: showError,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [productSearch, setProductSearch] = useState('');
   const [productSuggestions] = useState(MOCK_PRODUCTS);
   const [items, setItems] = useState<ItemSelectionItem[]>([]);
+
+  // Whether the user has entered anything worth confirming before discarding
+  const hasUnsavedChanges = Boolean(
+    formData.customerId || items.length > 0 || formData.notes || formData.termsAndConditions
+  );
 
   // Handle customer selection from dropdown
   const handleCustomerSelect = (selectedOption: DropdownOption) => {
@@ -117,11 +134,38 @@ const ProformaInvoiceCreate: React.FC = () => {
     setProductSearch(search);
   };
 
+  // Cancel handler - confirm before discarding unsaved changes
+  const handleCancel = () => {
+    if (!hasUnsavedChanges) {
+      navigate('/sales/proforma');
+      return;
+    }
+
+    withConfirmation(
+      {
+        title: 'Discard Proforma Invoice',
+        message: 'You have unsaved changes. Are you sure you want to discard this proforma invoice?',
+        confirmText: 'Discard',
+        variant: 'danger',
+      },
+      async () => {
+        navigate('/sales/proforma');
+      }
+    );
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await handleSubmit(navigate);
-    if (result) {
-      navigate('/sales/proforma');
+    try {
+      const result = await handleSubmit(navigate);
+      if (result) {
+        success('Proforma invoice created successfully.');
+        navigate('/sales/proforma');
+      } else {
+        showError('Please fix the errors in the form and try again.');
+      }
+    } catch (err) {
+      showError('Failed to create proforma invoice. Please try again.');
     }
   };
 
@@ -150,7 +194,7 @@ const ProformaInvoiceCreate: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/sales/proforma')}
+              onClick={handleCancel}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -168,7 +212,7 @@ const ProformaInvoiceCreate: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => navigate('/sales/proforma')}
+              onClick={handleCancel}
               className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cancel
@@ -405,6 +449,19 @@ const ProformaInvoiceCreate: React.FC = () => {
       </div>
 
       {saving && <LoadingSpinner fullScreen text="Creating proforma invoice..." />}
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

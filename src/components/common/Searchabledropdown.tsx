@@ -30,6 +30,8 @@ export interface SearchableDropdownProps {
   resetSearchOnOpen?: boolean;
 }
 
+const DROPDOWN_MAX_HEIGHT = 320; // px, cap for the whole panel
+
 const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   options,
   value,
@@ -40,21 +42,24 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   className = "",
   showEmptyState = true,
   emptyStateText = "No results found",
-  maxListHeight = 280,
+  maxListHeight = 240,
   resetSearchOnOpen = true,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [style, setStyle] = useState<React.CSSProperties>({});
 
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const rafRef = useRef<number>(0);
+
+  // ─── Derived data ──────────────────────────────────────────────────────────
 
   const selectedOption = useMemo(
-    () => options.find((opt) => opt.value === value) || null,
+    () => options.find((opt) => opt.value === value) ?? null,
     [options, value]
   );
 
@@ -70,14 +75,37 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 
   const groupedOptions = useMemo(() => {
     const groups = new Map<string, DropdownOption[]>();
-    const ungroupedKey = "";
     filteredOptions.forEach((opt) => {
-      const key = opt.group ?? ungroupedKey;
+      const key = opt.group ?? "";
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(opt);
     });
     return Array.from(groups.entries());
   }, [filteredOptions]);
+
+  // ─── Position (fixed, viewport-relative — works inside ANY scroll container) ──
+
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    const panelH = Math.min(DROPDOWN_MAX_HEIGHT, maxListHeight + 56 /* search box */);
+    const spaceBelow = window.innerHeight - r.bottom - 6;
+    const spaceAbove = r.top - 6;
+
+    const openBelow = spaceBelow >= panelH || spaceBelow >= spaceAbove;
+    const top = openBelow ? r.bottom + 4 : r.top - panelH - 4;
+
+    setStyle({
+      position: "fixed",
+      top,
+      left: r.left,
+      width: r.width,
+      maxHeight: panelH,
+      zIndex: 99999,
+    });
+  }, [maxListHeight]);
+
+  // ─── Open / close helpers ──────────────────────────────────────────────────
 
   const closeDropdown = useCallback(() => {
     setIsOpen(false);
@@ -86,14 +114,17 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 
   const openDropdown = useCallback(() => {
     if (disabled) return;
+    updatePosition();
     setIsOpen(true);
     if (resetSearchOnOpen) setSearch("");
-    setTimeout(() => inputRef.current?.focus(), 50);
-  }, [disabled, resetSearchOnOpen]);
+    // Focus search after render
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    });
+  }, [disabled, resetSearchOnOpen, updatePosition]);
 
   const toggleDropdown = useCallback(() => {
-    if (isOpen) closeDropdown();
-    else openDropdown();
+    isOpen ? closeDropdown() : openDropdown();
   }, [isOpen, openDropdown, closeDropdown]);
 
   const handleSelect = useCallback(
@@ -105,98 +136,81 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
     [onChange, closeDropdown]
   );
 
-  // Calculate dropdown position
-  const calculatePosition = useCallback(() => {
-    if (wrapperRef.current) {
-      const rect = wrapperRef.current.getBoundingClientRect();
-      
-      // Calculate available space
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const dropdownHeight = Math.min(maxListHeight + 70, 350);
-      
-      let top = rect.bottom + window.scrollY + 6;
-      
-      // If not enough space below, show above
-      if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
-        top = rect.top + window.scrollY - dropdownHeight - 6;
+  // ─── Keep position in sync while open (scroll / resize anywhere) ──────────
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onScroll = (e: Event) => {
+      // If the scroll happened inside the dropdown panel itself, just reposition.
+      // If it happened anywhere else (page, sidebar, any container) → close.
+      if (dropdownRef.current && dropdownRef.current.contains(e.target as Node)) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(updatePosition);
+      } else {
+        closeDropdown();
       }
-      
-      setDropdownPosition({
-        top: top,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-      });
-    }
-  }, [maxListHeight]);
+    };
 
-  // Update position when dropdown opens
-  useEffect(() => {
-    if (isOpen) {
-      // Initial calculation
-      calculatePosition();
-      
-      // Recalculate on scroll
-      const handleScroll = () => {
-        calculatePosition();
-      };
-      
-      // Recalculate on resize
-      const handleResize = () => {
-        calculatePosition();
-      };
-      
-      // Recalculate on any scroll event (including inside containers)
-      window.addEventListener('scroll', handleScroll, true);
-      window.addEventListener('resize', handleResize);
-      
-      return () => {
-        window.removeEventListener('scroll', handleScroll, true);
-        window.removeEventListener('resize', handleResize);
-      };
-    }
-  }, [isOpen, calculatePosition]);
+    const onResize = () => {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(updatePosition);
+    };
 
-  // Click outside to close
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    window.addEventListener("resize", onResize, { passive: true });
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener("scroll", onScroll, { capture: true });
+      window.removeEventListener("resize", onResize);
+    };
+  }, [isOpen, updatePosition, closeDropdown]);
+
+  // ─── Click-outside to close ────────────────────────────────────────────────
+
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      const target = e.target as Node;
+    if (!isOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      const t = e.target as Node;
       if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(target) &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(target)
+        !triggerRef.current?.contains(t) &&
+        !dropdownRef.current?.contains(t)
       ) {
         closeDropdown();
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [closeDropdown]);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [isOpen, closeDropdown]);
 
-  // Keep the highlighted item scrolled into view
+  // ─── Keyboard: Escape ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") closeDropdown();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, closeDropdown]);
+
+  // ─── Scroll highlighted option into view ──────────────────────────────────
+
   useEffect(() => {
     if (highlightedIndex < 0) return;
     const opt = filteredOptions[highlightedIndex];
     if (!opt) return;
-    const el = optionRefs.current.get(opt.value);
-    el?.scrollIntoView({ block: "nearest" });
+    optionRefs.current.get(opt.value)?.scrollIntoView({ block: "nearest" });
   }, [highlightedIndex, filteredOptions]);
 
-  // Reset highlight whenever the filtered list changes
+  // ─── Reset highlight when filtered list changes ───────────────────────────
+
   useEffect(() => {
     setHighlightedIndex(filteredOptions.length > 0 ? 0 : -1);
   }, [filteredOptions]);
 
-  // Handle escape key to close
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        closeDropdown();
-      }
-    };
-    document.addEventListener('keydown', handleEscape as any);
-    return () => document.removeEventListener('keydown', handleEscape as any);
-  }, [isOpen, closeDropdown]);
+  // ─── Keyboard navigation on the trigger wrapper ───────────────────────────
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (!isOpen) {
@@ -206,17 +220,16 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
       }
       return;
     }
-
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setHighlightedIndex((prev) =>
-          prev < filteredOptions.length - 1 ? prev + 1 : prev
+        setHighlightedIndex((p) =>
+          p < filteredOptions.length - 1 ? p + 1 : p
         );
         break;
       case "ArrowUp":
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+        setHighlightedIndex((p) => (p > 0 ? p - 1 : 0));
         break;
       case "Enter":
         e.preventDefault();
@@ -224,44 +237,22 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
           handleSelect(filteredOptions[highlightedIndex]);
         }
         break;
-      default:
-        break;
     }
   };
 
-  const dropdownContent = isOpen && (
+  // ─── Portal content ───────────────────────────────────────────────────────
+
+  const dropdownContent = isOpen ? (
     <div
       ref={dropdownRef}
-      className="fixed z-[9999] rounded-lg border border-gray-200 bg-white shadow-lg shadow-gray-900/10"
-      style={{
-        top: dropdownPosition.top,
-        left: dropdownPosition.left,
-        width: dropdownPosition.width,
-        maxHeight: Math.min(maxListHeight + 70, 350),
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+      style={style}
+      className="rounded-lg border border-gray-200 bg-white shadow-xl shadow-gray-900/10 flex flex-col overflow-hidden"
     >
       {/* Search box */}
-      <div className="sticky top-0 z-10 m-2 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 ring-1 ring-amber-500/20 focus-within:ring-2 focus-within:ring-amber-500/30">
-        <svg
-          className="h-4 w-4 flex-shrink-0 text-amber-400"
-          viewBox="0 0 16 16"
-          fill="none"
-        >
-          <circle
-            cx="7"
-            cy="7"
-            r="5.25"
-            stroke="currentColor"
-            strokeWidth="1.4"
-          />
-          <path
-            d="M11 11L14 14"
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-          />
+      <div className="flex-shrink-0 m-2 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 ring-1 ring-amber-500/20 focus-within:ring-2 focus-within:ring-amber-500/30">
+        <svg className="h-4 w-4 flex-shrink-0 text-amber-400" viewBox="0 0 16 16" fill="none">
+          <circle cx="7" cy="7" r="5.25" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
         <input
           ref={inputRef}
@@ -273,7 +264,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         />
       </div>
 
-      {/* List */}
+      {/* Option list */}
       <div
         className="overflow-y-auto px-1 pb-2 [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]"
         style={{ maxHeight: maxListHeight }}
@@ -285,7 +276,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         )}
 
         {groupedOptions.map(([group, opts]) => (
-          <div className="[&+&]:mt-1" key={group || "ungrouped"}>
+          <div key={group || "ungrouped"} className="[&+&]:mt-1">
             {group && (
               <div className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
                 {group}
@@ -305,9 +296,10 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                   role="option"
                   aria-selected={isSelected}
                   onMouseEnter={() => setHighlightedIndex(flatIndex)}
+                  onMouseDown={(e) => e.preventDefault()} // prevent blur before click
                   onClick={() => handleSelect(opt)}
                   className={[
-                    "mx-0.5 my-0.5 select-none rounded-lg px-3 py-2 text-sm transition-all duration-150",
+                    "mx-0.5 my-0.5 select-none rounded-lg px-3 py-2 text-sm transition-all duration-100",
                     opt.disabled
                       ? "cursor-not-allowed text-gray-300"
                       : "cursor-pointer",
@@ -326,11 +318,13 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         ))}
       </div>
     </div>
-  );
+  ) : null;
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div
-      ref={wrapperRef}
+      ref={triggerRef}
       className={`relative w-full font-sans ${className}`}
       onKeyDown={handleKeyDown}
     >
@@ -350,11 +344,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
             : "border-gray-300",
         ].join(" ")}
       >
-        <span
-          className={`truncate ${
-            !selectedOption ? "text-gray-400" : "text-gray-800"
-          }`}
-        >
+        <span className={`truncate ${!selectedOption ? "text-gray-400" : "text-gray-800"}`}>
           {selectedOption ? selectedOption.label : triggerPlaceholder}
         </span>
         <svg
@@ -374,7 +364,8 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         </svg>
       </button>
 
-      {typeof document !== 'undefined' && createPortal(dropdownContent, document.body)}
+      {typeof document !== "undefined" &&
+        createPortal(dropdownContent, document.body)}
     </div>
   );
 };

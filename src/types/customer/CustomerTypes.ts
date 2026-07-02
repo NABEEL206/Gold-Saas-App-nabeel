@@ -59,6 +59,7 @@ export interface CustomerFilters {
 }
 
 export interface CustomerStats {
+  total: any;
   totalCustomers: number;
   active: number;
   inactive: number;

@@ -50,6 +50,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   }, [isOpen, onClose, isLoading]);
 
   const handleOverlayClick = (e: React.MouseEvent) => {
+    // Only close if clicking the overlay itself, not the modal content
     if (e.target === e.currentTarget && !isLoading) {
       onClose();
     }
@@ -76,6 +77,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
           <div className="flex items-center justify-center gap-3">
             <button
+              type="button"
               onClick={onClose}
               disabled={isLoading}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -83,6 +85,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               {cancelText}
             </button>
             <button
+              type="button"
               onClick={onConfirm}
               disabled={isLoading}
               className={`

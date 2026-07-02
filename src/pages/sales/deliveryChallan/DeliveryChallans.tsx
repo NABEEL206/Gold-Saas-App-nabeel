@@ -1,5 +1,5 @@
 // src/pages/sales/deliveryChallan/DeliveryChallans.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -10,7 +10,6 @@ import {
   File,
   Upload,
   Trash,
-  Receipt,
   Truck,
   CheckCircle,
   Clock,
@@ -20,6 +19,8 @@ import { useDeliveryChallan } from '../../../hooks/DeliveryChallan/useDeliveryCh
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { DeliveryChallan } from '../../../types/deliveryChallan/DeliveryChallanTypes';
 
@@ -38,6 +39,13 @@ const StatusBadge: React.FC<{ status: DeliveryChallan['status'] }> = ({ status }
       {label}
     </span>
   );
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'draft',
+  sent: 'sent',
+  delivered: 'delivered',
+  cancelled: 'cancelled',
 };
 
 const DeliveryChallans: React.FC = () => {
@@ -62,82 +70,141 @@ const DeliveryChallans: React.FC = () => {
     updateStatus,
   } = useDeliveryChallan();
 
+  const {
+    success,
+    error: showError,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
 
-  const handleView = (challan: DeliveryChallan) => {
+  const handleView = useCallback((challan: DeliveryChallan) => {
     navigate(`/sales/delivery-challan/${challan.id}/view`);
-  };
+  }, [navigate]);
 
-  const handleEdit = (challan: DeliveryChallan) => {
+  const handleEdit = useCallback((challan: DeliveryChallan) => {
     navigate(`/sales/delivery-challan/${challan.id}/edit`);
-  };
+  }, [navigate]);
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this delivery challan?')) {
-      setDeleteLoading(id);
-      try {
-        await deleteChallan(id);
-        setSelectedItems(prev => prev.filter(item => item !== id));
-      } finally {
-        setDeleteLoading(null);
+  // Single delete handler using confirmation modal instead of window.confirm
+  const handleDelete = useCallback((id: string) => {
+    withConfirmation(
+      {
+        title: 'Delete Delivery Challan',
+        message: 'Are you sure you want to delete this delivery challan? This action cannot be undone.',
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(id);
+        try {
+          await deleteChallan(id);
+          setSelectedItems(prev => prev.filter(item => item !== id));
+          success('Delivery challan deleted successfully.');
+        } catch (err) {
+          showError('Failed to delete delivery challan. Please try again.');
+        } finally {
+          setDeleteLoading(null);
+        }
       }
-    }
-  };
+    );
+  }, [withConfirmation, deleteChallan, success, showError]);
 
-  const handleStatusUpdate = async (id: string, status: DeliveryChallan['status']) => {
-    if (window.confirm(`Mark this delivery challan as ${status}?`)) {
-      await updateStatus(id, status);
-    }
-  };
+  // Status update handler using confirmation modal instead of window.confirm
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === currentItems.length) {
       setSelectedItems([]);
     } else {
       setSelectedItems(currentItems.map(item => item.id!));
     }
-  };
+  }, [selectedItems.length, currentItems]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  };
+  }, []);
 
-  const handleRefreshWithLoading = async () => {
+  const handleRefreshWithLoading = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await handleRefresh();
+      success('Delivery challan list refreshed.');
+    } catch (err) {
+      showError('Failed to refresh. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [handleRefresh, success, showError]);
 
-  const handleExportWithLoading = async (format: 'pdf' | 'excel') => {
+  const handleExportWithLoading = useCallback(async (format: 'pdf' | 'excel') => {
     setExportLoading(true);
     try {
       await handleExport(format);
+      success(`Delivery challans exported as ${format.toUpperCase()} successfully.`);
+    } catch (err) {
+      showError(`Failed to export as ${format.toUpperCase()}.`);
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [handleExport, success, showError]);
 
-  const handleBulkDeleteWithLoading = async () => {
-    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} delivery challans?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        await Promise.all(selectedItems.map(id => deleteChallan(id)));
-        setSelectedItems([]);
-      } finally {
-        setBulkDeleteLoading(false);
-      }
+  // Bulk delete handler using confirmation modal instead of window.confirm
+  const handleBulkDeleteWithLoading = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select at least one delivery challan to delete.');
+      return;
     }
-  };
+
+    await withConfirmation(
+      {
+        title: 'Delete Delivery Challans',
+        message: `Are you sure you want to delete ${selectedItems.length} delivery challan(s)? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          await Promise.all(selectedItems.map(id => deleteChallan(id)));
+          success(`${selectedItems.length} delivery challan(s) deleted successfully.`);
+          setSelectedItems([]);
+        } catch (err) {
+          showError('Failed to delete delivery challans. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
+        }
+      }
+    );
+  }, [selectedItems, withConfirmation, deleteChallan, success, showError]);
+
+  const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    setImportLoading(true);
+    try {
+      await handleImport(files);
+      success('Delivery challans imported successfully.');
+    } catch (err) {
+      showError('Failed to import delivery challans. Please check the file format.');
+    } finally {
+      setImportLoading(false);
+      event.target.value = '';
+    }
+  }, [handleImport, success, showError]);
 
   // Columns - No action column
   const columns: TableColumn<DeliveryChallan>[] = [
@@ -267,16 +334,7 @@ const DeliveryChallans: React.FC = () => {
           <ThreeDotDropdown
             items={dropdownItems}
             position="right"
-            onImport={(event) => {
-              if (event.target.files) {
-                setImportLoading(true);
-                try {
-                  handleImport(event.target.files);
-                } finally {
-                  setImportLoading(false);
-                }
-              }
-            }}
+            onImport={handleImportAction}
             importLabel="Import Challans"
             importIcon={
               importLoading ? (
@@ -356,11 +414,22 @@ const DeliveryChallans: React.FC = () => {
           currentPage,
           totalPages,
           totalItems,
-          startIndex,
-          endIndex,
           onPageChange: setCurrentPage,
           itemsPerPage: itemsPerPage || 5,
         }}
+      />
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
       />
     </div>
   );

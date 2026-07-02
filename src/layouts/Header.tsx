@@ -16,7 +16,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-gradient-to-r from-amber-800 via-amber-600 to-yellow-600 shadow-xl z-30 h-16">
+    <header className="fixed top-0 left-0 right-0 bg-gradient-to-r from-amber-800 via-amber-600 to-yellow-600 shadow-xl z-[100000] h-16">
       {/* Decorative sparkle overlay */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNCAyNHYyaC04di0yaDh6TTI4IDMwdjJoLTR2LTRoNHYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-50"></div>
       

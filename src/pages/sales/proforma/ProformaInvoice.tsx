@@ -1,13 +1,10 @@
 // src/pages/sales/proforma/ProformaInvoices.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
   Filter,
-  Eye,
-  Edit,
-  Trash2,
   FileText,
   Clock,
   RefreshCw,
@@ -23,6 +20,8 @@ import { useProformaInvoice } from '../../../hooks/Proforma/useProformaInvoice';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { ProformaInvoice as ProformaInvoiceType } from '../../../types/proforma/ProformaInvoiceType';
 
@@ -72,6 +71,17 @@ const ProformaInvoiceList: React.FC = () => {
     setFilters,
   } = useProformaInvoice();
 
+  const {
+    success,
+    error: showError,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [refreshLoading, setRefreshLoading] = useState(false);
@@ -92,74 +102,124 @@ const ProformaInvoiceList: React.FC = () => {
     navigate(`/sales/proforma/${invoice.id}/edit`);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this proforma invoice?')) {
-      setDeleteLoading(id);
-      try {
-        await deleteInvoice(id);
-        setSelectedItems(prev => prev.filter(item => item !== id));
-      } finally {
-        setDeleteLoading(null);
+  // Single delete handler with confirmation modal + toasts
+  const handleDelete = useCallback((id: string) => {
+    withConfirmation(
+      {
+        title: 'Delete Proforma Invoice',
+        message: 'Are you sure you want to delete this proforma invoice? This action cannot be undone.',
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(id);
+        try {
+          await deleteInvoice(id);
+          setSelectedItems(prev => prev.filter(item => item !== id));
+          success('Proforma invoice deleted successfully.');
+        } catch (err) {
+          showError('Failed to delete proforma invoice. Please try again.');
+        } finally {
+          setDeleteLoading(null);
+        }
       }
-    }
-  };
+    );
+  }, [withConfirmation, deleteInvoice, success, showError]);
 
-  const handleStatusUpdate = async (id: string, status: ProformaInvoiceType['status']) => {
+  const handleStatusUpdate = useCallback(async (id: string, status: ProformaInvoiceType['status']) => {
     try {
       await updateInvoiceStatus(id, status);
+      success(`Invoice status updated to ${status}.`);
     } catch (err) {
-      console.error('Failed to update invoice status:', err);
+      showError('Failed to update invoice status. Please try again.');
     }
-  };
+  }, [updateInvoiceStatus, success, showError]);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === invoices.length) {
       setSelectedItems([]);
     } else {
       setSelectedItems(invoices.map(item => item.id!));
     }
-  };
+  }, [selectedItems.length, invoices]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  };
+  }, []);
 
-  const handleRefreshWithLoading = async () => {
+  const handleRefreshWithLoading = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await fetchInvoices();
+      success('Proforma invoice list refreshed.');
+    } catch (err) {
+      showError('Failed to refresh. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [fetchInvoices, success, showError]);
 
-  const handleExportWithLoading = async (format: 'pdf' | 'excel') => {
+  const handleExportWithLoading = useCallback(async (format: 'pdf' | 'excel') => {
     setExportLoading(true);
     try {
-      console.log(`Exporting as ${format}`);
+      // TODO: replace with real export call
       await new Promise(resolve => setTimeout(resolve, 1000));
+      success(`Proforma invoices exported as ${format.toUpperCase()} successfully.`);
+    } catch (err) {
+      showError(`Failed to export as ${format.toUpperCase()}.`);
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [success, showError]);
 
-  const handleBulkDeleteWithLoading = async () => {
-    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} proforma invoices?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        await Promise.all(selectedItems.map(id => deleteInvoice(id)));
-        setSelectedItems([]);
-      } finally {
-        setBulkDeleteLoading(false);
-      }
+  // Bulk delete handler with confirmation modal + toasts
+  const handleBulkDeleteWithLoading = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select at least one proforma invoice to delete.');
+      return;
     }
-  };
 
-  const handleImport = (files: FileList) => {
-    console.log('Importing files:', files);
-  };
+    await withConfirmation(
+      {
+        title: 'Delete Proforma Invoices',
+        message: `Are you sure you want to delete ${selectedItems.length} proforma invoice(s)? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          await Promise.all(selectedItems.map(id => deleteInvoice(id)));
+          success(`${selectedItems.length} proforma invoice(s) deleted successfully.`);
+          setSelectedItems([]);
+        } catch (err) {
+          showError('Failed to delete proforma invoices. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
+        }
+      }
+    );
+  }, [selectedItems, withConfirmation, deleteInvoice, success, showError]);
+
+  const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setImportLoading(true);
+    try {
+      // TODO: replace with real import call
+      console.log('Importing files:', files);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      success('Proforma invoices imported successfully.');
+    } catch (err) {
+      showError('Failed to import proforma invoices. Please check the file format.');
+    } finally {
+      setImportLoading(false);
+      event.target.value = '';
+    }
+  }, [success, showError]);
 
   // Columns - No action column
   const columns: TableColumn<ProformaInvoiceType>[] = [
@@ -305,16 +365,7 @@ const ProformaInvoiceList: React.FC = () => {
           <ThreeDotDropdown
             items={dropdownItems}
             position="right"
-            onImport={(event) => {
-              if (event.target.files) {
-                setImportLoading(true);
-                try {
-                  handleImport(event.target.files);
-                } finally {
-                  setImportLoading(false);
-                }
-              }
-            }}
+            onImport={handleImportAction}
             importLabel="Import Proformas"
             importIcon={
               importLoading ? (
@@ -395,11 +446,22 @@ const ProformaInvoiceList: React.FC = () => {
           currentPage,
           totalPages: Math.ceil(totalItems / itemsPerPage),
           totalItems,
-          startIndex: (currentPage - 1) * itemsPerPage,
-          endIndex: Math.min(currentPage * itemsPerPage, totalItems),
           onPageChange: setPage,
           itemsPerPage: itemsPerPage || 5,
         }}
+      />
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 // src/pages/sales/PaymentReceived/PaymentsReceived.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -23,6 +23,8 @@ import { usePaymentReceived } from '../../../hooks/PaymentReceived/usePaymentRec
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { PaymentReceived } from '../../../types/paymentReceived/PaymentReceivedTypes';
 
@@ -72,8 +74,6 @@ const PaymentsReceived: React.FC = () => {
     currentPage,
     totalItems,
     itemsPerPage,
-    startIndex,
-    endIndex,
     totalPages,
     setFilters,
     setCurrentPage,
@@ -84,82 +84,175 @@ const PaymentsReceived: React.FC = () => {
     updateStatus,
   } = usePaymentReceived();
 
+  // Use the toast and confirm hook
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
 
-  const handleView = (payment: PaymentReceived) => {
+  const handleView = useCallback((payment: PaymentReceived) => {
     navigate(`/sales/payments-received/${payment.id}/view`);
-  };
+  }, [navigate]);
 
-  const handleEdit = (payment: PaymentReceived) => {
+  const handleEdit = useCallback((payment: PaymentReceived) => {
     navigate(`/sales/payments-received/${payment.id}/edit`);
-  };
+  }, [navigate]);
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this payment?')) {
-      setDeleteLoading(id);
-      try {
-        await deletePayment(id);
-        setSelectedItems(prev => prev.filter(item => item !== id));
-      } finally {
-        setDeleteLoading(null);
+  // Single delete handler using confirmation modal
+  const handleDelete = useCallback(async (payment: PaymentReceived) => {
+    await withConfirmation(
+      {
+        title: 'Delete Payment',
+        message: `Are you sure you want to delete payment ${payment.paymentNumber}? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(payment.id!);
+        try {
+          await deletePayment(payment.id!);
+          setSelectedItems(prev => prev.filter(item => item !== payment.id));
+          success('Payment deleted successfully.');
+        } catch (err) {
+          showError('Failed to delete payment. Please try again.');
+        } finally {
+          setDeleteLoading(null);
+        }
       }
-    }
-  };
+    );
+  }, [withConfirmation, deletePayment, success, showError]);
 
-  const handleStatusUpdate = async (id: string, status: PaymentReceived['status']) => {
-    if (window.confirm(`Mark this payment as ${status}?`)) {
-      await updateStatus(id, status);
-    }
-  };
+  // Status update handler using confirmation modal
+  const handleStatusUpdate = useCallback(async (payment: PaymentReceived, status: PaymentReceived['status']) => {
+    const statusLabels: Record<string, string> = {
+      completed: 'Mark as Completed',
+      pending: 'Mark as Pending',
+      failed: 'Mark as Failed',
+      refunded: 'Mark as Refunded',
+    };
+    
+    const actionLabel = statusLabels[status] || status;
+    const variant = status === 'failed' || status === 'refunded' ? 'danger' as const : 'primary' as const;
+    
+    await withConfirmation(
+      {
+        title: `${actionLabel} Payment`,
+        message: `Are you sure you want to ${actionLabel.toLowerCase()} payment ${payment.paymentNumber}?`,
+        confirmText: actionLabel,
+        variant,
+      },
+      async () => {
+        setStatusUpdating(payment.id!);
+        try {
+          await updateStatus(payment.id!, status);
+          success(`Payment ${payment.paymentNumber} ${status === 'completed' ? 'marked as completed' : `status updated to ${status}`} successfully.`);
+        } catch (err) {
+          showError('Failed to update payment status. Please try again.');
+        } finally {
+          setStatusUpdating(null);
+        }
+      }
+    );
+  }, [withConfirmation, updateStatus, success, showError]);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === currentItems.length) {
       setSelectedItems([]);
     } else {
       setSelectedItems(currentItems.map(item => item.id!));
     }
-  };
+  }, [selectedItems.length, currentItems]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  };
+  }, []);
 
-  const handleRefreshWithLoading = async () => {
+  const handleRefreshWithLoading = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await handleRefresh();
+      success('Payment list refreshed successfully.');
+    } catch (err) {
+      showError('Failed to refresh. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [handleRefresh, success, showError]);
 
-  const handleExportWithLoading = async (format: 'pdf' | 'excel') => {
+  const handleExportWithLoading = useCallback(async (format: 'pdf' | 'excel') => {
     setExportLoading(true);
     try {
       await handleExport(format);
+      success(`Payments exported as ${format.toUpperCase()} successfully.`);
+    } catch (err) {
+      showError(`Failed to export as ${format.toUpperCase()}. Please try again.`);
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [handleExport, success, showError]);
 
-  const handleBulkDeleteWithLoading = async () => {
-    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} payments?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        await Promise.all(selectedItems.map(id => deletePayment(id)));
-        setSelectedItems([]);
-      } finally {
-        setBulkDeleteLoading(false);
-      }
+  // Bulk delete handler using confirmation modal
+  const handleBulkDeleteWithLoading = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select at least one payment to delete.');
+      return;
     }
-  };
+
+    await withConfirmation(
+      {
+        title: 'Delete Payments',
+        message: `Are you sure you want to delete ${selectedItems.length} payment(s)? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          await Promise.all(selectedItems.map(id => deletePayment(id)));
+          success(`${selectedItems.length} payment(s) deleted successfully.`);
+          setSelectedItems([]);
+        } catch (err) {
+          showError('Failed to delete payments. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
+        }
+      }
+    );
+  }, [selectedItems, withConfirmation, deletePayment, success, showError]);
+
+  const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    setImportLoading(true);
+    try {
+      await handleImport(files);
+      success('Payments imported successfully.');
+    } catch (err) {
+      showError('Failed to import payments. Please check the file format.');
+    } finally {
+      setImportLoading(false);
+      event.target.value = '';
+    }
+  }, [handleImport, success, showError]);
 
   // Columns
   const columns: TableColumn<PaymentReceived>[] = [
@@ -294,16 +387,7 @@ const PaymentsReceived: React.FC = () => {
           <ThreeDotDropdown
             items={dropdownItems}
             position="right"
-            onImport={(event) => {
-              if (event.target.files) {
-                setImportLoading(true);
-                try {
-                  handleImport(event.target.files);
-                } finally {
-                  setImportLoading(false);
-                }
-              }
-            }}
+            onImport={handleImportAction}
             importLabel="Import Payments"
             importIcon={
               importLoading ? (
@@ -349,7 +433,7 @@ const PaymentsReceived: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <select
-              value={filters.paymentMethod}
+              value={filters.paymentMethod || ''}
               onChange={(e) => setFilters({ ...filters, paymentMethod: e.target.value })}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
@@ -365,7 +449,7 @@ const PaymentsReceived: React.FC = () => {
           <div className="flex items-center gap-2">
             <input
               type="date"
-              value={filters.dateFrom}
+              value={filters.dateFrom || ''}
               onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="Start Date"
@@ -373,7 +457,7 @@ const PaymentsReceived: React.FC = () => {
             <span className="text-gray-400">to</span>
             <input
               type="date"
-              value={filters.dateTo}
+              value={filters.dateTo || ''}
               onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="End Date"
@@ -398,11 +482,22 @@ const PaymentsReceived: React.FC = () => {
           currentPage,
           totalPages,
           totalItems,
-          startIndex,
-          endIndex,
           onPageChange: setCurrentPage,
           itemsPerPage: itemsPerPage || 5,
         }}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
       />
     </div>
   );

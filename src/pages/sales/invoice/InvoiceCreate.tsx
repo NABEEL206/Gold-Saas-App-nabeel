@@ -1,10 +1,9 @@
 // src/pages/sales/invoice/InvoiceCreate.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Save,
-  User,
   Mail,
   Phone,
   FileText,
@@ -16,9 +15,12 @@ import {
   Pencil,
 } from 'lucide-react';
 import { useInvoiceCreate } from '../../../hooks/Invoices/useInvoiceCreate';
+import { useInvoices } from '../../../hooks/Invoices/useInvoices';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
@@ -46,40 +48,51 @@ const MOCK_PRODUCTS = [
   { id: '6', name: 'Silver Necklace', code: 'SN-001', category: 'Necklace', purity: '18K', price: 2800, description: '18K Silver Necklace with chain', unit: 'Pcs' },
 ];
 
+// Customer details mapping
+const customerDetailsMap: Record<string, any> = {
+  'CUST-001': { name: 'Rajesh Kumar', email: 'rajesh@email.com', phone: '9876543210', address: '123 Main St, Mumbai', gst: 'GSTIN001' },
+  'CUST-002': { name: 'Priya Sharma', email: 'priya@email.com', phone: '9876543211', address: '456 Park Ave, Delhi', gst: 'GSTIN002' },
+  'CUST-003': { name: 'Amit Patel', email: 'amit@email.com', phone: '9876543212', address: '789 Lake Rd, Bangalore', gst: 'GSTIN003' },
+  'CUST-004': { name: 'Sneha Reddy', email: 'sneha@email.com', phone: '9876543213', address: '321 Hill St, Hyderabad', gst: 'GSTIN004' },
+  'CUST-005': { name: 'Vikram Singh', email: 'vikram@email.com', phone: '9876543214', address: '654 Forest Ln, Chennai', gst: 'GSTIN005' },
+  'CUST-006': { name: 'Meera Iyer', email: 'meera@email.com', phone: '9876543215', address: '987 River Rd, Kolkata', gst: 'GSTIN006' },
+  'CUST-007': { name: 'Arjun Nair', email: 'arjun@email.com', phone: '9876543216', address: '147 Beach Ave, Kochi', gst: 'GSTIN007' },
+  'CUST-008': { name: 'Kavya Menon', email: 'kavya@email.com', phone: '9876543217', address: '258 Hillcrest, Pune', gst: 'GSTIN008' },
+  'CUST-009': { name: 'Rahul Gupta', email: 'rahul@email.com', phone: '9876543218', address: '369 Garden St, Jaipur', gst: 'GSTIN009' },
+  'CUST-010': { name: 'Ananya Desai', email: 'ananya@email.com', phone: '9876543219', address: '741 Lakeview, Ahmedabad', gst: 'GSTIN010' },
+};
+
 export const InvoiceCreate: React.FC = () => {
   const navigate = useNavigate();
+  const { createInvoice } = useInvoices();
   const {
     formData,
     updateFormData,
     errors,
-    saving,
-    files,
-    totals,
-    handleFileUpload,
-    removeFile,
-    handleSubmit,
+    validateForm,
   } = useInvoiceCreate();
+  
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+
+  const {
+    success,
+    error: showError,
+    confirm,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
 
   const [productSearch, setProductSearch] = useState('');
-  const [productSuggestions] = useState(MOCK_PRODUCTS);
   const [items, setItems] = useState<ItemSelectionItem[]>([]);
 
   // Handle customer selection from dropdown
-  const handleCustomerSelect = (selectedOption: DropdownOption) => {
-    const customerDetails: Record<string, any> = {
-      'CUST-001': { name: 'Rajesh Kumar', email: 'rajesh@email.com', phone: '9876543210', address: '123 Main St, Mumbai', gst: 'GSTIN001' },
-      'CUST-002': { name: 'Priya Sharma', email: 'priya@email.com', phone: '9876543211', address: '456 Park Ave, Delhi', gst: 'GSTIN002' },
-      'CUST-003': { name: 'Amit Patel', email: 'amit@email.com', phone: '9876543212', address: '789 Lake Rd, Bangalore', gst: 'GSTIN003' },
-      'CUST-004': { name: 'Sneha Reddy', email: 'sneha@email.com', phone: '9876543213', address: '321 Hill St, Hyderabad', gst: 'GSTIN004' },
-      'CUST-005': { name: 'Vikram Singh', email: 'vikram@email.com', phone: '9876543214', address: '654 Forest Ln, Chennai', gst: 'GSTIN005' },
-      'CUST-006': { name: 'Meera Iyer', email: 'meera@email.com', phone: '9876543215', address: '987 River Rd, Kolkata', gst: 'GSTIN006' },
-      'CUST-007': { name: 'Arjun Nair', email: 'arjun@email.com', phone: '9876543216', address: '147 Beach Ave, Kochi', gst: 'GSTIN007' },
-      'CUST-008': { name: 'Kavya Menon', email: 'kavya@email.com', phone: '9876543217', address: '258 Hillcrest, Pune', gst: 'GSTIN008' },
-      'CUST-009': { name: 'Rahul Gupta', email: 'rahul@email.com', phone: '9876543218', address: '369 Garden St, Jaipur', gst: 'GSTIN009' },
-      'CUST-010': { name: 'Ananya Desai', email: 'ananya@email.com', phone: '9876543219', address: '741 Lakeview, Ahmedabad', gst: 'GSTIN010' },
-    };
-
-    const details = customerDetails[selectedOption.value] || null;
+  const handleCustomerSelect = useCallback((selectedOption: DropdownOption) => {
+    const details = customerDetailsMap[selectedOption.value] || null;
     if (details) {
       updateFormData('customerId', selectedOption.value);
       updateFormData('customerName', details.name || selectedOption.label);
@@ -91,54 +104,113 @@ export const InvoiceCreate: React.FC = () => {
       updateFormData('customerId', selectedOption.value);
       updateFormData('customerName', selectedOption.label);
     }
-  };
+  }, [updateFormData]);
 
   // Handle items change from ItemSelectionTable
-  const handleItemsChange = (newItems: ItemSelectionItem[]) => {
+  const handleItemsChange = useCallback((newItems: ItemSelectionItem[]) => {
     setItems(newItems);
-    // Update formData with items
     updateFormData('items', newItems);
-  };
+  }, [updateFormData]);
 
   // Handle product search
-  const handleProductSearch = (search: string) => {
+  const handleProductSearch = useCallback((search: string) => {
     setProductSearch(search);
-  };
+  }, []);
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const result = await handleSubmit(navigate);
-    if (result) {
-      navigate('/sales/invoices');
+  // Save invoice function
+  const saveInvoice = useCallback(async () => {
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return null;
     }
-  };
 
-  // Calculate totals from items
-  const calculateTotals = () => {
-    let subtotal = 0;
-    let taxAmount = 0;
-    let totalDiscount = 0;
+    setSaving(true);
+    try {
+      // Calculate totals from items
+      let subtotal = 0;
+      let taxAmount = 0;
+      let totalDiscount = 0;
 
-    items.forEach(item => {
-      const baseAmount = (item.quantity || 1) * (item.rate || 0);
-      let discountAmount = 0;
-      if (item.discountType === 'fixed') {
-        discountAmount = item.discount || 0;
-      } else {
-        discountAmount = baseAmount * ((item.discount || 0) / 100);
+      items.forEach(item => {
+        const baseAmount = (item.quantity || 1) * (item.rate || 0);
+        let discountAmount = 0;
+        if (item.discountType === 'fixed') {
+          discountAmount = item.discount || 0;
+        } else {
+          discountAmount = baseAmount * ((item.discount || 0) / 100);
+        }
+        const taxableAmount = baseAmount - discountAmount;
+        const tax = taxableAmount * ((item.taxRate || 0) / 100);
+        
+        subtotal += baseAmount;
+        totalDiscount += discountAmount;
+        taxAmount += tax;
+      });
+
+      const invoiceData = {
+        ...formData,
+        items,
+        subtotal,
+        taxAmount,
+        discount: formData.discount || totalDiscount,
+        total: subtotal - totalDiscount + taxAmount + (formData.shippingCharge || 0) + (formData.otherCharges || 0),
+        status: 'draft',
+      };
+
+      const result = await createInvoice(invoiceData);
+      success('Invoice created successfully!');
+      setSubmitError('');
+      return result;
+    } catch (err) {
+      showError('Failed to create invoice. Please try again.');
+      setSubmitError('Failed to create invoice. Please try again.');
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }, [formData, items, validateForm, showError, createInvoice, success, setSaving]);
+
+  // Submit handler with confirmation
+  const onSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return;
+    }
+
+    let result: any = null;
+    await withConfirmation(
+      {
+        title: 'Create Invoice',
+        message: 'Are you sure you want to create this invoice?',
+        confirmText: 'Create Invoice',
+        variant: 'primary',
+      },
+      async () => {
+        result = await saveInvoice();
       }
-      const taxableAmount = baseAmount - discountAmount;
-      const tax = taxableAmount * ((item.taxRate || 0) / 100);
-      
-      subtotal += baseAmount;
-      totalDiscount += discountAmount;
-      taxAmount += tax;
+    );
+
+    if (result) {
+      navigate('/sales/invoices', { replace: true });
+    }
+  }, [validateForm, showError, withConfirmation, saveInvoice, navigate]);
+
+  // Cancel handler with confirmation
+  const handleCancelClick = useCallback(async () => {
+    const confirmed = await confirm({
+      title: 'Discard Changes',
+      message: 'Are you sure you want to discard all changes? This action cannot be undone.',
+      confirmText: 'Discard',
+      cancelText: 'Keep Editing',
+      variant: 'warning',
     });
-
-    return { subtotal, totalDiscount, taxAmount, total: subtotal - totalDiscount + taxAmount };
-  };
-
-  const invoiceTotals = calculateTotals();
+    
+    if (confirmed) {
+      navigate('/sales/invoices', { replace: true });
+    }
+  }, [confirm, navigate]);
 
   // Custom columns configuration for Invoice
   const invoiceColumns = {
@@ -165,7 +237,7 @@ export const InvoiceCreate: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/sales/invoices')}
+              onClick={handleCancelClick}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -183,7 +255,7 @@ export const InvoiceCreate: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => navigate('/sales/invoices')}
+              onClick={handleCancelClick}
               className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cancel
@@ -220,7 +292,7 @@ export const InvoiceCreate: React.FC = () => {
           {/* Customer & Invoice Details */}
           <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              {/* Customer Name - Using SearchableDropdown */}
+              {/* Customer Name */}
               <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Customer <span className="text-red-500">*</span>
@@ -255,7 +327,7 @@ export const InvoiceCreate: React.FC = () => {
                 )}
               </div>
 
-              {/* Invoice # - Auto-generated with edit option */}
+              {/* Invoice # */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Invoice# <span className="text-red-500">*</span>
@@ -339,7 +411,7 @@ export const InvoiceCreate: React.FC = () => {
           <ItemSelectionTable
             items={items}
             onItemsChange={handleItemsChange}
-            productSuggestions={productSuggestions}
+            productSuggestions={MOCK_PRODUCTS}
             productSearch={productSearch}
             onProductSearchChange={handleProductSearch}
             showJewelryFields={true}
@@ -396,6 +468,19 @@ export const InvoiceCreate: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

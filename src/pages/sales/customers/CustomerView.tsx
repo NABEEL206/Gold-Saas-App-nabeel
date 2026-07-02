@@ -1,5 +1,5 @@
 // src/pages/sales/customers/CustomerView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -25,6 +25,8 @@ import {
 import { useCustomers } from '../../../hooks/customer/useCustomers';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { ThreeDotDropdownItem } from '../../../components/common/ThreeDotDropdown';
 import type { Customer } from '../../../types/customer/CustomerTypes';
 
@@ -32,9 +34,20 @@ const CustomerView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getCustomer, deleteCustomer, loading } = useCustomers();
+  
+  const {
+    success,
+    error: showError,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+  
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
 
@@ -51,79 +64,124 @@ const CustomerView: React.FC = () => {
     }
   }, [id, getCustomer]);
 
-  const handleDelete = async () => {
+  // Delete handler with confirmation
+  const handleDeleteClick = useCallback(async () => {
     if (!customer) return;
-    setDeleting(true);
-    try {
-      await deleteCustomer(customer.id);
-      navigate('/customers');
-    } catch (error) {
-      setError('Failed to delete customer');
-    } finally {
-      setDeleting(false);
-      setDeleteModalOpen(false);
-    }
-  };
+    
+    await withConfirmation(
+      {
+        title: 'Delete Customer',
+        message: `Are you sure you want to delete "${customer.displayName}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleting(true);
+        try {
+          await deleteCustomer(customer.id);
+          success(`Customer "${customer.displayName}" deleted successfully.`);
+          // Navigate to customers list after successful deletion
+          navigate('/customers', { replace: true });
+        } catch (err) {
+          showError('Failed to delete customer. Please try again.');
+        } finally {
+          setDeleting(false);
+        }
+      }
+    );
+  }, [customer, withConfirmation, deleteCustomer, success, showError, navigate]);
 
-  const handleExport = async (format: 'pdf' | 'excel') => {
+  // Export handler
+  const handleExport = useCallback(async (format: 'pdf' | 'excel') => {
+    if (!customer) return;
+    
     setExportLoading(true);
     try {
-      // Simulate export
+      // TODO: Replace with actual export API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      alert(`Exporting customer as ${format.toUpperCase()}`);
+      success(`Customer exported as ${format.toUpperCase()} successfully.`);
+    } catch (err) {
+      showError(`Failed to export as ${format.toUpperCase()}.`);
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [customer, success, showError]);
 
-  const handlePrint = () => {
+  // Print handler
+  const handlePrint = useCallback(() => {
     window.print();
-  };
+  }, []);
+
+  // Navigation handlers
+  const handleEdit = useCallback(() => {
+    if (customer) {
+      navigate(`/customers/edit/${customer.id}`);
+    }
+  }, [customer, navigate]);
+
+  // Go back to previous page or customers list
+  const handleGoBack = useCallback(() => {
+    // Check if there's a previous page in history
+    if (window.history.length > 1) {
+      navigate(-1); // Go back to previous page
+    } else {
+      navigate('/customers'); // Fallback to customers list
+    }
+  }, [navigate]);
 
   // Get dropdown items for the header
-  const getHeaderDropdownItems = (): ThreeDotDropdownItem[] => {
-    const items: ThreeDotDropdownItem[] = [];
-
-    items.push({
-      label: 'Export as PDF',
-      icon: <File className="h-4 w-4 text-red-500" />,
-      onClick: () => handleExport('pdf'),
-      disabled: exportLoading,
-    });
-
-    items.push({
-      label: 'Export as Excel',
-      icon: <FileSpreadsheet className="h-4 w-4 text-green-500" />,
-      onClick: () => handleExport('excel'),
-      disabled: exportLoading,
-    });
-
-    items.push({
-      label: 'Print',
-      icon: <Printer className="h-4 w-4 text-blue-500" />,
-      onClick: handlePrint,
-    });
+  const getHeaderDropdownItems = useCallback((): ThreeDotDropdownItem[] => {
+    const items: ThreeDotDropdownItem[] = [
+      {
+        label: 'Export as PDF',
+        icon: <File className="h-4 w-4 text-red-500" />,
+        onClick: () => handleExport('pdf'),
+        disabled: exportLoading,
+      },
+      {
+        label: 'Export as Excel',
+        icon: <FileSpreadsheet className="h-4 w-4 text-green-500" />,
+        onClick: () => handleExport('excel'),
+        disabled: exportLoading,
+      },
+      {
+        label: 'Print',
+        icon: <Printer className="h-4 w-4 text-blue-500" />,
+        onClick: handlePrint,
+      },
+    ];
 
     return items;
-  };
+  }, [handleExport, handlePrint, exportLoading]);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = useCallback((status: string) => {
     switch (status) {
       case 'active': return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'inactive': return <Clock className="h-5 w-5 text-gray-500" />;
       case 'suspended': return <AlertCircle className="h-5 w-5 text-red-500" />;
       default: return null;
     }
-  };
+  }, []);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-700';
       case 'inactive': return 'bg-gray-100 text-gray-700';
       case 'suspended': return 'bg-red-100 text-red-700';
       default: return 'bg-gray-100 text-gray-700';
     }
-  };
+  }, []);
+
+  // Format date helper
+  const formatDate = useCallback((dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }, []);
 
   if (loading) {
     return (
@@ -141,8 +199,8 @@ const CustomerView: React.FC = () => {
           <h3 className="text-lg font-semibold text-red-700 mb-2">Customer Not Found</h3>
           <p className="text-sm text-red-600">{error || 'Customer does not exist'}</p>
           <button
-            onClick={() => navigate('/customers')}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            onClick={handleGoBack}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
             Go Back
           </button>
@@ -158,8 +216,9 @@ const CustomerView: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/customers')}
+              onClick={handleGoBack}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Go back"
             >
               <ArrowLeft className="h-5 w-5 text-gray-600" />
             </button>
@@ -178,22 +237,35 @@ const CustomerView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Primary action buttons */}
+            {/* Edit Button */}
             <button
-              onClick={() => navigate(`/customers/edit/${customer.id}`)}
+              onClick={handleEdit}
               className="inline-flex items-center gap-2 px-3 py-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
             >
               <Edit className="h-4 w-4" />
-              Edit
+              <span>Edit</span>
             </button>
+            
+            {/* Delete Button */}
             <button
-              onClick={() => setDeleteModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+              onClick={handleDeleteClick}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Trash2 className="h-4 w-4" />
-              Delete
+              {deleting ? (
+                <>
+                  <div className="h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete</span>
+                </>
+              )}
             </button>
-            {/* ThreeDotDropdown with export actions */}
+            
+            {/* More Options Dropdown */}
             <div onClick={(e) => e.stopPropagation()}>
               <ThreeDotDropdown 
                 items={getHeaderDropdownItems()} 
@@ -217,7 +289,7 @@ const CustomerView: React.FC = () => {
                   <div>
                     <p className="text-xs text-gray-500">Name</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {customer.salutation} {customer.firstName} {customer.lastName}
+                      {[customer.salutation, customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'N/A'}
                     </p>
                   </div>
                   <div>
@@ -322,30 +394,18 @@ const CustomerView: React.FC = () => {
                 </div>
               )}
 
-              {/* Meta */}
+              {/* Meta Information */}
               <div className="md:col-span-2 border-t border-gray-200 pt-4">
                 <div className="flex flex-wrap gap-6 text-sm text-gray-500">
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
                     <span className="font-medium">Created:</span>
-                    {new Date(customer.createdAt).toLocaleDateString('en-IN', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {formatDate(customer.createdAt)}
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
                     <span className="font-medium">Last Updated:</span>
-                    {new Date(customer.updatedAt).toLocaleDateString('en-IN', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {formatDate(customer.updatedAt)}
                   </div>
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
@@ -358,50 +418,18 @@ const CustomerView: React.FC = () => {
         </div>
       </div>
 
-      {/* Delete Modal */}
-      {deleteModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-red-100 rounded-full">
-                  <Trash2 className="h-6 w-6 text-red-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">Delete Customer</h3>
-              </div>
-              <p className="text-sm text-gray-600 mb-6">
-                Are you sure you want to delete <span className="font-medium">{customer.displayName}</span>?
-                This action cannot be undone.
-              </p>
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setDeleteModalOpen(false)}
-                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 disabled:opacity-50"
-                >
-                  {deleting ? (
-                    <>
-                      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
+<ConfirmationModal
+  isOpen={modalOpen}
+  onClose={onModalCancel}    // This just closes the modal, no navigation
+  onConfirm={onModalConfirm}  
+  title={modalOptions?.title}
+  message={modalOptions?.message ?? ''}
+  confirmText={modalOptions?.confirmText}
+  cancelText={modalOptions?.cancelText}
+  variant={modalOptions?.variant}
+  isLoading={modalLoading}
+/>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 // src/pages/Customer/Customers.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -20,6 +20,8 @@ import { useCustomers } from '../../../hooks/customer/useCustomers';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { Customer } from '../../../types/customer/CustomerTypes';
 
@@ -58,6 +60,17 @@ const TypeBadge: React.FC<{ type: Customer['customerType'] }> = ({ type }) => {
 const Customers: React.FC = () => {
   const navigate = useNavigate();
   const {
+    success,
+    error: toastError,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+  
+  const {
     loading,
     currentItems,
     stats,
@@ -65,12 +78,9 @@ const Customers: React.FC = () => {
     currentPage,
     totalItems,
     itemsPerPage,
-    startIndex,
-    endIndex,
     totalPages,
     setFilters,
     setCurrentPage,
-    deleteCustomer,
     handleBulkDelete,
     handleExport,
     handleImport,
@@ -83,68 +93,120 @@ const Customers: React.FC = () => {
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
-  const handleView = (customer: Customer) => {
+  const handleView = useCallback((customer: Customer) => {
     navigate(`/customers/${customer.id}`);
-  };
+  }, [navigate]);
 
-  const handleBulkDeleteAction = async () => {
-    if (selectedItems.length === 0) return;
-    if (window.confirm(`Delete ${selectedItems.length} customers?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        await handleBulkDelete(selectedItems);
-        setSelectedItems([]);
-      } finally {
-        setBulkDeleteLoading(false);
-      }
+  const handleCreateNew = useCallback(() => {
+    navigate('/customers/create');
+  }, [navigate]);
+
+  const handleBulkDeleteAction = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      toastError('Please select at least one customer to delete.');
+      return;
     }
-  };
+    
+    await withConfirmation(
+      {
+        title: 'Delete Customers',
+        message: `Are you sure you want to delete ${selectedItems.length} customer(s)? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          const result = await handleBulkDelete(selectedItems);
+          if (result.success) {
+            setSelectedItems([]);
+            success(`${selectedItems.length} customer(s) deleted successfully.`);
+          } else {
+            toastError(result.error || 'Failed to delete customers.');
+          }
+        } catch {
+          toastError('Failed to delete customers. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
+        }
+      }
+    );
+  }, [selectedItems, withConfirmation, handleBulkDelete, success, toastError]);
 
-  const handleExportAction = async (format: 'excel' | 'pdf') => {
+  const handleExportAction = useCallback(async (format: 'excel' | 'pdf') => {
     setExportLoading(true);
     try {
-      await handleExport(format);
+      const result = await handleExport(format);
+      if (result.success) {
+        success(`Customers exported as ${format.toUpperCase()} successfully.`);
+      } else {
+        toastError(result.error || `Failed to export as ${format.toUpperCase()}.`);
+      }
+    } catch {
+      toastError(`Failed to export as ${format.toUpperCase()}.`);
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [handleExport, success, toastError]);
 
-  const handleImportAction = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       setImportLoading(true);
       try {
-        await handleImport(files);
+        const result = await handleImport(files);
+        if (result.success) {
+          success('Customers imported successfully.');
+        } else {
+          toastError(result.error || 'Failed to import customers.');
+        }
+      } catch {
+        toastError('Failed to import customers. Please check the file format.');
       } finally {
         setImportLoading(false);
+        event.target.value = '';
       }
     }
-  };
+  }, [handleImport, success, toastError]);
 
-  const handleRefreshClick = async () => {
+  const handleRefreshClick = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await handleRefresh();
+      success('Customer list refreshed.');
+    } catch {
+      toastError('Failed to refresh. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [handleRefresh, success, toastError]);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === currentItems.length) {
       setSelectedItems([]);
     } else {
       setSelectedItems(currentItems.map(item => item.id));
     }
-  };
+  }, [selectedItems.length, currentItems]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  };
+  }, []);
 
-  // Columns - NO actions column
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters(prev => ({ ...prev, searchQuery: e.target.value }));
+  }, [setFilters]);
+
+  const handleTypeFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilters(prev => ({ ...prev, customerType: e.target.value as any }));
+  }, [setFilters]);
+
+  const handleStatusFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilters(prev => ({ ...prev, status: e.target.value as any }));
+  }, [setFilters]);
+
   const columns: TableColumn<Customer>[] = [
     {
       key: 'customerCode',
@@ -179,7 +241,9 @@ const Customers: React.FC = () => {
       key: 'city',
       header: 'Location',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.city}, {item.state}</span>
+        <span className="text-sm text-gray-600">
+          {[item.city, item.state].filter(Boolean).join(', ') || '—'}
+        </span>
       ),
     },
     {
@@ -187,10 +251,8 @@ const Customers: React.FC = () => {
       header: 'Status',
       render: (item) => <StatusBadge status={item.status} />,
     },
-    // ACTIONS COLUMN REMOVED
   ];
 
-  // Dropdown items for header ThreeDotDropdown
   const headerDropdownItems = [
     {
       label: 'Export as PDF',
@@ -214,7 +276,6 @@ const Customers: React.FC = () => {
     },
   ];
 
-  // Show main loading spinner
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -229,28 +290,33 @@ const Customers: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your customer database</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {stats ? `${stats.totalCustomers} total customers • ${stats.active} active` : 'Manage your customer database'}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleRefreshClick}
             disabled={refreshLoading}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh customer list"
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
+
           <button
-            onClick={() => navigate('/customers/create')}
+            onClick={handleCreateNew}
             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            New Customer
+            <span>New Customer</span>
           </button>
+
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteAction}
@@ -262,9 +328,10 @@ const Customers: React.FC = () => {
               ) : (
                 <Trash className="h-4 w-4" />
               )}
-              Delete ({selectedItems.length})
+              <span>Delete ({selectedItems.length})</span>
             </button>
           )}
+
           <ThreeDotDropdown
             items={headerDropdownItems}
             position="right"
@@ -293,16 +360,17 @@ const Customers: React.FC = () => {
                 type="text"
                 placeholder="Search by name, code, email, mobile..."
                 value={filters.searchQuery}
-                onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+                onChange={handleSearchChange}
                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
           </div>
+
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-gray-400" />
             <select
               value={filters.customerType}
-              onChange={(e) => setFilters({ ...filters, customerType: e.target.value as any })}
+              onChange={handleTypeFilterChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="all">All Types</option>
@@ -312,11 +380,12 @@ const Customers: React.FC = () => {
               <option value="non-profit">Non-Profit</option>
             </select>
           </div>
+
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-gray-400" />
             <select
               value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value as any })}
+              onChange={handleStatusFilterChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="all">All Status</option>
@@ -327,7 +396,7 @@ const Customers: React.FC = () => {
         </div>
       </div>
 
-      {/* Table - NO actions column */}
+      {/* Table */}
       <ReusableTable
         data={currentItems}
         columns={columns}
@@ -343,11 +412,22 @@ const Customers: React.FC = () => {
           currentPage,
           totalPages,
           totalItems,
-          startIndex,
-          endIndex,
-          onPageChange: setCurrentPage,
           itemsPerPage: itemsPerPage || 5,
+          onPageChange: setCurrentPage,
         }}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
       />
     </div>
   );

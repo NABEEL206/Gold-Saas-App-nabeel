@@ -1,5 +1,5 @@
-// src/hooks/useToastAndConfirm.ts
-import { useState, useCallback } from 'react';
+// src/hooks/ToastConfirmModal/useToastAndConfirm.ts
+import { useState, useCallback, useRef } from 'react';
 import { useToast } from '../../components/common/Toast';
 
 interface ConfirmOptions {
@@ -16,12 +16,24 @@ export const useToastAndConfirm = () => {
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
   const [resolvePromise, setResolvePromise] = useState<((value: boolean) => void) | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Prevent multiple rapid confirm calls
+  const isConfirmingRef = useRef(false);
 
   const confirm = useCallback((opts: ConfirmOptions): Promise<boolean> => {
     return new Promise((resolve) => {
+      // Prevent opening multiple confirm dialogs
+      if (isConfirmingRef.current) {
+        resolve(false);
+        return;
+      }
+      isConfirmingRef.current = true;
       setOptions(opts);
       setIsOpen(true);
-      setResolvePromise(() => resolve);
+      setResolvePromise(() => (value: boolean) => {
+        isConfirmingRef.current = false;
+        resolve(value);
+      });
     });
   }, []);
 

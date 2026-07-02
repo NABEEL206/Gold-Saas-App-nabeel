@@ -1,10 +1,9 @@
 // src/pages/sales/invoice/InvoiceEdit.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Save,
-  User,
   Mail,
   Phone,
   FileText,
@@ -19,6 +18,8 @@ import { useInvoiceCreate } from '../../../hooks/Invoices/useInvoiceCreate';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
@@ -46,6 +47,20 @@ const MOCK_PRODUCTS = [
   { id: '6', name: 'Silver Necklace', code: 'SN-001', category: 'Necklace', purity: '18K', price: 2800, description: '18K Silver Necklace with chain', unit: 'Pcs' },
 ];
 
+// Customer details mapping
+const customerDetailsMap: Record<string, any> = {
+  'CUST-001': { name: 'Rajesh Kumar', email: 'rajesh@email.com', phone: '9876543210', address: '123 Main St, Mumbai', gst: 'GSTIN001' },
+  'CUST-002': { name: 'Priya Sharma', email: 'priya@email.com', phone: '9876543211', address: '456 Park Ave, Delhi', gst: 'GSTIN002' },
+  'CUST-003': { name: 'Amit Patel', email: 'amit@email.com', phone: '9876543212', address: '789 Lake Rd, Bangalore', gst: 'GSTIN003' },
+  'CUST-004': { name: 'Sneha Reddy', email: 'sneha@email.com', phone: '9876543213', address: '321 Hill St, Hyderabad', gst: 'GSTIN004' },
+  'CUST-005': { name: 'Vikram Singh', email: 'vikram@email.com', phone: '9876543214', address: '654 Forest Ln, Chennai', gst: 'GSTIN005' },
+  'CUST-006': { name: 'Meera Iyer', email: 'meera@email.com', phone: '9876543215', address: '987 River Rd, Kolkata', gst: 'GSTIN006' },
+  'CUST-007': { name: 'Arjun Nair', email: 'arjun@email.com', phone: '9876543216', address: '147 Beach Ave, Kochi', gst: 'GSTIN007' },
+  'CUST-008': { name: 'Kavya Menon', email: 'kavya@email.com', phone: '9876543217', address: '258 Hillcrest, Pune', gst: 'GSTIN008' },
+  'CUST-009': { name: 'Rahul Gupta', email: 'rahul@email.com', phone: '9876543218', address: '369 Garden St, Jaipur', gst: 'GSTIN009' },
+  'CUST-010': { name: 'Ananya Desai', email: 'ananya@email.com', phone: '9876543219', address: '741 Lakeview, Ahmedabad', gst: 'GSTIN010' },
+};
+
 export const InvoiceEdit: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -54,34 +69,31 @@ export const InvoiceEdit: React.FC = () => {
     formData,
     updateFormData,
     errors,
-    saving,
-    files,
-    totals,
-    handleFileUpload,
-    removeFile,
+    validateForm,
   } = useInvoiceCreate();
+  
+  const {
+    success,
+    error: showError,
+    confirm,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
 
   const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState('');
-  const [productSuggestions] = useState(MOCK_PRODUCTS);
   const [items, setItems] = useState<ItemSelectionItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Handle customer selection from dropdown
-  const handleCustomerSelect = (selectedOption: DropdownOption) => {
-    const customerDetails: Record<string, any> = {
-      'CUST-001': { name: 'Rajesh Kumar', email: 'rajesh@email.com', phone: '9876543210', address: '123 Main St, Mumbai', gst: 'GSTIN001' },
-      'CUST-002': { name: 'Priya Sharma', email: 'priya@email.com', phone: '9876543211', address: '456 Park Ave, Delhi', gst: 'GSTIN002' },
-      'CUST-003': { name: 'Amit Patel', email: 'amit@email.com', phone: '9876543212', address: '789 Lake Rd, Bangalore', gst: 'GSTIN003' },
-      'CUST-004': { name: 'Sneha Reddy', email: 'sneha@email.com', phone: '9876543213', address: '321 Hill St, Hyderabad', gst: 'GSTIN004' },
-      'CUST-005': { name: 'Vikram Singh', email: 'vikram@email.com', phone: '9876543214', address: '654 Forest Ln, Chennai', gst: 'GSTIN005' },
-      'CUST-006': { name: 'Meera Iyer', email: 'meera@email.com', phone: '9876543215', address: '987 River Rd, Kolkata', gst: 'GSTIN006' },
-      'CUST-007': { name: 'Arjun Nair', email: 'arjun@email.com', phone: '9876543216', address: '147 Beach Ave, Kochi', gst: 'GSTIN007' },
-      'CUST-008': { name: 'Kavya Menon', email: 'kavya@email.com', phone: '9876543217', address: '258 Hillcrest, Pune', gst: 'GSTIN008' },
-      'CUST-009': { name: 'Rahul Gupta', email: 'rahul@email.com', phone: '9876543218', address: '369 Garden St, Jaipur', gst: 'GSTIN009' },
-      'CUST-010': { name: 'Ananya Desai', email: 'ananya@email.com', phone: '9876543219', address: '741 Lakeview, Ahmedabad', gst: 'GSTIN010' },
-    };
-
-    const details = customerDetails[selectedOption.value] || null;
+  const handleCustomerSelect = useCallback((selectedOption: DropdownOption) => {
+    const details = customerDetailsMap[selectedOption.value] || null;
     if (details) {
       updateFormData('customerId', selectedOption.value);
       updateFormData('customerName', details.name || selectedOption.label);
@@ -93,19 +105,20 @@ export const InvoiceEdit: React.FC = () => {
       updateFormData('customerId', selectedOption.value);
       updateFormData('customerName', selectedOption.label);
     }
-  };
+  }, [updateFormData]);
 
   // Handle items change from ItemSelectionTable
-  const handleItemsChange = (newItems: ItemSelectionItem[]) => {
+  const handleItemsChange = useCallback((newItems: ItemSelectionItem[]) => {
     setItems(newItems);
     updateFormData('items', newItems);
-  };
+  }, [updateFormData]);
 
   // Handle product search
-  const handleProductSearch = (search: string) => {
+  const handleProductSearch = useCallback((search: string) => {
     setProductSearch(search);
-  };
+  }, []);
 
+  // Load invoice data
   useEffect(() => {
     if (id) {
       loadInvoice(id);
@@ -114,46 +127,134 @@ export const InvoiceEdit: React.FC = () => {
 
   const loadInvoice = async (invoiceId: string) => {
     setLoading(true);
+    setPageError(null);
     try {
       const data = await getInvoice(invoiceId) as any;
       // Populate form data from invoice
-      updateFormData('customerId', data.customerId);
-      updateFormData('customerName', data.customerName);
-      updateFormData('customerEmail', data.customerEmail);
-      updateFormData('customerPhone', data.customerPhone);
-      updateFormData('invoiceNo', data.invoiceNo);
-      updateFormData('date', data.date);
-      updateFormData('dueDate', data.dueDate);
-      updateFormData('discount', data.discount);
-      updateFormData('discountType', data.discountType);
-      updateFormData('shippingCharge', data.shippingCharge);
-      updateFormData('otherCharges', data.otherCharges);
-      updateFormData('notes', data.notes);
-      updateFormData('termsAndConditions', data.termsAndConditions);
-      updateFormData('paymentTerms', data.paymentTerms);
+      updateFormData('customerId', data.customerId || '');
+      updateFormData('customerName', data.customerName || '');
+      updateFormData('customerEmail', data.customerEmail || '');
+      updateFormData('customerPhone', data.customerPhone || '');
+      updateFormData('customerAddress', data.customerAddress || '');
+      updateFormData('customerGst', data.customerGst || '');
+      updateFormData('invoiceNo', data.invoiceNo || '');
+      updateFormData('date', data.date || '');
+      updateFormData('dueDate', data.dueDate || '');
+      updateFormData('discount', data.discount || 0);
+      updateFormData('discountType', data.discountType || 'fixed');
+      updateFormData('shippingCharge', data.shippingCharge || 0);
+      updateFormData('otherCharges', data.otherCharges || 0);
+      updateFormData('notes', data.notes || '');
+      updateFormData('termsAndConditions', data.termsAndConditions || '');
+      updateFormData('paymentTerms', data.paymentTerms || 'Net 15');
       
       // Set items
       if (data.items && data.items.length > 0) {
         setItems(data.items);
+        updateFormData('items', data.items);
       }
     } catch (error) {
       console.error('Error loading invoice:', error);
+      setPageError('Invoice not found');
     } finally {
       setLoading(false);
     }
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
+  // Update invoice function
+  const updateInvoiceData = useCallback(async () => {
+    if (!id) return null;
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return null;
+    }
+
+    setIsSaving(true);
+    try {
+      // Calculate totals from items
+      let subtotal = 0;
+      let taxAmount = 0;
+      let totalDiscount = 0;
+
+      items.forEach(item => {
+        const baseAmount = (item.quantity || 1) * (item.rate || 0);
+        let discountAmount = 0;
+        if (item.discountType === 'fixed') {
+          discountAmount = item.discount || 0;
+        } else {
+          discountAmount = baseAmount * ((item.discount || 0) / 100);
+        }
+        const taxableAmount = baseAmount - discountAmount;
+        const tax = taxableAmount * ((item.taxRate || 0) / 100);
+        
+        subtotal += baseAmount;
+        totalDiscount += discountAmount;
+        taxAmount += tax;
+      });
+
+      const invoiceData = {
+        ...formData,
+        items,
+        subtotal,
+        taxAmount,
+        discount: formData.discount || totalDiscount,
+        total: subtotal - totalDiscount + taxAmount + (formData.shippingCharge || 0) + (formData.otherCharges || 0),
+      };
+
+      const result = await updateInvoice(id, invoiceData);
+      success('Invoice updated successfully!');
+      return result;
+    } catch (err) {
+      showError('Failed to update invoice. Please try again.');
+      setSubmitError('Failed to update invoice. Please try again.');
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [id, formData, items, validateForm, showError, updateInvoice, success, setSubmitError]);
+
+  // Submit handler with confirmation
+  const onSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
-    
-    try {
-      await updateInvoice(id, formData);
-      navigate('/sales/invoices');
-    } catch (error) {
-      console.error('Error updating invoice:', error);
+
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return;
     }
-  };
+
+    let result: any = null;
+    await withConfirmation(
+      {
+        title: 'Update Invoice',
+        message: 'Are you sure you want to update this invoice?',
+        confirmText: 'Update Invoice',
+        variant: 'primary',
+      },
+      async () => {
+        result = await updateInvoiceData();
+      }
+    );
+
+    if (result) {
+      navigate('/sales/invoices', { replace: true });
+    }
+  }, [id, validateForm, showError, withConfirmation, updateInvoiceData, navigate]);
+
+  // Cancel handler with confirmation
+  const handleCancelClick = useCallback(async () => {
+    const confirmed = await confirm({
+      title: 'Discard Changes',
+      message: 'Are you sure you want to discard all changes? This action cannot be undone.',
+      confirmText: 'Discard',
+      cancelText: 'Keep Editing',
+      variant: 'warning',
+    });
+    
+    if (confirmed) {
+      navigate('/sales/invoices', { replace: true });
+    }
+  }, [confirm, navigate]);
 
   // Custom columns configuration for Invoice
   const invoiceColumns = {
@@ -173,10 +274,30 @@ export const InvoiceEdit: React.FC = () => {
     action: true,
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <LoadingSpinner size="lg" text="Loading invoice..." />
+      </div>
+    );
+  }
+
+  // Error state
+  if (pageError) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-md mx-auto">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-red-700 mb-2">Invoice Not Found</h3>
+          <p className="text-sm text-red-600">{pageError}</p>
+          <button
+            onClick={() => navigate('/sales/invoices', { replace: true })}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Go Back to Invoices
+          </button>
+        </div>
       </div>
     );
   }
@@ -188,7 +309,7 @@ export const InvoiceEdit: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/sales/invoices')}
+              onClick={handleCancelClick}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -206,17 +327,17 @@ export const InvoiceEdit: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => navigate('/sales/invoices')}
+              onClick={handleCancelClick}
               className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={onSubmit}
-              disabled={saving}
+              disabled={isSaving}
               className="px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
-              {saving ? (
+              {isSaving ? (
                 <>
                   <LoadingSpinner size="sm" />
                   Updating...
@@ -243,7 +364,7 @@ export const InvoiceEdit: React.FC = () => {
           {/* Customer & Invoice Details */}
           <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              {/* Customer Name - Using SearchableDropdown */}
+              {/* Customer Name */}
               <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Customer <span className="text-red-500">*</span>
@@ -359,7 +480,7 @@ export const InvoiceEdit: React.FC = () => {
           <ItemSelectionTable
             items={items}
             onItemsChange={handleItemsChange}
-            productSuggestions={productSuggestions}
+            productSuggestions={MOCK_PRODUCTS}
             productSearch={productSearch}
             onProductSearchChange={handleProductSearch}
             showJewelryFields={true}
@@ -416,6 +537,19 @@ export const InvoiceEdit: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

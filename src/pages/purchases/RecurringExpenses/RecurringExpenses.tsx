@@ -1,6 +1,6 @@
 // src/pages/purchases/RecurringExpenses/RecurringExpenses.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -25,6 +25,8 @@ import type { RecurringExpense } from '../../../types/RecurringExpense/Recurring
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import { RECURRING_CATEGORIES, RECURRING_STATUSES, FREQUENCY_LABELS } from '../../../types/RecurringExpense/RecurringExpenseType';
 
@@ -72,100 +74,127 @@ const RecurringExpenses: React.FC = () => {
     fetchExpenses,
   } = useRecurringExpense({ page: 1, limit: 10 });
 
+  // Use the toast and confirm hook
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [expenseToDelete, setExpenseToDelete] = useState<RecurringExpense | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
-  const handleView = (expense: RecurringExpense) => {
+  const handleView = useCallback((expense: RecurringExpense) => {
     navigate(`/purchases/recurring-expenses/${expense.id}`);
-  };
+  }, [navigate]);
 
-  const handleEdit = (expense: RecurringExpense) => {
-    navigate(`/purchases/recurring-expenses/${expense.id}/edit`);
-  };
 
-  const handleDeleteClick = (expense: RecurringExpense) => {
-    setExpenseToDelete(expense);
-    setShowDeleteModal(true);
-  };
+  // Single delete handler using confirmation modal
 
-  const handleDeleteConfirm = async () => {
-    if (expenseToDelete) {
-      try {
-        await deleteExpense(expenseToDelete.id);
-        setShowDeleteModal(false);
-        setExpenseToDelete(null);
-      } catch (error) {
-        console.error('Error deleting recurring expense:', error);
-      }
+  // Bulk delete handler using confirmation modal
+  const handleBulkDeleteAction = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select at least one recurring expense to delete.');
+      return;
     }
-  };
 
-  const handleBulkDeleteAction = async () => {
-    if (selectedItems.length === 0) return;
-    if (window.confirm(`Delete ${selectedItems.length} recurring expenses?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        for (const id of selectedItems) {
-          await deleteExpense(id);
+    await withConfirmation(
+      {
+        title: 'Delete Recurring Expenses',
+        message: `Are you sure you want to delete ${selectedItems.length} recurring expense(s)? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          for (const id of selectedItems) {
+            await deleteExpense(id);
+          }
+          success(`${selectedItems.length} recurring expense(s) deleted successfully.`);
+          setSelectedItems([]);
+        } catch (error) {
+          console.error('Error deleting recurring expenses:', error);
+          showError('Failed to delete recurring expenses. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
         }
-        setSelectedItems([]);
-      } finally {
-        setBulkDeleteLoading(false);
       }
-    }
-  };
+    );
+  }, [selectedItems, withConfirmation, deleteExpense, success, showError]);
 
-  const handleExportAction = async (format: 'excel' | 'pdf') => {
+  const handleExportAction = useCallback(async (format: 'excel' | 'pdf') => {
     setExportLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log(`Exporting recurring expenses as ${format}`);
+      success(`Recurring expenses exported as ${format.toUpperCase()} successfully.`);
+    } catch (error) {
+      showError(`Failed to export as ${format.toUpperCase()}. Please try again.`);
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [success, showError]);
 
-  const handleImportAction = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       setImportLoading(true);
       try {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('Importing files:', files);
         await fetchExpenses();
+        success('Recurring expenses imported successfully.');
+      } catch (error) {
+        showError('Failed to import recurring expenses. Please check the file format.');
       } finally {
         setImportLoading(false);
+        event.target.value = '';
       }
     }
-  };
+  }, [fetchExpenses, success, showError]);
 
-  const handleRefreshClick = async () => {
+  const handleRefreshClick = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await fetchExpenses();
+      success('Recurring expenses list refreshed successfully.');
+    } catch (error) {
+      showError('Failed to refresh recurring expenses list. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [fetchExpenses, success, showError]);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === expenses.length) {
       setSelectedItems([]);
     } else {
       setSelectedItems(expenses.map(item => String(item.id)));
     }
-  };
+  }, [selectedItems.length, expenses]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  };
+  }, []);
+
+  // Show error toast when error changes
+  React.useEffect(() => {
+    if (error) {
+      showError(error);
+    }
+  }, [error, showError]);
 
   // Format currency in Rupees
   const formatCurrency = (amount: number): string => {
@@ -264,15 +293,6 @@ const RecurringExpenses: React.FC = () => {
     );
   }
 
-  // Show refresh loading spinner
-  if (refreshLoading) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Refreshing recurring expenses..." />
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
@@ -287,7 +307,11 @@ const RecurringExpenses: React.FC = () => {
             disabled={refreshLoading}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshLoading ? 'animate-spin' : ''}`} />
+            {refreshLoading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
             Refresh
           </button>
           <button
@@ -414,44 +438,23 @@ const RecurringExpenses: React.FC = () => {
           currentPage: pagination.page,
           totalPages: pagination.totalPages,
           totalItems: pagination.total,
-          startIndex: (pagination.page - 1) * pagination.limit,
-          endIndex: pagination.page * pagination.limit,
           onPageChange: changePage,
           itemsPerPage: pagination.limit,
         }}
       />
 
-      {/* Delete Modal */}
-      {showDeleteModal && expenseToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-full">
-                <Trash className="h-6 w-6 text-red-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">Delete Recurring Expense</h2>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete recurring expense "<span className="font-medium">{expenseToDelete.recurringNumber}</span>"? 
-              This action cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirmation Modal - Replaces the custom delete modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

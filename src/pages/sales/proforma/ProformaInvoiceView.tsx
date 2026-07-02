@@ -20,6 +20,8 @@ import {
 import { useProformaInvoice } from '../../../hooks/Proforma/useProformaInvoice';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { ProformaInvoice as ProformaInvoiceType } from '../../../types/proforma/ProformaInvoiceType';
 
 // Format currency in Rupees
@@ -82,11 +84,30 @@ const generateDemoItems = (invoice: ProformaInvoiceType) => {
   ];
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  sent: 'sent',
+  approved: 'approved',
+  rejected: 'rejected',
+  expired: 'expired',
+  draft: 'draft',
+};
+
 const ProformaInvoiceView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getInvoice, deleteInvoice, updateInvoiceStatus, loading: hookLoading } = useProformaInvoice();
-  
+
+  const {
+    success,
+    error: showError,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [invoice, setInvoice] = useState<ProformaInvoiceType | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -100,7 +121,7 @@ const ProformaInvoiceView: React.FC = () => {
           if (data) {
             // Ensure items exist
             const items = generateDemoItems(data);
-            
+
             // Calculate totals
             const subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
             const discountTotal = items.reduce((sum, item) => sum + (item.discount * item.quantity), 0);
@@ -116,10 +137,11 @@ const ProformaInvoiceView: React.FC = () => {
               grandTotal: grandTotal,
             });
           } else {
+            showError('Proforma invoice not found.');
             navigate('/sales/proforma');
           }
         } catch (err) {
-          console.error('Failed to load invoice:', err);
+          showError('Failed to load proforma invoice.');
           navigate('/sales/proforma');
         } finally {
           setLoading(false);
@@ -127,39 +149,62 @@ const ProformaInvoiceView: React.FC = () => {
       }
     };
     loadInvoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, getInvoice, navigate]);
 
-  const handleDelete = async () => {
+  // Delete handler using confirmation modal instead of window.confirm
+  const handleDelete = () => {
     if (!id) return;
-    if (window.confirm('Are you sure you want to delete this proforma invoice?')) {
-      setDeleteLoading(true);
-      try {
-        await deleteInvoice(id);
-        navigate('/sales/proforma');
-      } catch (err) {
-        console.error('Failed to delete invoice:', err);
-        setDeleteLoading(false);
+
+    withConfirmation(
+      {
+        title: 'Delete Proforma Invoice',
+        message: 'Are you sure you want to delete this proforma invoice? This action cannot be undone.',
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(true);
+        try {
+          await deleteInvoice(id);
+          success('Proforma invoice deleted successfully.');
+          navigate('/sales/proforma');
+        } catch (err) {
+          showError('Failed to delete proforma invoice. Please try again.');
+        } finally {
+          setDeleteLoading(false);
+        }
       }
-    }
+    );
   };
 
-  const handleStatusUpdate = async (status: ProformaInvoiceType['status']) => {
+  // Status update handler using confirmation modal instead of window.confirm
+  const handleStatusUpdate = (status: ProformaInvoiceType['status']) => {
     if (!id) return;
-    if (window.confirm(`Mark this proforma invoice as ${status}?`)) {
-      setUpdating(true);
-      try {
-        await updateInvoiceStatus(id, status);
-        // Reload invoice
-        const data = await getInvoice(id);
-        if (data) {
-          setInvoice(data);
+
+    withConfirmation(
+      {
+        title: 'Update Invoice Status',
+        message: `Mark this proforma invoice as ${STATUS_LABELS[status] ?? status}?`,
+        confirmText: 'Confirm',
+        variant: status === 'rejected' ? 'danger' : undefined,
+      },
+      async () => {
+        setUpdating(true);
+        try {
+          await updateInvoiceStatus(id, status);
+          const data = await getInvoice(id);
+          if (data) {
+            setInvoice(data);
+          }
+          success(`Invoice marked as ${STATUS_LABELS[status] ?? status}.`);
+        } catch (err) {
+          showError('Failed to update invoice status. Please try again.');
+        } finally {
+          setUpdating(false);
         }
-      } catch (err) {
-        console.error('Failed to update status:', err);
-      } finally {
-        setUpdating(false);
       }
-    }
+    );
   };
 
   const handleEdit = () => {
@@ -173,7 +218,8 @@ const ProformaInvoiceView: React.FC = () => {
   };
 
   const handleDownload = () => {
-    alert('Download functionality will be implemented here');
+    // TODO: replace with real download/export call
+    success('Download started.');
   };
 
   // Dropdown items for three-dot menu - includes ALL actions
@@ -428,6 +474,19 @@ const ProformaInvoiceView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

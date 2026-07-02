@@ -1,13 +1,10 @@
 // src/pages/sales/invoice/Invoices.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
   Filter,
-  Eye,
-  Edit,
-  Trash2,
   FileText,
   CheckCircle,
   Clock,
@@ -24,23 +21,25 @@ import { useInvoices } from '../../../hooks/Invoices/useInvoices';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { Invoice } from '../../../types/Invoice/InvoiceTypes';
 
 // Status Badge
 const StatusBadge: React.FC<{ status: Invoice['status'] }> = ({ status }) => {
-  const config = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: FileText, label: 'Draft' },
-    sent: { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Sent' },
-    paid: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Paid' },
-    partial: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Partial' },
-    overdue: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Overdue' },
-    cancelled: { color: 'bg-gray-100 text-gray-700', icon: XCircle, label: 'Cancelled' },
+  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    draft: { color: 'bg-gray-100 text-gray-700', icon: <FileText className="h-3 w-3" />, label: 'Draft' },
+    sent: { color: 'bg-blue-100 text-blue-700', icon: <Clock className="h-3 w-3" />, label: 'Sent' },
+    paid: { color: 'bg-green-100 text-green-700', icon: <CheckCircle className="h-3 w-3" />, label: 'Paid' },
+    partial: { color: 'bg-yellow-100 text-yellow-700', icon: <Clock className="h-3 w-3" />, label: 'Partial' },
+    overdue: { color: 'bg-red-100 text-red-700', icon: <AlertCircle className="h-3 w-3" />, label: 'Overdue' },
+    cancelled: { color: 'bg-gray-100 text-gray-700', icon: <XCircle className="h-3 w-3" />, label: 'Cancelled' },
   };
-  const { color, icon: Icon, label } = config[status];
+  const { color, icon, label } = config[status];
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+      {icon}
       {label}
     </span>
   );
@@ -65,87 +64,140 @@ export const Invoices: React.FC = () => {
     handleExport,
     handleImport,
     handleRefresh,
-    updateStatus,
   } = useInvoices();
 
+  const {
+    success,
+    error: showError,
+    withConfirmation,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
-  const handleView = (invoice: Invoice) => {
+  // Navigation handlers
+  const handleView = useCallback((invoice: Invoice) => {
     navigate(`/sales/invoices/${invoice.id}`);
-  };
+  }, [navigate]);
 
-  const handleEdit = (invoice: Invoice) => {
-    navigate(`/sales/invoices/edit/${invoice.id}`);
-  };
+  const handleCreateNew = useCallback(() => {
+    navigate('/sales/invoices/create');
+  }, [navigate]);
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this invoice?')) {
-      setDeleteLoading(id);
-      try {
-        await deleteInvoice(id);
-        setSelectedItems(prev => prev.filter(item => item !== id));
-      } finally {
-        setDeleteLoading(null);
+  // Bulk delete handler with confirmation
+  const handleBulkDeleteAction = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select at least one invoice to delete.');
+      return;
+    }
+
+    await withConfirmation(
+      {
+        title: 'Delete Invoices',
+        message: `Are you sure you want to delete ${selectedItems.length} invoice(s)? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          await Promise.all(selectedItems.map(id => deleteInvoice(id)));
+          setSelectedItems([]);
+          success(`${selectedItems.length} invoice(s) deleted successfully.`);
+        } catch (err) {
+          showError('Failed to delete invoices. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
+        }
       }
-    }
-  };
+    );
+  }, [selectedItems, withConfirmation, deleteInvoice, success, showError]);
 
-  const handleMarkAsPaid = async (id: string) => {
-    if (window.confirm('Mark this invoice as paid?')) {
-      await updateStatus(id, 'paid');
+  // Export handler
+  const handleExportAction = useCallback(async (format: 'pdf' | 'excel') => {
+    setExportLoading(true);
+    try {
+      await handleExport(format);
+      success(`Invoices exported as ${format.toUpperCase()} successfully.`);
+    } catch (err) {
+      showError(`Failed to export as ${format.toUpperCase()}.`);
+    } finally {
+      setExportLoading(false);
     }
-  };
+  }, [handleExport, success, showError]);
 
-  const handleSelectAll = () => {
+  // Import handler
+  const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setImportLoading(true);
+    try {
+      await handleImport(files);
+      success('Invoices imported successfully.');
+    } catch (err) {
+      showError('Failed to import invoices. Please check the file format.');
+    } finally {
+      setImportLoading(false);
+      event.target.value = '';
+    }
+  }, [handleImport, success, showError]);
+
+  // Refresh handler
+  const handleRefreshClick = useCallback(async () => {
+    setRefreshLoading(true);
+    try {
+      await handleRefresh();
+      success('Invoice list refreshed.');
+    } catch (err) {
+      showError('Failed to refresh. Please try again.');
+    } finally {
+      setRefreshLoading(false);
+    }
+  }, [handleRefresh, success, showError]);
+
+  // Selection handlers
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === currentItems.length) {
       setSelectedItems([]);
     } else {
       setSelectedItems(currentItems.map(item => item.id));
     }
-  };
+  }, [selectedItems.length, currentItems]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  };
+  }, []);
 
-  const handleRefreshWithLoading = async () => {
-    setRefreshLoading(true);
-    try {
-      await handleRefresh();
-    } finally {
-      setRefreshLoading(false);
-    }
-  };
+  // Filter handlers
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters(prev => ({ ...prev, searchQuery: e.target.value }));
+  }, [setFilters]);
 
-  const handleExportWithLoading = async (format: 'pdf' | 'excel') => {
-    setExportLoading(true);
-    try {
-      await handleExport(format);
-    } finally {
-      setExportLoading(false);
-    }
-  };
+  const handleStatusChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const status = e.target.value as Invoice['status'] | 'all';
+    setFilters(prev => ({ ...prev, status }));
+  }, [setFilters]);
 
-  const handleBulkDeleteWithLoading = async () => {
-    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} invoices?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        await Promise.all(selectedItems.map(id => deleteInvoice(id)));
-        setSelectedItems([]);
-      } finally {
-        setBulkDeleteLoading(false);
-      }
-    }
-  };
+  const handleStartDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters(prev => ({ ...prev, dateRange: { ...prev.dateRange, start: e.target.value } }));
+  }, [setFilters]);
 
-  // Columns - No action column
+  const handleEndDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters(prev => ({ ...prev, dateRange: { ...prev.dateRange, end: e.target.value } }));
+  }, [setFilters]);
+
+  // Columns definition
   const columns: TableColumn<Invoice>[] = [
     {
       key: 'invoiceNo',
@@ -210,7 +262,7 @@ export const Invoices: React.FC = () => {
       ) : (
         <File className="h-4 w-4 text-red-500" />
       ),
-      onClick: () => handleExportWithLoading('pdf'),
+      onClick: () => handleExportAction('pdf'),
       disabled: exportLoading,
     },
     {
@@ -220,12 +272,12 @@ export const Invoices: React.FC = () => {
       ) : (
         <FileSpreadsheet className="h-4 w-4 text-green-500" />
       ),
-      onClick: () => handleExportWithLoading('excel'),
+      onClick: () => handleExportAction('excel'),
       disabled: exportLoading,
     },
   ];
 
-  // Show main loading spinner
+  // Loading state
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -243,31 +295,39 @@ export const Invoices: React.FC = () => {
             <Receipt className="h-6 w-6 text-amber-500" />
             Invoices
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your sales invoices</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {stats ? `${stats.totalInvoices} total invoices` : 'Manage your sales invoices'}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh Button */}
           <button
-            onClick={handleRefreshWithLoading}
+            onClick={handleRefreshClick}
             disabled={refreshLoading}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh invoice list"
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
+
+          {/* New Invoice Button */}
           <button
-            onClick={() => navigate('/sales/invoices/create')}
+            onClick={handleCreateNew}
             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            New Invoice
+            <span>New Invoice</span>
           </button>
+
+          {/* Bulk Delete Button */}
           {selectedItems.length > 0 && (
             <button
-              onClick={handleBulkDeleteWithLoading}
+              onClick={handleBulkDeleteAction}
               disabled={bulkDeleteLoading}
               className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -276,22 +336,15 @@ export const Invoices: React.FC = () => {
               ) : (
                 <Trash className="h-4 w-4" />
               )}
-              Delete ({selectedItems.length})
+              <span>Delete ({selectedItems.length})</span>
             </button>
           )}
+
+          {/* More Options Dropdown */}
           <ThreeDotDropdown
             items={dropdownItems}
             position="right"
-            onImport={(event) => {
-              if (event.target.files) {
-                setImportLoading(true);
-                try {
-                  handleImport(event.target.files);
-                } finally {
-                  setImportLoading(false);
-                }
-              }
-            }}
+            onImport={handleImportAction}
             importLabel="Import Invoices"
             importIcon={
               importLoading ? (
@@ -309,6 +362,7 @@ export const Invoices: React.FC = () => {
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search Input */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -316,16 +370,18 @@ export const Invoices: React.FC = () => {
                 type="text"
                 placeholder="Search by invoice no, customer..."
                 value={filters.searchQuery}
-                onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+                onChange={handleSearchChange}
                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
           </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-gray-400" />
             <select
               value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value as any })}
+              onChange={handleStatusChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="all">All Status</option>
@@ -337,11 +393,13 @@ export const Invoices: React.FC = () => {
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
+
+          {/* Date Range */}
           <div className="flex items-center gap-2">
             <input
               type="date"
               value={filters.dateRange.start}
-              onChange={(e) => setFilters({ ...filters, dateRange: { ...filters.dateRange, start: e.target.value } })}
+              onChange={handleStartDateChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="Start Date"
             />
@@ -349,7 +407,7 @@ export const Invoices: React.FC = () => {
             <input
               type="date"
               value={filters.dateRange.end}
-              onChange={(e) => setFilters({ ...filters, dateRange: { ...filters.dateRange, end: e.target.value } })}
+              onChange={handleEndDateChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="End Date"
             />
@@ -357,7 +415,7 @@ export const Invoices: React.FC = () => {
         </div>
       </div>
 
-      {/* Table - No actions prop */}
+      {/* Table */}
       <ReusableTable
         data={currentItems}
         columns={columns}
@@ -373,11 +431,22 @@ export const Invoices: React.FC = () => {
           currentPage,
           totalPages,
           totalItems,
-          startIndex,
-          endIndex,
           onPageChange: setCurrentPage,
           itemsPerPage: itemsPerPage || 5,
         }}
+      />
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
       />
     </div>
   );

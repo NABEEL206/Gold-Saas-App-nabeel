@@ -19,9 +19,11 @@ import {
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import SearchableDropdown, { type DropdownOption } from '../../components/common/Searchabledropdown';
 import { useInventoryAdjustmentCreate } from '../../hooks/inventory/useInventoryAdjustmentCreate';
+import { useToast } from '../../components/common/Toast';
 
 const InventoryAdjustmentCreate: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const {
     formData,
     selectedItems,
@@ -78,18 +80,27 @@ const InventoryAdjustmentCreate: React.FC = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (selectedItems.length === 0) {
+      toast.error('Please add at least one item before saving.');
+      return;
+    }
+
     try {
       const result = await createAdjustment({
         ...formData,
         items: selectedItems,
       });
-      
+
       if (result.success) {
+        toast.success('Inventory adjustment created successfully!');
         navigate('/inventory/adjustments');
+      } else {
+        toast.error('Failed to create adjustment. Please try again.');
       }
     } catch (error) {
       console.error('Error creating adjustment:', error);
+      toast.error('An unexpected error occurred. Please try again.');
     }
   };
 
