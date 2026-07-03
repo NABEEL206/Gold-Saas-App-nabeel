@@ -1,4 +1,5 @@
 // src/AppRoutes.tsx
+
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
@@ -131,6 +132,49 @@ import Reports from '../pages/reports/Reports';
 import Documents from '../pages/documents/Documents';
 import PaymentReceivedEdit from '../pages/sales/PaymentsReceived/PaymentReceivedEdit';
 import CreditNoteEdit from '../pages/sales/CreditNotes/CreditNoteEdit';
+
+// ========== REPORT PAGES IMPORTS ==========
+// Accountant Reports
+import BalanceSheet from '../pages/reports/Accountant/BalanceSheet';
+import ProfitandLoss from '../pages/reports/Accountant/ProfitandLoss';
+import TrialBalance from '../pages/reports/Accountant/TrialBalance';
+
+// Banking Reports
+import BankTransactionsDetails from '../pages/reports/Banking/BankTransactionsDetails';
+
+// Inventory Reports
+import GoldInventorySummary from '../pages/reports/Inventory/GoldInventorySummary';
+import StockMovement from '../pages/reports/Inventory/StockMovement';
+
+// Inventory Valuation Reports
+import InventoryValuation from '../pages/reports/inventoryValuation/InventoryValuation';
+
+// Payables Reports
+import PayableSummary from '../pages/reports/Payables/PayableSummary';
+import PurchaseOrderDetails from '../pages/reports/Payables/PurchaseOrderDetails';
+import VendorPayment from '../pages/reports/Payables/VendorPayment';
+
+// Payments Received Reports
+import PaymentReceived from '../pages/reports/PaymentsReceived/PaymentReceived';
+
+// Purchase and Expenses Reports
+import ExpenseReport from '../pages/reports/PurchaseAndExpenses/ExpenseReport';
+import { PurchaseSummary } from '../pages/reports/PurchaseAndExpenses/PurchaseSummary';
+
+// Receivables Reports
+import InvoiceDetails from '../pages/reports/Receivables/InvoiceDetails';
+import ReceivablesSummary from '../pages/reports/Receivables/ReceivablesSummary';
+
+// Repair Reports
+import RepairsSummary from '../pages/reports/Repair/RepairsSummary';
+
+// Sales Reports
+import SalesbyCustomer from '../pages/reports/sales/SalesbyCustomer';
+import SalesbyProduct from '../pages/reports/sales/SalesbyProduct';
+import SalesSummary from '../pages/reports/sales/SalesSummary';
+
+// Tax Reports
+import TaxSummary from '../pages/reports/Tax/TaxSummary';
 
 // Create a wrapper component for cleaner code
 const LayoutWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -278,9 +322,52 @@ const AppRoutes: React.FC = () => {
         <Route path="/accountant/chart-of-accounts/:id" element={<LayoutWrapper><ChartOfAccountsView /></LayoutWrapper>} />
         <Route path="/accountant/chart-of-accounts/:id/edit" element={<LayoutWrapper><ChartOfAccountsEdit /></LayoutWrapper>} />
         
-        {/* Reports & Documents */}
+        {/* ========== REPORTS ROUTES ========== */}
+        {/* Main Reports Page */}
         <Route path="/reports" element={<LayoutWrapper><Reports /></LayoutWrapper>} />
+        <Route path="/reports/:category" element={<LayoutWrapper><Reports /></LayoutWrapper>} />
         
+        {/* Accountant Reports */}
+        <Route path="/reports/balance-sheet" element={<LayoutWrapper><BalanceSheet /></LayoutWrapper>} />
+        <Route path="/reports/profit-loss" element={<LayoutWrapper><ProfitandLoss /></LayoutWrapper>} />
+        <Route path="/reports/trial-balance" element={<LayoutWrapper><TrialBalance /></LayoutWrapper>} />
+        
+        {/* Banking Reports */}
+        <Route path="/reports/bank-transactions" element={<LayoutWrapper><BankTransactionsDetails /></LayoutWrapper>} />
+        
+        {/* Inventory Reports */}
+        <Route path="/reports/gold-inventory-summary" element={<LayoutWrapper><GoldInventorySummary /></LayoutWrapper>} />
+        <Route path="/reports/stock-movement" element={<LayoutWrapper><StockMovement /></LayoutWrapper>} />
+        <Route path="/reports/inventory-valuation" element={<LayoutWrapper><InventoryValuation /></LayoutWrapper>} />
+        
+        {/* Payables Reports */}
+        <Route path="/reports/payable-summary" element={<LayoutWrapper><PayableSummary /></LayoutWrapper>} />
+        <Route path="/reports/purchase-order-details" element={<LayoutWrapper><PurchaseOrderDetails /></LayoutWrapper>} />
+        <Route path="/reports/vendor-payment" element={<LayoutWrapper><VendorPayment /></LayoutWrapper>} />
+        
+        {/* Payments Received Reports */}
+        <Route path="/reports/payment-received" element={<LayoutWrapper><PaymentReceived /></LayoutWrapper>} />
+        
+        {/* Purchase and Expenses Reports */}
+        <Route path="/reports/expense-report" element={<LayoutWrapper><ExpenseReport /></LayoutWrapper>} />
+        <Route path="/reports/purchase-summary" element={<LayoutWrapper><PurchaseSummary /></LayoutWrapper>} />
+        
+        {/* Receivables Reports */}
+        <Route path="/reports/invoice-details" element={<LayoutWrapper><InvoiceDetails /></LayoutWrapper>} />
+        <Route path="/reports/receivables-summary" element={<LayoutWrapper><ReceivablesSummary /></LayoutWrapper>} />
+        
+        {/* Repair Reports */}
+        <Route path="/reports/repairs-summary" element={<LayoutWrapper><RepairsSummary /></LayoutWrapper>} />
+        
+        {/* Sales Reports */}
+        <Route path="/reports/sales-by-customer" element={<LayoutWrapper><SalesbyCustomer /></LayoutWrapper>} />
+        <Route path="/reports/sales-by-product" element={<LayoutWrapper><SalesbyProduct /></LayoutWrapper>} />
+        <Route path="/reports/sales-summary" element={<LayoutWrapper><SalesSummary /></LayoutWrapper>} />
+        
+        {/* Tax Reports */}
+        <Route path="/reports/tax-summary" element={<LayoutWrapper><TaxSummary /></LayoutWrapper>} />
+        
+        {/* Documents */}
         <Route path="/documents" element={<LayoutWrapper><Documents /></LayoutWrapper>} />
         
         {/* Catch All */}

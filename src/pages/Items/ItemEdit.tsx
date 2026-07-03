@@ -1,5 +1,5 @@
 // src/pages/Items/ItemEdit.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -25,9 +25,11 @@ import {
   EyeOff,
   Trash2,
   Plus,
+  Truck,
 } from 'lucide-react';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import SearchableDropdown, { type DropdownOption } from '../../components/common/Searchabledropdown';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
 import { useItemEdit } from '../../hooks/items/useItemEdit';
 import { useToastAndConfirm } from '../../hooks/ToastConfirmModal/useToastAndConfirm';
 
@@ -128,7 +130,7 @@ const Section = ({
   onToggle: (id: string) => void;
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-visible">
       <button
         type="button"
         onClick={() => onToggle(id)}
@@ -153,12 +155,12 @@ const Section = ({
           <ChevronDown className="h-5 w-5 text-gray-400" />
         )}
       </button>
-      {isExpanded && <div className="px-6 pb-6">{children}</div>}
+      {isExpanded && <div className="px-6 pb-6 overflow-visible">{children}</div>}
     </div>
   );
 };
 
-// Input Field Component with SearchableDropdown support
+// Input Field Component
 const InputField = ({ 
   label, 
   name, 
@@ -196,7 +198,7 @@ const InputField = ({
 
   if (type === 'searchable-select' && options) {
     return (
-      <div>
+      <div className="relative z-50">
         <label className={labelClasses}>
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
@@ -367,7 +369,18 @@ const ToggleCheckbox = ({
 const ItemEdit: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { success, error, withConfirmation } = useToastAndConfirm();
+  
+  const { 
+    success, 
+    error: showError, 
+    withConfirmation, 
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
   
   const {
     loading,
@@ -392,50 +405,50 @@ const ItemEdit: React.FC = () => {
     validateForm,
   } = useItemEdit();
 
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const initialSnapshotRef = useRef<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    if (!loading && item && initialSnapshotRef.current === null) {
+      initialSnapshotRef.current = JSON.stringify(formData);
+    }
+    if (initialSnapshotRef.current !== null) {
+      setHasChanges(JSON.stringify(formData) !== initialSnapshotRef.current);
+    }
+  }, [formData, loading, item]);
+
   const [showMetalInfo, setShowMetalInfo] = useState(false);
   const [showWeightInfo, setShowWeightInfo] = useState(false);
   const [showDiamondInfo, setShowDiamondInfo] = useState(false);
   const [showPricingInfo, setShowPricingInfo] = useState(false);
   const [showInventoryInfo, setShowInventoryInfo] = useState(false);
 
-  // Custom value handlers for searchable dropdowns
   const handleCustomCategory = useCallback((customValue: string) => {
-    const event = {
-      target: { name: 'category', value: customValue }
-    } as React.ChangeEvent<HTMLInputElement>;
+    const event = { target: { name: 'category', value: customValue } } as React.ChangeEvent<HTMLInputElement>;
     handleInputChange(event);
   }, [handleInputChange]);
 
   const handleCustomItemType = useCallback((customValue: string) => {
-    const event = {
-      target: { name: 'itemType', value: customValue }
-    } as React.ChangeEvent<HTMLInputElement>;
+    const event = { target: { name: 'itemType', value: customValue } } as React.ChangeEvent<HTMLInputElement>;
     handleInputChange(event);
   }, [handleInputChange]);
 
   const handleCustomMetalType = useCallback((customValue: string) => {
-    const event = {
-      target: { name: 'metalType', value: customValue }
-    } as React.ChangeEvent<HTMLInputElement>;
+    const event = { target: { name: 'metalType', value: customValue } } as React.ChangeEvent<HTMLInputElement>;
     handleInputChange(event);
   }, [handleInputChange]);
 
   const handleCustomPurity = useCallback((customValue: string) => {
-    const event = {
-      target: { name: 'purity', value: customValue }
-    } as React.ChangeEvent<HTMLInputElement>;
+    const event = { target: { name: 'purity', value: customValue } } as React.ChangeEvent<HTMLInputElement>;
     handleInputChange(event);
   }, [handleInputChange]);
 
-  // Fetch item on mount
   useEffect(() => {
     if (id) {
       fetchItem(id);
     }
   }, [id, fetchItem]);
 
-  // Set conditional field states based on item data
   useEffect(() => {
     if (item) {
       setShowMetalInfo(!!item.metalType || !!item.purity);
@@ -446,39 +459,38 @@ const ItemEdit: React.FC = () => {
     }
   }, [item]);
 
-  // ==================== HANDLERS ====================
+  useEffect(() => {
+    if (errors.submit) {
+      showError(errors.submit);
+    }
+  }, [errors.submit, showError]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       
       if (!validateForm()) {
-        error('Please fix the validation errors');
-        const firstError = Object.keys(errors)[0];
-        const element = document.querySelector(`[name="${firstError}"]`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          (element as HTMLElement).focus();
-        }
+        showError('Please fix the validation errors');
         return;
       }
 
-      try {
-        await updateItem();
-        success('Item updated successfully!');
-        navigate('/items');
-      } catch (err) {
-        console.error('Error updating item:', err);
-        error('Failed to update item. Please try again.');
-      }
+      await withLoading(
+        async () => {
+          await updateItem();
+          navigate('/items');
+        },
+        'Updating item...',
+        `"${item?.itemName}" updated successfully!`,
+        'Failed to update item. Please try again.'
+      );
     },
-    [validateForm, errors, updateItem, navigate, success, error]
+    [validateForm, updateItem, navigate, item, showError, withLoading]
   );
 
   const handleDelete = async () => {
     if (!item) return;
     
-    withConfirmation(
+    await withConfirmation(
       {
         title: 'Delete Item',
         message: `Are you sure you want to delete "${item.itemName}"? This action cannot be undone.`,
@@ -487,47 +499,63 @@ const ItemEdit: React.FC = () => {
         variant: 'danger',
       },
       async () => {
-        setDeleteLoading(true);
-        try {
-          await deleteItem();
-          success(`"${item.itemName}" deleted successfully!`);
-          navigate('/items');
-        } catch (err) {
-          console.error('Error deleting item:', err);
-          error(`Failed to delete "${item.itemName}"`);
-        } finally {
-          setDeleteLoading(false);
-        }
-      },
-      undefined,
-      `Failed to delete "${item.itemName}"`
+        await withLoading(
+          async () => {
+            await deleteItem();
+            navigate('/items');
+          },
+          'Deleting item...',
+          `"${item.itemName}" deleted successfully!`,
+          `Failed to delete "${item.itemName}"`
+        );
+      }
     );
   };
 
-  const handleNavigateBack = () => navigate('/items');
-  
-  const handleNavigateCancel = () => {
-    withConfirmation(
+  const handleNavigateCancel = useCallback(async () => {
+    if (!hasChanges) {
+      navigate('/items');
+      return;
+    }
+
+    await withConfirmation(
       {
         title: 'Discard Changes',
-        message: 'You have unsaved changes. Are you sure you want to leave?',
-        confirmText: 'Leave',
-        cancelText: 'Stay',
-        variant: 'warning',
+        message: 'You have unsaved changes. Are you sure you want to discard them?',
+        confirmText: 'Discard',
+        variant: 'danger',
       },
       async () => {
         navigate('/items');
       }
     );
-  };
+  }, [hasChanges, navigate, withConfirmation]);
+
+  const handleResetForm = useCallback(async () => {
+    if (!hasChanges) return;
+
+    await withConfirmation(
+      {
+        title: 'Reset Form',
+        message: 'Are you sure you want to reset all changes to the original values?',
+        confirmText: 'Reset',
+        variant: 'warning',
+      },
+      async () => {
+        if (resetForm) {
+          resetForm();
+        }
+        initialSnapshotRef.current = null;
+        success('Form reset to original values.');
+      }
+    );
+  }, [hasChanges, resetForm, success, withConfirmation]);
 
   const handleViewItem = () => {
     if (item) {
       navigate(`/items/${item.id}`);
     }
   };
-
-  // ==================== RENDER ====================
 
   if (loading) {
     return (
@@ -539,14 +567,14 @@ const ItemEdit: React.FC = () => {
 
   if (!item) {
     return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-700">Item Not Found</h3>
-          <p className="text-sm text-red-600 mt-1">The item you are trying to edit does not exist.</p>
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-300 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-gray-900">Item Not Found</h3>
+          <p className="text-sm text-gray-500 mt-1">The item you are trying to edit does not exist.</p>
           <button
             onClick={() => navigate('/items')}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Items
@@ -562,8 +590,9 @@ const ItemEdit: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <button
-            onClick={handleNavigateBack}
+            onClick={handleNavigateCancel}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Go back"
           >
             <ArrowLeft className="h-5 w-5 text-gray-600" />
           </button>
@@ -584,22 +613,27 @@ const ItemEdit: React.FC = () => {
           </button>
           <button
             onClick={handleDelete}
-            disabled={deleteLoading}
+            disabled={saving}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {deleteLoading ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <>
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </>
-            )}
+            <Trash2 className="h-4 w-4" />
+            Delete
           </button>
+          {hasChanges && (
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Reset changes"
+            >
+              Reset
+            </button>
+          )}
           <button
+            type="button"
             onClick={handleNavigateCancel}
             disabled={saving}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -608,11 +642,32 @@ const ItemEdit: React.FC = () => {
             disabled={saving}
             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="h-4 w-4" />
+            {saving ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
             {saving ? 'Saving...' : 'Update Item'}
           </button>
         </div>
       </div>
+
+      {/* Error Summary */}
+      {Object.keys(errors).length > 0 && Object.keys(errors).some(key => key !== 'submit') && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
+            <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
+              {Object.entries(errors)
+                .filter(([key]) => key !== 'submit')
+                .map(([key, value]) => (
+                  <li key={key}>{value}</li>
+                ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -626,70 +681,12 @@ const ItemEdit: React.FC = () => {
           onToggle={toggleSection}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              label="Item Code"
-              name="itemCode"
-              type="text"
-              value={formData.itemCode}
-              onChange={handleManualChange}
-              placeholder="Enter item code"
-              required
-              error={errors.itemCode}
-              disabled={saving}
-            />
-            <InputField
-              label="Item Name"
-              name="itemName"
-              type="text"
-              value={formData.itemName}
-              onChange={handleManualChange}
-              placeholder="Enter item name"
-              required
-              error={errors.itemName}
-              disabled={saving}
-            />
-            <InputField
-              label="Item Type"
-              name="itemType"
-              type="searchable-select"
-              value={formData.itemType}
-              onChange={handleInputChange}
-              required
-              error={errors.itemType}
-              options={ITEM_TYPE_OPTIONS}
-              disabled={saving}
-              onCustomValueChange={handleCustomItemType}
-            />
-            <InputField
-              label="Category"
-              name="category"
-              type="searchable-select"
-              value={formData.category}
-              onChange={handleInputChange}
-              required
-              error={errors.category}
-              options={CATEGORY_OPTIONS}
-              disabled={saving}
-              onCustomValueChange={handleCustomCategory}
-            />
-            <InputField
-              label="Brand"
-              name="brand"
-              type="text"
-              value={formData.brand}
-              onChange={handleManualChange}
-              placeholder="Enter brand name"
-              disabled={saving}
-            />
-            <InputField
-              label="Design Code"
-              name="designCode"
-              type="text"
-              value={formData.designCode}
-              onChange={handleManualChange}
-              placeholder="Enter design code"
-              disabled={saving}
-            />
+            <InputField label="Item Code" name="itemCode" type="text" value={formData.itemCode} onChange={handleManualChange} placeholder="Enter item code" required error={errors.itemCode} disabled={saving} />
+            <InputField label="Item Name" name="itemName" type="text" value={formData.itemName} onChange={handleManualChange} placeholder="Enter item name" required error={errors.itemName} disabled={saving} />
+            <InputField label="Item Type" name="itemType" type="searchable-select" value={formData.itemType} onChange={handleInputChange} required error={errors.itemType} options={ITEM_TYPE_OPTIONS} disabled={saving} onCustomValueChange={handleCustomItemType} />
+            <InputField label="Category" name="category" type="searchable-select" value={formData.category} onChange={handleInputChange} required error={errors.category} options={CATEGORY_OPTIONS} disabled={saving} onCustomValueChange={handleCustomCategory} />
+            <InputField label="Brand" name="brand" type="text" value={formData.brand} onChange={handleManualChange} placeholder="Enter brand name" disabled={saving} />
+            <InputField label="Design Code" name="designCode" type="text" value={formData.designCode} onChange={handleManualChange} placeholder="Enter design code" disabled={saving} />
           </div>
         </Section>
 
@@ -701,42 +698,14 @@ const ItemEdit: React.FC = () => {
                 <Gem className="h-5 w-5 text-amber-500" />
                 <h2 className="text-base font-semibold text-gray-900">Metal Information</h2>
               </div>
-              <ToggleCheckbox
-                label="Include Metal Details"
-                checked={showMetalInfo}
-                onChange={setShowMetalInfo}
-                description="Enable to add metal type and purity information"
-              />
+              <ToggleCheckbox label="Include Metal Details" checked={showMetalInfo} onChange={setShowMetalInfo} description="Enable to add metal type and purity information" />
             </div>
           </div>
-
           {showMetalInfo && (
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField
-                  label="Metal Type"
-                  name="metalType"
-                  type="searchable-select"
-                  value={formData.metalType}
-                  onChange={handleInputChange}
-                  required={showMetalInfo}
-                  error={errors.metalType}
-                  options={METAL_TYPE_OPTIONS}
-                  disabled={saving}
-                  onCustomValueChange={handleCustomMetalType}
-                />
-                <InputField
-                  label="Purity/Karat"
-                  name="purity"
-                  type="searchable-select"
-                  value={formData.purity}
-                  onChange={handleInputChange}
-                  required={showMetalInfo}
-                  error={errors.purity}
-                  options={PURITY_OPTIONS}
-                  disabled={saving}
-                  onCustomValueChange={handleCustomPurity}
-                />
+                <InputField label="Metal Type" name="metalType" type="searchable-select" value={formData.metalType} onChange={handleInputChange} required={showMetalInfo} error={errors.metalType} options={METAL_TYPE_OPTIONS} disabled={saving} onCustomValueChange={handleCustomMetalType} />
+                <InputField label="Purity/Karat" name="purity" type="searchable-select" value={formData.purity} onChange={handleInputChange} required={showMetalInfo} error={errors.purity} options={PURITY_OPTIONS} disabled={saving} onCustomValueChange={handleCustomPurity} />
               </div>
             </div>
           )}
@@ -750,61 +719,16 @@ const ItemEdit: React.FC = () => {
                 <Scale className="h-5 w-5 text-amber-500" />
                 <h2 className="text-base font-semibold text-gray-900">Weight Information</h2>
               </div>
-              <ToggleCheckbox
-                label="Include Weight Details"
-                checked={showWeightInfo}
-                onChange={setShowWeightInfo}
-                description="Enable to add weight measurements"
-              />
+              <ToggleCheckbox label="Include Weight Details" checked={showWeightInfo} onChange={setShowWeightInfo} description="Enable to add weight measurements" />
             </div>
           </div>
-
           {showWeightInfo && (
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <InputField
-                  label="Gross Weight"
-                  name="grossWeight"
-                  type="number"
-                  value={formData.grossWeight}
-                  onChange={handleManualChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  required={showWeightInfo}
-                  error={errors.grossWeight}
-                  disabled={saving}
-                />
-                <InputField
-                  label="Stone Weight"
-                  name="stoneWeight"
-                  type="number"
-                  value={formData.stoneWeight}
-                  onChange={handleManualChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  disabled={saving}
-                />
-                <InputField
-                  label="Net Weight"
-                  name="netWeight"
-                  type="number"
-                  value={formData.netWeight}
-                  onChange={handleManualChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  required={showWeightInfo}
-                  error={errors.netWeight}
-                  disabled={saving}
-                />
-                <InputField
-                  label="Unit"
-                  name="unit"
-                  type="searchable-select"
-                  value={formData.unit}
-                  onChange={handleManualChange}
-                  options={UNIT_OPTIONS}
-                  disabled={saving}
-                />
+                <InputField label="Gross Weight" name="grossWeight" type="number" value={formData.grossWeight} onChange={handleManualChange} placeholder="0.00" step="0.01" required={showWeightInfo} error={errors.grossWeight} disabled={saving} />
+                <InputField label="Stone Weight" name="stoneWeight" type="number" value={formData.stoneWeight} onChange={handleManualChange} placeholder="0.00" step="0.01" disabled={saving} />
+                <InputField label="Net Weight" name="netWeight" type="number" value={formData.netWeight} onChange={handleManualChange} placeholder="0.00" step="0.01" required={showWeightInfo} error={errors.netWeight} disabled={saving} />
+                <InputField label="Unit" name="unit" type="searchable-select" value={formData.unit} onChange={handleManualChange} options={UNIT_OPTIONS} disabled={saving} />
               </div>
             </div>
           )}
@@ -818,37 +742,14 @@ const ItemEdit: React.FC = () => {
                 <Sparkles className="h-5 w-5 text-amber-500" />
                 <h2 className="text-base font-semibold text-gray-900">Diamond Information</h2>
               </div>
-              <ToggleCheckbox
-                label="Include Diamond Details"
-                checked={showDiamondInfo}
-                onChange={setShowDiamondInfo}
-                description="Enable to add diamond specifications"
-              />
+              <ToggleCheckbox label="Include Diamond Details" checked={showDiamondInfo} onChange={setShowDiamondInfo} description="Enable to add diamond specifications" />
             </div>
           </div>
-
           {showDiamondInfo && (
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField
-                  label="Pieces"
-                  name="diamondPieces"
-                  type="number"
-                  value={formData.diamondPieces}
-                  onChange={handleManualChange}
-                  placeholder="0"
-                  disabled={saving}
-                />
-                <InputField
-                  label="Carat Weight"
-                  name="caratWeight"
-                  type="number"
-                  value={formData.caratWeight}
-                  onChange={handleManualChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  disabled={saving}
-                />
+                <InputField label="Pieces" name="diamondPieces" type="number" value={formData.diamondPieces} onChange={handleManualChange} placeholder="0" disabled={saving} />
+                <InputField label="Carat Weight" name="caratWeight" type="number" value={formData.caratWeight} onChange={handleManualChange} placeholder="0.00" step="0.01" disabled={saving} />
               </div>
             </div>
           )}
@@ -862,59 +763,16 @@ const ItemEdit: React.FC = () => {
                 <DollarSign className="h-5 w-5 text-amber-500" />
                 <h2 className="text-base font-semibold text-gray-900">Making Charge & Pricing</h2>
               </div>
-              <ToggleCheckbox
-                label="Include Pricing Details"
-                checked={showPricingInfo}
-                onChange={setShowPricingInfo}
-                description="Enable to add making charge and pricing"
-              />
+              <ToggleCheckbox label="Include Pricing Details" checked={showPricingInfo} onChange={setShowPricingInfo} description="Enable to add making charge and pricing" />
             </div>
           </div>
-
           {showPricingInfo && (
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <InputField
-                  label="MC Type"
-                  name="mcType"
-                  type="searchable-select"
-                  value={formData.mcType}
-                  onChange={handleInputChange}
-                  options={MC_TYPE_OPTIONS}
-                  disabled={saving}
-                />
-                <InputField
-                  label="MC Value"
-                  name="mcValue"
-                  type="number"
-                  value={formData.mcValue}
-                  onChange={handleInputChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  disabled={saving}
-                />
-                <InputField
-                  label="Gold Rate"
-                  name="goldRate"
-                  type="number"
-                  value={formData.goldRate}
-                  onChange={handleInputChange}
-                  placeholder="Enter gold rate"
-                  step="0.01"
-                  disabled={saving}
-                />
-                <InputField
-                  label="Selling Price"
-                  name="sellingPrice"
-                  type="number"
-                  value={formData.sellingPrice}
-                  onChange={handleManualChange}
-                  placeholder="Enter selling price"
-                  step="0.01"
-                  required={showPricingInfo}
-                  error={errors.sellingPrice}
-                  disabled={saving}
-                />
+                <InputField label="MC Type" name="mcType" type="searchable-select" value={formData.mcType} onChange={handleInputChange} options={MC_TYPE_OPTIONS} disabled={saving} />
+                <InputField label="MC Value" name="mcValue" type="number" value={formData.mcValue} onChange={handleInputChange} placeholder="0.00" step="0.01" disabled={saving} />
+                <InputField label="Gold Rate" name="goldRate" type="number" value={formData.goldRate} onChange={handleInputChange} placeholder="Enter gold rate" step="0.01" disabled={saving} />
+                <InputField label="Selling Price" name="sellingPrice" type="number" value={formData.sellingPrice} onChange={handleManualChange} placeholder="Enter selling price" step="0.01" required={showPricingInfo} error={errors.sellingPrice} disabled={saving} />
               </div>
             </div>
           )}
@@ -928,128 +786,46 @@ const ItemEdit: React.FC = () => {
                 <ShoppingBag className="h-5 w-5 text-amber-500" />
                 <h2 className="text-base font-semibold text-gray-900">Sales Information</h2>
               </div>
-              <button
-                type="button"
-                onClick={toggleSalesInfo}
-                disabled={saving}
-                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
-              >
+              <button type="button" onClick={toggleSalesInfo} disabled={saving} className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50">
                 {showSalesInfo ? (
-                  <>
-                    <ToggleRight className="h-5 w-5 text-amber-500" />
-                    <span className="text-amber-500">Enabled</span>
-                  </>
+                  <><ToggleRight className="h-5 w-5 text-amber-500" /><span className="text-amber-500">Enabled</span></>
                 ) : (
-                  <>
-                    <ToggleLeft className="h-5 w-5 text-gray-400" />
-                    <span className="text-gray-400">Disabled</span>
-                  </>
+                  <><ToggleLeft className="h-5 w-5 text-gray-400" /><span className="text-gray-400">Disabled</span></>
                 )}
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-1">Enable to add sales-related information</p>
           </div>
-
           {showSalesInfo && (
             <div className="px-6 py-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Selling Price <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                      {formData.currency || 'INR'}
-                    </span>
-                    <input
-                      type="number"
-                      name="sellingPrice"
-                      value={formData.sellingPrice}
-                      onChange={handleManualChange}
-                      placeholder="0.00"
-                      step="0.01"
-                      disabled={saving}
-                      className="w-full pl-16 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{formData.currency || 'INR'}</span>
+                    <input type="number" name="sellingPrice" value={formData.sellingPrice} onChange={handleManualChange} placeholder="0.00" step="0.01" disabled={saving} className="w-full pl-16 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed" />
                     <div className="absolute right-1 top-1/2 -translate-y-1/2 w-24">
-                      <SearchableDropdown
-                        options={CURRENCY_OPTIONS}
-                        value={formData.currency || 'INR'}
-                        onChange={(option) => {
-                          const event = {
-                            target: { name: 'currency', value: option.value }
-                          } as React.ChangeEvent<HTMLInputElement>;
-                          handleManualChange(event);
-                        }}
-                        placeholder="Currency"
-                        triggerPlaceholder="Currency"
-                        disabled={saving}
-                        className="w-full"
-                      />
+                      <SearchableDropdown options={CURRENCY_OPTIONS} value={formData.currency || 'INR'} onChange={(option) => { const event = { target: { name: 'currency', value: option.value } } as React.ChangeEvent<HTMLInputElement>; handleManualChange(event); }} placeholder="Currency" triggerPlaceholder="Currency" disabled={saving} className="w-full" />
                     </div>
                   </div>
                 </div>
-
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-sm font-medium text-gray-700">MRP</label>
-                    <button
-                      type="button"
-                      onClick={() => toggleSection('mrp')}
-                      disabled={saving}
-                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
-                    >
-                      {showMRP ? (
-                        <Eye className="h-3 w-3" />
-                      ) : (
-                        <EyeOff className="h-3 w-3" />
-                      )}
-                      {showMRP ? 'Hide' : 'Show'}
+                    <button type="button" onClick={() => toggleSection('mrp')} disabled={saving} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50">
+                      {showMRP ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}{showMRP ? 'Hide' : 'Show'}
                     </button>
                   </div>
-                  {showMRP && (
-                    <input
-                      type="number"
-                      name="mrp"
-                      value={formData.mrp}
-                      onChange={handleManualChange}
-                      placeholder="Enter MRP"
-                      step="0.01"
-                      disabled={saving}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-                    />
-                  )}
+                  {showMRP && <input type="number" name="mrp" value={formData.mrp} onChange={handleManualChange} placeholder="Enter MRP" step="0.01" disabled={saving} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:cursor-not-allowed" />}
                 </div>
               </div>
-
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium text-gray-700">Description</label>
-                  <button
-                    type="button"
-                    onClick={() => toggleSection('description')}
-                    disabled={saving}
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
-                  >
-                    {showDescription ? (
-                      <Eye className="h-3 w-3" />
-                    ) : (
-                      <EyeOff className="h-3 w-3" />
-                    )}
-                    {showDescription ? 'Hide' : 'Show'}
+                  <button type="button" onClick={() => toggleSection('description')} disabled={saving} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50">
+                    {showDescription ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}{showDescription ? 'Hide' : 'Show'}
                   </button>
                 </div>
-                {showDescription && (
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleManualChange}
-                    placeholder="Enter item description..."
-                    rows={3}
-                    disabled={saving}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm resize-y disabled:bg-gray-50 disabled:cursor-not-allowed"
-                  />
-                )}
+                {showDescription && <textarea name="description" value={formData.description} onChange={handleManualChange} placeholder="Enter item description..." rows={3} disabled={saving} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm resize-y disabled:bg-gray-50 disabled:cursor-not-allowed" />}
               </div>
             </div>
           )}
@@ -1063,56 +839,16 @@ const ItemEdit: React.FC = () => {
                 <ShoppingCart className="h-5 w-5 text-amber-500" />
                 <h2 className="text-base font-semibold text-gray-900">Inventory & Tax</h2>
               </div>
-              <ToggleCheckbox
-                label="Include Inventory Details"
-                checked={showInventoryInfo}
-                onChange={setShowInventoryInfo}
-                description="Enable to add stock and tax information"
-              />
+              <ToggleCheckbox label="Include Inventory Details" checked={showInventoryInfo} onChange={setShowInventoryInfo} description="Enable to add stock and tax information" />
             </div>
           </div>
-
           {showInventoryInfo && (
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <InputField
-                  label="Opening Stock"
-                  name="openingStock"
-                  type="number"
-                  value={formData.openingStock}
-                  onChange={handleManualChange}
-                  placeholder="0"
-                  disabled={saving}
-                />
-                <InputField
-                  label="Reorder Level"
-                  name="reorderLevel"
-                  type="number"
-                  value={formData.reorderLevel}
-                  onChange={handleManualChange}
-                  placeholder="0"
-                  disabled={saving}
-                />
-                <InputField
-                  label="HSN Code"
-                  name="hsnCode"
-                  type="text"
-                  value={formData.hsnCode}
-                  onChange={handleManualChange}
-                  placeholder="Enter HSN code"
-                  required={showInventoryInfo}
-                  error={errors.hsnCode}
-                  disabled={saving}
-                />
-                <InputField
-                  label="GST %"
-                  name="gstPercentage"
-                  type="searchable-select"
-                  value={formData.gstPercentage}
-                  onChange={handleManualChange}
-                  options={GST_OPTIONS}
-                  disabled={saving}
-                />
+                <InputField label="Opening Stock" name="openingStock" type="number" value={formData.openingStock} onChange={handleManualChange} placeholder="0" disabled={saving} />
+                <InputField label="Reorder Level" name="reorderLevel" type="number" value={formData.reorderLevel} onChange={handleManualChange} placeholder="0" disabled={saving} />
+                <InputField label="HSN Code" name="hsnCode" type="text" value={formData.hsnCode} onChange={handleManualChange} placeholder="Enter HSN code" required={showInventoryInfo} error={errors.hsnCode} disabled={saving} />
+                <InputField label="GST %" name="gstPercentage" type="searchable-select" value={formData.gstPercentage} onChange={handleManualChange} options={GST_OPTIONS} disabled={saving} />
               </div>
             </div>
           )}
@@ -1128,15 +864,7 @@ const ItemEdit: React.FC = () => {
           </div>
           <div className="px-6 py-6">
             <div className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center ${!saving ? 'hover:border-amber-500' : 'opacity-50'} transition-colors`}>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                id="image-upload"
-                disabled={saving}
-              />
+              <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" id="image-upload" disabled={saving} />
               <label htmlFor="image-upload" className={`cursor-pointer flex flex-col items-center gap-3 ${saving ? 'cursor-not-allowed' : ''}`}>
                 <Upload className="h-12 w-12 text-gray-400" />
                 <div>
@@ -1145,22 +873,12 @@ const ItemEdit: React.FC = () => {
                 </div>
               </label>
             </div>
-
             {imageUrls.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4 mt-4">
                 {imageUrls.map((url, index) => (
                   <div key={index} className="relative group">
-                    <img
-                      src={url}
-                      alt={`Item ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      disabled={saving}
-                      className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
+                    <img src={url} alt={`Item ${index + 1}`} className="w-full h-24 object-cover rounded-lg border border-gray-200" />
+                    <button type="button" onClick={() => removeImage(index)} disabled={saving} className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -1172,26 +890,32 @@ const ItemEdit: React.FC = () => {
 
         {/* Form Actions */}
         <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={handleNavigateCancel}
-            disabled={saving}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="h-4 w-4" />
+          <button type="button" onClick={handleNavigateCancel} disabled={saving} className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50">Cancel</button>
+          <button type="submit" disabled={saving} className="inline-flex items-center gap-2 px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {saving ? <LoadingSpinner size="sm" /> : <Save className="h-4 w-4" />}
             {saving ? 'Updating...' : 'Update Item'}
           </button>
         </div>
       </form>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };
 
 export default ItemEdit;
+
+function resetForm() {
+  throw new Error('Function not implemented.');
+}

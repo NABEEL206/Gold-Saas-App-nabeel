@@ -41,6 +41,7 @@ export interface AdjustmentItem {
 }
 
 export interface InventoryAdjustmentFormData {
+  reason: string;
   type: 'quantity' | 'weight' | 'value';
   branch: string;
   date: string;

@@ -1,5 +1,5 @@
 // src/pages/Inventory/InventoryAdjustments.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -20,8 +20,9 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ThreeDotDropdown from '../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../components/common/ReusableTable';
 import type { TableColumn } from '../../components/common/ReusableTable';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
 import { useInventoryAdjustments } from '../../hooks/inventory/useInventoryAdjustments';
-import { useToast } from '../../components/common/Toast';
+import { useToastAndConfirm } from '../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { InventoryAdjustment } from '../../types/inventory/InventoryAdjustmentTypes';
 
 // Status Badge Component
@@ -74,7 +75,21 @@ const TypeBadge: React.FC<{ type: InventoryAdjustment['type'] }> = ({ type }) =>
 
 const InventoryAdjustments: React.FC = () => {
   const navigate = useNavigate();
-  const toast = useToast();
+  
+  // Use toast and confirm hook
+  const { 
+    success, 
+    error: showError, 
+    warning, 
+    withConfirmation, 
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+  
   const {
     loading,
     currentItems,
@@ -103,105 +118,131 @@ const InventoryAdjustments: React.FC = () => {
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
 
-  const handleView = (adjustment: InventoryAdjustment) => {
+  const handleView = useCallback((adjustment: InventoryAdjustment) => {
     navigate(`/inventory/adjustments/${adjustment.id}`);
-  };
+  }, [navigate]);
 
-  const handleEdit = (adjustment: InventoryAdjustment) => {
+  const handleEdit = useCallback((adjustment: InventoryAdjustment) => {
     navigate(`/inventory/adjustments/edit/${adjustment.id}`);
-  };
+  }, [navigate]);
 
-  const handleDeleteWithLoading = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this adjustment?')) {
-      setDeleteLoading(id);
-      try {
-        await handleDelete(id);
-        setSelectedItems(prev => prev.filter(itemId => itemId !== id));
-        toast.success('Adjustment deleted successfully.');
-      } catch {
-        toast.error('Failed to delete adjustment. Please try again.');
-      } finally {
-        setDeleteLoading(null);
+  // Single delete with confirmation modal
+  const handleDeleteWithConfirm = useCallback(async (adjustment: InventoryAdjustment) => {
+    await withConfirmation(
+      {
+        title: 'Delete Adjustment',
+        message: `Are you sure you want to delete adjustment "${adjustment.adjustmentNo}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(adjustment.id);
+        try {
+          await handleDelete(adjustment.id);
+          setSelectedItems(prev => prev.filter(itemId => itemId !== adjustment.id));
+          success('Adjustment deleted successfully.');
+        } catch {
+          showError('Failed to delete adjustment. Please try again.');
+        } finally {
+          setDeleteLoading(null);
+        }
       }
-    }
-  };
+    );
+  }, [withConfirmation, handleDelete, success, showError]);
 
-  const handleBulkDeleteWithLoading = async () => {
-    if (selectedItems.length === 0) return;
-    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} adjustment(s)?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        await handleBulkDelete(selectedItems);
-        setSelectedItems([]);
-        toast.success(`${selectedItems.length} adjustment(s) deleted successfully.`);
-      } catch {
-        toast.error('Failed to delete adjustments. Please try again.');
-      } finally {
-        setBulkDeleteLoading(false);
+  // Bulk delete with confirmation modal
+  const handleBulkDeleteWithConfirm = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      warning('Please select adjustments to delete');
+      return;
+    }
+
+    await withConfirmation(
+      {
+        title: 'Delete Multiple Adjustments',
+        message: `Are you sure you want to delete ${selectedItems.length} adjustment(s)? This action cannot be undone.`,
+        confirmText: 'Delete All',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          await handleBulkDelete(selectedItems);
+          setSelectedItems([]);
+          success(`${selectedItems.length} adjustment(s) deleted successfully.`);
+        } catch {
+          showError('Failed to delete adjustments. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
+        }
       }
-    }
-  };
+    );
+  }, [selectedItems, withConfirmation, handleBulkDelete, success, showError, warning]);
 
-  const handleRefreshWithLoading = async () => {
+  // Refresh with toast
+  const handleRefreshWithLoading = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await handleRefresh();
       setSelectedItems([]);
-      toast.success('Adjustments refreshed.');
+      success('Adjustments refreshed.');
     } catch {
-      toast.error('Failed to refresh. Please try again.');
+      showError('Failed to refresh. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [handleRefresh, success, showError]);
 
-  const handleExportWithLoading = async (format: 'excel' | 'pdf') => {
+  // Export with toast
+  const handleExportWithLoading = useCallback(async (format: 'excel' | 'pdf') => {
     setExportLoading(format);
     try {
       await handleExport(format);
-      toast.success(`Exported as ${format.toUpperCase()} successfully.`);
+      success(`Exported as ${format.toUpperCase()} successfully.`);
     } catch {
-      toast.error(`Failed to export as ${format.toUpperCase()}.`);
+      showError(`Failed to export as ${format.toUpperCase()}.`);
     } finally {
       setExportLoading(null);
     }
-  };
+  }, [handleExport, success, showError]);
 
-  const handleImportWithLoading = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Import with toast
+  const handleImportWithLoading = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       setImportLoading(true);
       try {
         await handleImport(files);
         await handleRefresh();
-        toast.success(`Successfully imported ${files.length} file(s).`);
+        success(`Successfully imported ${files.length} file(s).`);
       } catch (error) {
         console.error('Import error:', error);
-        toast.error('Failed to import. Please check the file format.');
+        showError('Failed to import. Please check the file format.');
       } finally {
         setImportLoading(false);
+        event.target.value = '';
       }
     }
-  };
+  }, [handleImport, handleRefresh, success, showError]);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === currentItems.length) {
       setSelectedItems([]);
     } else {
-      setSelectedItems(currentItems.map((item: { id: any; }) => item.id));
+      setSelectedItems(currentItems.map((item: { id: any }) => item.id));
     }
-  };
+  }, [selectedItems.length, currentItems]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
     );
-  };
+  }, []);
 
   // Handle row click - navigate to view page
-  const handleRowClick = (adjustment: InventoryAdjustment) => {
+  const handleRowClick = useCallback((adjustment: InventoryAdjustment) => {
     navigate(`/inventory/adjustments/${adjustment.id}`);
-  };
+  }, [navigate]);
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -228,7 +269,7 @@ const InventoryAdjustments: React.FC = () => {
     return `${formatDate(dateString)} ${formatTime(dateString)}`;
   };
 
-  // Table Columns - REMOVED actions column
+  // Table Columns
   const columns: TableColumn<InventoryAdjustment>[] = [
     {
       key: 'date',
@@ -256,13 +297,8 @@ const InventoryAdjustments: React.FC = () => {
     },
     {
       key: 'createdAt',
-      header: 'Created Time',
+      header: 'Created',
       render: (item) => <span className="text-sm text-gray-600">{formatDateTime(item.createdAt)}</span>,
-    },
-    {
-      key: 'updatedAt',
-      header: 'Last Modified',
-      render: (item) => <span className="text-sm text-gray-600">{formatDateTime(item.updatedAt)}</span>,
     },
   ];
 
@@ -270,13 +306,15 @@ const InventoryAdjustments: React.FC = () => {
   const headerDropdownItems = [
     {
       label: 'Export as PDF',
-      icon: <File className="h-4 w-4 text-red-500" />,
+      icon: exportLoading === 'pdf' ? <LoadingSpinner size="sm" /> : <File className="h-4 w-4 text-red-500" />,
       onClick: () => handleExportWithLoading('pdf'),
+      disabled: exportLoading !== null,
     },
     {
       label: 'Export as Excel',
-      icon: <FileSpreadsheet className="h-4 w-4 text-green-500" />,
+      icon: exportLoading === 'excel' ? <LoadingSpinner size="sm" /> : <FileSpreadsheet className="h-4 w-4 text-green-500" />,
       onClick: () => handleExportWithLoading('excel'),
+      disabled: exportLoading !== null,
     },
   ];
 
@@ -316,7 +354,7 @@ const InventoryAdjustments: React.FC = () => {
 
           {selectedItems.length > 0 && (
             <button
-              onClick={handleBulkDeleteWithLoading}
+              onClick={handleBulkDeleteWithConfirm}
               disabled={bulkDeleteLoading}
               className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -331,7 +369,7 @@ const InventoryAdjustments: React.FC = () => {
             position="right"
             onImport={handleImportWithLoading}
             importLabel="Import Adjustments"
-            importIcon={<Upload className="h-4 w-4 text-blue-500" />}
+            importIcon={importLoading ? <LoadingSpinner size="sm" /> : <Upload className="h-4 w-4 text-blue-500" />}
             importAccept=".csv,.xlsx,.xls"
             importMultiple={true}
           />
@@ -401,7 +439,7 @@ const InventoryAdjustments: React.FC = () => {
         </div>
       </div>
 
-      {/* Reusable Table - No actions column */}
+      {/* Reusable Table */}
       <ReusableTable
         data={currentItems}
         columns={columns}
@@ -417,11 +455,22 @@ const InventoryAdjustments: React.FC = () => {
           currentPage,
           totalPages,
           totalItems,
-          startIndex,
-          endIndex,
           onPageChange: setCurrentPage,
           itemsPerPage: itemsPerPage || 5,
         }}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
       />
     </div>
   );

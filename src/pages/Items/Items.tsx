@@ -1,5 +1,5 @@
 // src/pages/Items/Items.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -16,6 +16,7 @@ import {
   Upload,
   Grid,
   List,
+  Trash2,
 } from 'lucide-react';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ThreeDotDropdown from '../../components/common/ThreeDotDropdown';
@@ -23,13 +24,25 @@ import type { ThreeDotDropdownItem } from '../../components/common/ThreeDotDropd
 import ReusableTable from '../../components/common/ReusableTable';
 import type { TableColumn } from '../../components/common/ReusableTable';
 import Pagination from '../../components/common/Pagination';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
 import { useItems } from '../../hooks/items/useItems';
 import { useToastAndConfirm } from '../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { Item } from '../../types/items/Itemstype';
 
 const Items: React.FC = () => {
   const navigate = useNavigate();
-  const { success, error, warning, info, withConfirmation } = useToastAndConfirm();
+  const { 
+    success, 
+    error: showError, 
+    warning, 
+    withConfirmation, 
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
   
   const {
     loading,
@@ -61,6 +74,7 @@ const Items: React.FC = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   // Status Badge
   const getStatusBadge = (status: Item['status']) => {
@@ -82,37 +96,46 @@ const Items: React.FC = () => {
     );
   };
 
-  const handleView = (item: Item) => {
+  const handleView = useCallback((item: Item) => {
     navigate(`/items/${item.id}`);
-  };
+  }, [navigate]);
+
+  const handleEdit = useCallback((item: Item) => {
+    navigate(`/items/${item.id}/edit`);
+  }, [navigate]);
 
   // Delete single item with confirmation
-  const handleDeleteWithConfirm = (id: string, name: string) => {
-    withConfirmation(
+  const handleDeleteWithConfirm = useCallback(async (item: Item) => {
+    await withConfirmation(
       {
         title: 'Delete Item',
-        message: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+        message: `Are you sure you want to delete "${item.itemName}"? This action cannot be undone.`,
         confirmText: 'Delete',
         cancelText: 'Cancel',
         variant: 'danger',
       },
       async () => {
-        await handleDelete(id);
-        await handleRefresh();
-      },
-      `"${name}" deleted successfully!`,
-      `Failed to delete "${name}"`
+        setDeleteLoading(item.id);
+        try {
+          await handleDelete(item.id);
+          success(`"${item.itemName}" deleted successfully!`);
+        } catch (err) {
+          showError(`Failed to delete "${item.itemName}"`);
+        } finally {
+          setDeleteLoading(null);
+        }
+      }
     );
-  };
+  }, [withConfirmation, handleDelete, success, showError]);
 
   // Bulk delete with confirmation
-  const handleBulkDeleteWithConfirm = () => {
+  const handleBulkDeleteWithConfirm = useCallback(async () => {
     if (selectedItems.length === 0) {
       warning('Please select items to delete');
       return;
     }
 
-    withConfirmation(
+    await withConfirmation(
       {
         title: 'Delete Multiple Items',
         message: `Are you sure you want to delete ${selectedItems.length} items? This action cannot be undone.`,
@@ -122,28 +145,31 @@ const Items: React.FC = () => {
       },
       async () => {
         setBulkDeleteLoading(true);
-        await handleBulkDelete();
-        handleSelectAll(false);
-        await handleRefresh();
-      },
-      `${selectedItems.length} items deleted successfully!`,
-      'Failed to delete items'
+        try {
+          await handleBulkDelete();
+          success(`${selectedItems.length} items deleted successfully!`);
+        } catch (err) {
+          showError('Failed to delete items');
+        } finally {
+          setBulkDeleteLoading(false);
+        }
+      }
     );
-  };
+  }, [selectedItems, withConfirmation, handleBulkDelete, success, showError, warning]);
 
-  const handleRefreshWithLoading = async () => {
+  const handleRefreshWithLoading = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await handleRefresh();
       success('Items refreshed successfully!');
     } catch (err) {
-      error('Failed to refresh items');
+      showError('Failed to refresh items');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [handleRefresh, success, showError]);
 
-  const handleExportWithLoading = async () => {
+  const handleExportWithLoading = useCallback(async () => {
     if (items.length === 0) {
       warning('No items to export');
       return;
@@ -154,13 +180,13 @@ const Items: React.FC = () => {
       await handleExport();
       success(`Successfully exported ${items.length} items!`);
     } catch (err) {
-      error('Failed to export items');
+      showError('Failed to export items');
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [items.length, handleExport, success, showError, warning]);
 
-  const handleImportWithLoading = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportWithLoading = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       setImportLoading(true);
@@ -170,22 +196,23 @@ const Items: React.FC = () => {
         success(`Successfully imported ${files.length} file(s)`);
       } catch (err) {
         console.error('Import error:', err);
-        error('Failed to import files. Please check the file format.');
+        showError('Failed to import files. Please check the file format.');
       } finally {
         setImportLoading(false);
+        event.target.value = '';
       }
     }
-  };
+  }, [handleRefresh, success, showError]);
 
-  const handleSelectAllWrapper = () => {
+  const handleSelectAllWrapper = useCallback(() => {
     const shouldSelectAll = selectedItems.length !== currentItems.length;
     handleSelectAll(shouldSelectAll);
-  };
+  }, [selectedItems.length, currentItems.length, handleSelectAll]);
 
-  const handleSelectItemWrapper = (id: string) => {
+  const handleSelectItemWrapper = useCallback((id: string) => {
     const checked = !selectedItems.includes(id);
     handleSelectItem(id, checked);
-  };
+  }, [selectedItems, handleSelectItem]);
 
   const columns: TableColumn<Item>[] = [
     {
@@ -244,13 +271,23 @@ const Items: React.FC = () => {
   const headerDropdownItems: ThreeDotDropdownItem[] = [
     {
       label: 'Export as PDF',
-      icon: <File className="h-4 w-4 text-red-500" />,
+      icon: exportLoading ? (
+        <LoadingSpinner size="sm" />
+      ) : (
+        <File className="h-4 w-4 text-red-500" />
+      ),
       onClick: handleExportWithLoading,
+      disabled: exportLoading,
     },
     {
       label: 'Export as Excel',
-      icon: <FileSpreadsheet className="h-4 w-4 text-green-500" />,
+      icon: exportLoading ? (
+        <LoadingSpinner size="sm" />
+      ) : (
+        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+      ),
       onClick: handleExportWithLoading,
+      disabled: exportLoading,
     },
   ];
 
@@ -287,9 +324,7 @@ const Items: React.FC = () => {
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+                <Trash2 className="h-4 w-4" />
               )}
               Delete Selected ({selectedItems.length})
             </button>
@@ -343,7 +378,13 @@ const Items: React.FC = () => {
             position="right"
             onImport={handleImportWithLoading}
             importLabel="Import Items"
-            importIcon={<Upload className="h-4 w-4 text-blue-500" />}
+            importIcon={
+              importLoading ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <Upload className="h-4 w-4 text-blue-500" />
+              )
+            }
             importAccept=".csv,.xlsx,.xls"
             importMultiple={true}
           />
@@ -465,6 +506,19 @@ const Items: React.FC = () => {
           )}
         </>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

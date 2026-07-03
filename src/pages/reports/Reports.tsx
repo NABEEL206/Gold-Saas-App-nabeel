@@ -1,6 +1,7 @@
 // src/pages/Reports/Reports.tsx
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart,
   Package,
@@ -10,13 +11,9 @@ import {
   Receipt,
   Banknote,
   FileText,
-  Briefcase,
   Wrench,
   Gem,
-  Sparkles,
-  Factory,
   Home,
-  FolderOpen,
 } from 'lucide-react';
 import SidebarNav from '../../components/Reports/SidebarNav';
 import ReportTable from '../../components/Reports/ReportTable';
@@ -26,6 +23,184 @@ import type { ReportItem, ReportCategory as ReportCategoryType } from '../../typ
 
 // ─── Static Report Data ────────────────────────────────────────────
 const DEFAULT_REPORT_DATA: ReportItem[] = [
+  // Accountant Reports
+  {
+    id: 'balance-sheet',
+    title: 'Balance Sheet',
+    category: 'Accountant',
+    createdBy: 'System Generated',
+    lastVisited: '05/06/2026 03:30 PM',
+    icon: <FileText className="h-5 w-5" />,
+    color: 'blue',
+    popular: true,
+  },
+  {
+    id: 'profit-loss',
+    title: 'Profit and Loss',
+    category: 'Accountant',
+    createdBy: 'System Generated',
+    lastVisited: '06/06/2026 04:00 PM',
+    icon: <FileText className="h-5 w-5" />,
+    color: 'green',
+    popular: true,
+  },
+  {
+    id: 'trial-balance',
+    title: 'Trial Balance',
+    category: 'Accountant',
+    createdBy: 'System Generated',
+    lastVisited: '07/06/2026 04:30 PM',
+    icon: <FileText className="h-5 w-5" />,
+    color: 'blue',
+    popular: true,
+  },
+
+  // Banking Reports
+  {
+    id: 'bank-transactions',
+    title: 'Bank Transactions Details',
+    category: 'Banking',
+    createdBy: 'System Generated',
+    lastVisited: '10/06/2026 06:00 PM',
+    icon: <Banknote className="h-5 w-5" />,
+    color: 'teal',
+    popular: false,
+  },
+
+  // Inventory Reports
+  {
+    id: 'gold-inventory-summary',
+    title: 'Gold Inventory Summary',
+    category: 'Gold Inventory',
+    createdBy: 'System Generated',
+    lastVisited: '04/06/2026 03:00 PM',
+    icon: <Gem className="h-5 w-5" />,
+    color: 'amber',
+    popular: false,
+  },
+  {
+    id: 'stock-movement',
+    title: 'Stock Movement',
+    category: 'Inventory',
+    createdBy: 'System Generated',
+    lastVisited: '20/06/2026 02:00 PM',
+    icon: <FileText className="h-5 w-5" />,
+    color: 'purple',
+    popular: false,
+  },
+
+  // Inventory Valuation
+  {
+    id: 'inventory-valuation',
+    title: 'Inventory Valuation',
+    category: 'Inventory Valuation',
+    createdBy: 'System Generated',
+    lastVisited: '21/06/2026 03:10 PM',
+    icon: <DollarSign className="h-5 w-5" />,
+    color: 'amber',
+    popular: false,
+  },
+
+  // Payables
+  {
+    id: 'payable-summary',
+    title: 'Payable Summary',
+    category: 'Payables',
+    createdBy: 'System Generated',
+    lastVisited: '17/06/2026 11:30 AM',
+    icon: <Building2 className="h-5 w-5" />,
+    color: 'red',
+    popular: true,
+  },
+  {
+    id: 'purchase-order-details',
+    title: 'Purchase Order Details',
+    category: 'Payables',
+    createdBy: 'System Generated',
+    lastVisited: '16/06/2026 10:15 AM',
+    icon: <FileText className="h-5 w-5" />,
+    color: 'orange',
+    popular: false,
+  },
+  {
+    id: 'vendor-payment',
+    title: 'Vendor Payment',
+    category: 'Payables',
+    createdBy: 'System Generated',
+    lastVisited: '15/06/2026 09:00 AM',
+    icon: <Banknote className="h-5 w-5" />,
+    color: 'rose',
+    popular: false,
+  },
+
+  // Payments Received
+  {
+    id: 'payment-received',
+    title: 'Payment Received',
+    category: 'Payments Received',
+    createdBy: 'System Generated',
+    lastVisited: '18/06/2026 12:45 PM',
+    icon: <Banknote className="h-5 w-5" />,
+    color: 'green',
+    popular: false,
+  },
+
+  // Purchases and Expenses
+  {
+    id: 'expense-report',
+    title: 'Expense Report',
+    category: 'Purchases and Expenses',
+    createdBy: 'System Generated',
+    lastVisited: '14/06/2026 08:30 AM',
+    icon: <Receipt className="h-5 w-5" />,
+    color: 'amber',
+    popular: false,
+  },
+  {
+    id: 'purchase-summary',
+    title: 'Purchase Summary',
+    category: 'Purchases and Expenses',
+    createdBy: 'System Generated',
+    lastVisited: '15/06/2026 09:00 AM',
+    icon: <ShoppingCart className="h-5 w-5" />,
+    color: 'orange',
+    popular: true,
+  },
+
+  // Receivables
+  {
+    id: 'invoice-details',
+    title: 'Invoice Details',
+    category: 'Receivables',
+    createdBy: 'System Generated',
+    lastVisited: '19/06/2026 01:30 PM',
+    icon: <Receipt className="h-5 w-5" />,
+    color: 'indigo',
+    popular: true,
+  },
+  {
+    id: 'receivables-summary',
+    title: 'Receivables Summary',
+    category: 'Receivables',
+    createdBy: 'System Generated',
+    lastVisited: '18/06/2026 12:45 PM',
+    icon: <Users className="h-5 w-5" />,
+    color: 'cyan',
+    popular: false,
+  },
+
+  // Repairs
+  {
+    id: 'repairs-summary',
+    title: 'Repairs Summary',
+    category: 'Repairs',
+    createdBy: 'System Generated',
+    lastVisited: '27/05/2026 11:00 AM',
+    icon: <Wrench className="h-5 w-5" />,
+    color: 'orange',
+    popular: true,
+  },
+
   // Sales Reports
   {
     id: 'sales-summary',
@@ -58,266 +233,16 @@ const DEFAULT_REPORT_DATA: ReportItem[] = [
     popular: false,
   },
 
-  // Inventory Reports
-  {
-    id: 'inventory-summary',
-    title: 'Inventory Summary',
-    category: 'Inventory',
-    createdBy: 'System Generated',
-    lastVisited: '22/06/2026 04:20 PM',
-    icon: <Package className="h-5 w-5" />,
-    color: 'green',
-    popular: true,
-  },
-  {
-    id: 'inventory-valuation',
-    title: 'Inventory Valuation',
-    category: 'Inventory Valuation',
-    createdBy: 'System Generated',
-    lastVisited: '21/06/2026 03:10 PM',
-    icon: <DollarSign className="h-5 w-5" />,
-    color: 'amber',
-    popular: false,
-  },
-  {
-    id: 'stock-movement',
-    title: 'Stock Movement',
-    category: 'Inventory',
-    createdBy: 'System Generated',
-    lastVisited: '20/06/2026 02:00 PM',
-    icon: <FileText className="h-5 w-5" />,
-    color: 'purple',
-    popular: false,
-  },
-
-  // Receivables
-  {
-    id: 'receivables-aging',
-    title: 'Receivables Aging Report',
-    category: 'Receivables',
-    createdBy: 'System Generated',
-    lastVisited: '19/06/2026 01:30 PM',
-    icon: <Receipt className="h-5 w-5" />,
-    color: 'indigo',
-    popular: true,
-  },
-  {
-    id: 'customer-payments',
-    title: 'Customer Payments Received',
-    category: 'Payments Received',
-    createdBy: 'System Generated',
-    lastVisited: '18/06/2026 12:45 PM',
-    icon: <Banknote className="h-5 w-5" />,
-    color: 'green',
-    popular: false,
-  },
-
-  // Payables
-  {
-    id: 'payables-aging',
-    title: 'Payables Aging Report',
-    category: 'Payables',
-    createdBy: 'System Generated',
-    lastVisited: '17/06/2026 11:30 AM',
-    icon: <Building2 className="h-5 w-5" />,
-    color: 'red',
-    popular: true,
-  },
-  {
-    id: 'vendor-payments',
-    title: 'Vendor Payments',
-    category: 'Payables',
-    createdBy: 'System Generated',
-    lastVisited: '16/06/2026 10:15 AM',
-    icon: <Banknote className="h-5 w-5" />,
-    color: 'rose',
-    popular: false,
-  },
-
-  // Purchases and Expenses
-  {
-    id: 'purchase-summary',
-    title: 'Purchase Summary',
-    category: 'Purchases and Expenses',
-    createdBy: 'System Generated',
-    lastVisited: '15/06/2026 09:00 AM',
-    icon: <ShoppingCart className="h-5 w-5" />,
-    color: 'orange',
-    popular: true,
-  },
-  {
-    id: 'expense-report',
-    title: 'Expense Report',
-    category: 'Purchases and Expenses',
-    createdBy: 'System Generated',
-    lastVisited: '14/06/2026 08:30 AM',
-    icon: <Receipt className="h-5 w-5" />,
-    color: 'amber',
-    popular: false,
-  },
-
   // Taxes
   {
-    id: 'gst-summary',
-    title: 'GST Summary',
+    id: 'tax-summary',
+    title: 'Tax Summary',
     category: 'Taxes',
     createdBy: 'System Generated',
     lastVisited: '13/06/2026 07:45 PM',
     icon: <FileText className="h-5 w-5" />,
     color: 'orange',
     popular: true,
-  },
-  {
-    id: 'tds-report',
-    title: 'TDS Report',
-    category: 'Taxes',
-    createdBy: 'System Generated',
-    lastVisited: '12/06/2026 07:00 PM',
-    icon: <FileText className="h-5 w-5" />,
-    color: 'red',
-    popular: false,
-  },
-
-  // Banking
-  {
-    id: 'bank-reconciliation',
-    title: 'Bank Reconciliation',
-    category: 'Banking',
-    createdBy: 'System Generated',
-    lastVisited: '11/06/2026 06:30 PM',
-    icon: <Banknote className="h-5 w-5" />,
-    color: 'blue',
-    popular: true,
-  },
-  {
-    id: 'bank-transactions',
-    title: 'Bank Transactions',
-    category: 'Banking',
-    createdBy: 'System Generated',
-    lastVisited: '10/06/2026 06:00 PM',
-    icon: <Banknote className="h-5 w-5" />,
-    color: 'teal',
-    popular: false,
-  },
-
-  // Accountant
-  {
-    id: 'trial-balance',
-    title: 'Trial Balance',
-    category: 'Accountant',
-    createdBy: 'System Generated',
-    lastVisited: '07/06/2026 04:30 PM',
-    icon: <FileText className="h-5 w-5" />,
-    color: 'blue',
-    popular: true,
-  },
-  {
-    id: 'profit-loss',
-    title: 'Profit and Loss',
-    category: 'Accountant',
-    createdBy: 'System Generated',
-    lastVisited: '06/06/2026 04:00 PM',
-    icon: <FileText className="h-5 w-5" />,
-    color: 'green',
-    popular: true,
-  },
-  {
-    id: 'balance-sheet',
-    title: 'Balance Sheet',
-    category: 'Accountant',
-    createdBy: 'System Generated',
-    lastVisited: '05/06/2026 03:30 PM',
-    icon: <FileText className="h-5 w-5" />,
-    color: 'blue',
-    popular: true,
-  },
-
-  // Gold Inventory
-  {
-    id: 'gold-inventory-summary',
-    title: 'Gold Inventory Summary',
-    category: 'Gold Inventory',
-    createdBy: 'System Generated',
-    lastVisited: '04/06/2026 03:00 PM',
-    icon: <Gem className="h-5 w-5" />,
-    color: 'amber',
-    popular: false,
-  },
-  {
-    id: 'gold-valuation',
-    title: 'Gold Valuation Report',
-    category: 'Gold Inventory',
-    createdBy: 'System Generated',
-    lastVisited: '03/06/2026 02:30 PM',
-    icon: <DollarSign className="h-5 w-5" />,
-    color: 'amber',
-    popular: false,
-  },
-
-  // Jewellery
-  {
-    id: 'jewellery-inventory',
-    title: 'Jewellery Inventory',
-    category: 'Jewellery',
-    createdBy: 'System Generated',
-    lastVisited: '01/06/2026 01:30 PM',
-    icon: <Gem className="h-5 w-5" />,
-    color: 'pink',
-    popular: true,
-  },
-  {
-    id: 'jewellery-sales',
-    title: 'Jewellery Sales Analysis',
-    category: 'Jewellery',
-    createdBy: 'System Generated',
-    lastVisited: '31/05/2026 01:00 PM',
-    icon: <ShoppingCart className="h-5 w-5" />,
-    color: 'rose',
-    popular: false,
-  },
-
-  // Manufacturing
-  {
-    id: 'manufacturing-summary',
-    title: 'Manufacturing Summary',
-    category: 'Manufacturing',
-    createdBy: 'System Generated',
-    lastVisited: '30/05/2026 12:30 PM',
-    icon: <Factory className="h-5 w-5" />,
-    color: 'indigo',
-    popular: true,
-  },
-  {
-    id: 'production-report',
-    title: 'Production Report',
-    category: 'Manufacturing',
-    createdBy: 'System Generated',
-    lastVisited: '29/05/2026 12:00 PM',
-    icon: <Factory className="h-5 w-5" />,
-    color: 'blue',
-    popular: false,
-  },
-
-  // Repairs
-  {
-    id: 'repairs-summary',
-    title: 'Repairs Summary',
-    category: 'Repairs',
-    createdBy: 'System Generated',
-    lastVisited: '27/05/2026 11:00 AM',
-    icon: <Wrench className="h-5 w-5" />,
-    color: 'orange',
-    popular: true,
-  },
-  {
-    id: 'repairs-log',
-    title: 'Repairs Log',
-    category: 'Repairs',
-    createdBy: 'System Generated',
-    lastVisited: '26/05/2026 10:30 AM',
-    icon: <Wrench className="h-5 w-5" />,
-    color: 'amber',
-    popular: false,
   },
 ];
 
@@ -336,8 +261,54 @@ const SIDEBAR_ITEMS = [
   { id: 'repairs', label: 'Repairs', icon: <Wrench className="h-4 w-4" /> },
 ];
 
+// ─── Report Route Mapping ──────────────────────────────────────────
+const REPORT_ROUTE_MAP: Record<string, string> = {
+  // Accountant Reports
+  'balance-sheet': '/reports/balance-sheet',
+  'profit-loss': '/reports/profit-loss',
+  'trial-balance': '/reports/trial-balance',
+  
+  // Banking Reports
+  'bank-transactions': '/reports/bank-transactions',
+  
+  // Inventory Reports
+  'gold-inventory-summary': '/reports/gold-inventory-summary',
+  'stock-movement': '/reports/stock-movement',
+  
+  // Inventory Valuation
+  'inventory-valuation': '/reports/inventory-valuation',
+  
+  // Payables
+  'payable-summary': '/reports/payable-summary',
+  'purchase-order-details': '/reports/purchase-order-details',
+  'vendor-payment': '/reports/vendor-payment',
+  
+  // Payments Received
+  'payment-received': '/reports/payment-received',
+  
+  // Purchases and Expenses
+  'expense-report': '/reports/expense-report',
+  'purchase-summary': '/reports/purchase-summary',
+  
+  // Receivables
+  'invoice-details': '/reports/invoice-details',
+  'receivables-summary': '/reports/receivables-summary',
+  
+  // Repairs
+  'repairs-summary': '/reports/repairs-summary',
+  
+  // Sales
+  'sales-summary': '/reports/sales-summary',
+  'sales-by-product': '/reports/sales-by-product',
+  'sales-by-customer': '/reports/sales-by-customer',
+  
+  // Taxes
+  'tax-summary': '/reports/tax-summary',
+};
+
 // ─── Component ──────────────────────────────────────────────────────
 const Reports: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedFolder, setSelectedFolder] = useState('home');
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -373,6 +344,16 @@ const Reports: React.FC = () => {
     setRecentReports([]);
   }, [setReportCategories, setRecentReports]);
 
+  // Handle report click - navigate to report page
+  const handleReportClick = (reportId: string) => {
+    const route = REPORT_ROUTE_MAP[reportId];
+    if (route) {
+      navigate(route);
+    } else {
+      console.warn(`No route found for report: ${reportId}`);
+    }
+  };
+
   // Filter reports based on selected folder and search
   const getFilteredReports = () => {
     let reports = DEFAULT_REPORT_DATA;
@@ -390,8 +371,6 @@ const Reports: React.FC = () => {
       'banking': 'Banking',
       'accountant': 'Accountant',
       'gold-inventory': 'Gold Inventory',
-      'jewellery': 'Jewellery',
-      'manufacturing': 'Manufacturing',
       'repairs': 'Repairs',
     };
     
@@ -462,7 +441,7 @@ const Reports: React.FC = () => {
               <ReportTable
                 reports={filteredReports}
                 selectedId={selectedReport}
-                onSelect={setSelectedReport}
+                onSelect={handleReportClick}
                 viewMode={viewMode}
               />
             </div>

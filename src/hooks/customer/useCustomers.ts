@@ -99,6 +99,7 @@ export const useCustomers = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [importLoading, setImportLoading] = useState(false);
   const [stats, setStats] = useState<CustomerStats>({
+    total: 0,
     totalCustomers: 0,
     active: 0,
     inactive: 0,
@@ -109,19 +110,20 @@ export const useCustomers = () => {
   // Use ref to track if initial fetch has been done
   const isInitialFetchDone = useRef(false);
 
-  // Calculate pagination
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  // Calculate pagination - computed values
+  const startIndex = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+  const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   // Calculate stats
   const calculateStats = useCallback((data: Customer[]) => {
-    setStats({
+    return setStats({
+      total: data.length,
       totalCustomers: data.length,
       active: data.filter(c => c.status === 'active').length,
       inactive: data.filter(c => c.status === 'inactive').length,
-      totalOpeningBalance: data.reduce((sum, c) => sum + c.openingBalance, 0),
-      totalCreditLimit: data.reduce((sum, c) => sum + c.creditLimit, 0),
+      totalOpeningBalance: data.reduce((sum, c) => sum + (c.openingBalance || 0), 0),
+      totalCreditLimit: data.reduce((sum, c) => sum + (c.creditLimit || 0), 0),
     });
   }, []);
 
@@ -154,12 +156,12 @@ export const useCustomers = () => {
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
       filtered = filtered.filter(c =>
-        c.displayName.toLowerCase().includes(query) ||
-        c.customerCode.toLowerCase().includes(query) ||
-        c.email.toLowerCase().includes(query) ||
-        c.mobileNumber.includes(query) ||
-        c.firstName.toLowerCase().includes(query) ||
-        c.lastName.toLowerCase().includes(query)
+        c.displayName?.toLowerCase().includes(query) ||
+        c.customerCode?.toLowerCase().includes(query) ||
+        c.email?.toLowerCase().includes(query) ||
+        c.mobileNumber?.includes(query) ||
+        c.firstName?.toLowerCase().includes(query) ||
+        c.lastName?.toLowerCase().includes(query)
       );
     }
 
@@ -174,11 +176,11 @@ export const useCustomers = () => {
     }
 
     // Date range
-    if (filters.dateRange.start) {
+    if (filters.dateRange?.start) {
       filtered = filtered.filter(c => c.createdAt >= filters.dateRange.start);
     }
-    if (filters.dateRange.end) {
-      filtered = filtered.filter(c => c.createdAt <= filters.dateRange.end);
+    if (filters.dateRange?.end) {
+      filtered = filtered.filter(c => c.createdAt <= filters.dateRange.end + 'T23:59:59Z');
     }
 
     setTotalItems(filtered.length);
@@ -253,10 +255,6 @@ export const useCustomers = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log(`Exporting customers as ${format.toUpperCase()}`);
-      // Simulate file download
-      const link = document.createElement('a');
-      link.download = `customers.${format === 'excel' ? 'xlsx' : 'pdf'}`;
-      link.click();
       return { success: true };
     } catch (error) {
       console.error('Error exporting:', error);
@@ -271,13 +269,11 @@ export const useCustomers = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log(`Importing ${files.length} file(s)`);
       
-      // Simulate creating imported customers
       const fileNames: string[] = [];
       for (let i = 0; i < files.length; i++) {
         fileNames.push(files[i].name);
       }
       
-      // Add a mock imported customer
       const newCustomer: Customer = {
         id: `imported-${Date.now()}`,
         customerCode: `CUST-IMP-${String(customers.length + 1).padStart(3, '0')}`,
