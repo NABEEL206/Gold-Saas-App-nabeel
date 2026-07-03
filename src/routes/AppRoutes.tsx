@@ -129,6 +129,8 @@ import ChartOfAccountsEdit from '../pages/accountant/ChartOfAccounts/ChartOfAcco
 // Reports & Documents
 import Reports from '../pages/reports/Reports';
 import Documents from '../pages/documents/Documents';
+import PaymentReceivedEdit from '../pages/sales/PaymentsReceived/PaymentReceivedEdit';
+import CreditNoteEdit from '../pages/sales/CreditNotes/CreditNoteEdit';
 
 // Create a wrapper component for cleaner code
 const LayoutWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -208,13 +210,13 @@ const AppRoutes: React.FC = () => {
         <Route path="/sales/payments-received" element={<LayoutWrapper><PaymentsReceived /></LayoutWrapper>} />
         <Route path="/sales/payments-received/create" element={<LayoutWrapper><PaymentReceivedCreate /></LayoutWrapper>} />
         <Route path="/sales/payments-received/:id/view" element={<LayoutWrapper><PaymentReceivedView /></LayoutWrapper>} />
-        <Route path="/sales/payments-received/:id/edit" element={<LayoutWrapper><PaymentReceivedCreate /></LayoutWrapper>} />
+        <Route path="/sales/payments-received/:id/edit" element={<LayoutWrapper><PaymentReceivedEdit /></LayoutWrapper>} />
 
         {/* Sales Routes - Credit Notes */}
         <Route path="/sales/credit-notes" element={<LayoutWrapper><CreditNotes /></LayoutWrapper>} />
         <Route path="/sales/credit-notes/create" element={<LayoutWrapper><CreditNoteCreate /></LayoutWrapper>} />
         <Route path="/sales/credit-notes/:id/view" element={<LayoutWrapper><CreditNoteView /></LayoutWrapper>} />
-        <Route path="/sales/credit-notes/:id/edit" element={<LayoutWrapper><CreditNoteCreate /></LayoutWrapper>} />
+        <Route path="/sales/credit-notes/:id/edit" element={<LayoutWrapper><CreditNoteEdit /></LayoutWrapper>} />
 
         {/* Purchases Routes - Vendors */}
         <Route path="/purchases/vendors" element={<LayoutWrapper><Vendors /></LayoutWrapper>} />
@@ -278,6 +280,7 @@ const AppRoutes: React.FC = () => {
         
         {/* Reports & Documents */}
         <Route path="/reports" element={<LayoutWrapper><Reports /></LayoutWrapper>} />
+        
         <Route path="/documents" element={<LayoutWrapper><Documents /></LayoutWrapper>} />
         
         {/* Catch All */}
