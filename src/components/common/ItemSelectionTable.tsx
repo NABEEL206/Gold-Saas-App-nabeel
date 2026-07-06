@@ -1,33 +1,16 @@
 // src/components/common/ItemSelectionTable.tsx
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
-  Plus, Trash2, ChevronDown, AlertCircle,
-  X, ImageOff,
+  Plus, Trash2, ChevronDown, ChevronRight, AlertCircle,
+  X, ImageOff, RotateCcw, Search,
 } from 'lucide-react';
 import SearchableDropdown, { type DropdownOption } from './Searchabledropdown';
-
-// ─── Static options ─────────────────────────────────────────────────────────
-export const TAX_RATES = [
-  { value: 0,  label: '0%'  }, { value: 3,  label: '3%'  },
-  { value: 5,  label: '5%'  }, { value: 12, label: '12%' },
-  { value: 18, label: '18%' }, { value: 28, label: '28%' },
-];
-export const PURITY_OPTIONS = [
-  { value: '24K', label: '24K' }, { value: '22K', label: '22K' },
-  { value: '18K', label: '18K' }, { value: '14K', label: '14K' },
-  { value: '10K', label: '10K' },
-];
-export const UNIT_OPTIONS = [
-  { value: 'Pcs',  label: 'Pcs'  }, { value: 'Gm',   label: 'Gm'   },
-  { value: 'Kg',   label: 'Kg'   }, { value: 'Tola', label: 'Tola' },
-  { value: 'Gram', label: 'Gram' }, { value: 'Mg',   label: 'Mg'   },
-  { value: 'Carat',label: 'Carat'}, { value: 'Set',  label: 'Set'  },
-  { value: 'Pair', label: 'Pair' },
-];
-export const DISCOUNT_TYPES = [
-  { value: 'percentage', label: '%' },
-  { value: 'fixed',      label: '₹' },
-];
+import OldGoldTable, { type OldGoldItem, recalcOldGold } from './OldGoldTable';
+import {
+  TAX_RATES,
+  PURITY_OPTIONS,
+  UNIT_OPTIONS,
+} from '../../utils/constants';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface ItemSelectionItem {
@@ -54,6 +37,7 @@ export interface ItemSelectionItem {
   category?: string;
   weight?: number;
   wastagePercentage?: number;
+  hsn?: string;
   [key: string]: any;
 }
 
@@ -81,19 +65,13 @@ export interface ItemSelectionTableProps {
   showMakingCharges?: boolean;
   showWeightFields?: boolean;
   showPurity?: boolean;
+  showHSN?: boolean;
   simpleMode?: boolean;
   loading?: boolean;
   searchPlaceholder?: string;
   addButtonLabel?: string;
   title?: string;
   className?: string;
-  columns?: {
-    item?: boolean; purity?: boolean; description?: boolean;
-    grossWt?: boolean; stoneWt?: boolean; netWt?: boolean;
-    qty?: boolean; unit?: boolean; rate?: boolean;
-    making?: boolean; discount?: boolean; tax?: boolean;
-    amount?: boolean; action?: boolean;
-  };
   showSubtotalSection?: boolean;
   additionalCharges?: { label: string; value: number }[];
   headerDiscount?: number;
@@ -102,6 +80,16 @@ export interface ItemSelectionTableProps {
   unitOptions?: Array<{ value: string; label: string }>;
   autoAddDefaultRow?: boolean;
   addButtonAtBottom?: boolean;
+  columns?: Array<{ key: string; label: string; width?: string }>;
+  // Old gold specific
+  oldGoldItems?: OldGoldItem[];
+  onOldGoldItemsChange?: (items: OldGoldItem[]) => void;
+  onOldGoldAdd?: (item: OldGoldItem) => void;
+  onOldGoldRemove?: (index: number) => void;
+  onOldGoldUpdate?: (index: number, field: string, value: any) => void;
+  showOldGoldSection?: boolean;
+  oldGoldTitle?: string;
+  oldGoldVisible?: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -129,25 +117,24 @@ function toStr(v: number | string | undefined): string {
   return String(v);
 }
 
-// ─── Shared input styles - SUPER COMPACT ─────────────────────────────────────
+// ─── Shared input styles ─────────────────────────────────────────────────────
 const BASE_INPUT =
-  'h-7 w-full min-w-[60px] rounded border border-gray-200 bg-white px-2 text-xs ' +
+  'h-9 w-full rounded border border-gray-200 bg-white px-3 text-sm ' +
   'text-gray-900 placeholder:text-gray-400 transition-all duration-200 ' +
-  'focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100/60 ' +
-  'disabled:bg-gray-50 disabled:text-gray-400';
+  'focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-100/60 ' +
+  'disabled:bg-gray-50 disabled:text-gray-400 ' +
+  // Remove number input arrows
+  '[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ' +
+  '[appearance:textfield]';
 
 const ERR_INPUT = 'border-red-400 focus:border-red-500 focus:ring-red-100/60';
 
-const CELL = 'px-2 py-1 align-top';
-
 // ─── Field components ──────────────────────────────────────────────────────
-
-/** Numeric text field - super compact */
 const TF: React.FC<{
   value: number | string | undefined;
   onChange: (raw: string) => void;
   placeholder?: string;
-  align?: 'left' | 'right';
+  align?: 'left' | 'right' | 'center';
   error?: boolean;
   disabled?: boolean;
   className?: string;
@@ -160,11 +147,10 @@ const TF: React.FC<{
     disabled={disabled}
     placeholder={placeholder}
     onChange={(e) => onChange(e.target.value)}
-    className={`${BASE_INPUT} ${error ? ERR_INPUT : ''} ${align === 'right' ? 'text-right tabular-nums' : ''} ${className}`}
+    className={`${BASE_INPUT} ${error ? ERR_INPUT : ''} ${align === 'right' ? 'text-right tabular-nums' : align === 'center' ? 'text-center' : ''} ${className}`}
   />
 );
 
-/** Select with chevron - super compact */
 const SF: React.FC<{
   value: string | number | undefined;
   onChange: (v: string) => void;
@@ -176,48 +162,35 @@ const SF: React.FC<{
     <select
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value)}
-      className={`${BASE_INPUT} appearance-none pr-6 cursor-pointer ${error ? ERR_INPUT : ''}`}
+      className={`${BASE_INPUT} appearance-none pr-8 cursor-pointer ${error ? ERR_INPUT : ''}`}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>{o.label}</option>
       ))}
     </select>
-    <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
   </div>
 );
 
-/** Discount dropdown with type selector - super compact */
-const DiscountInput: React.FC<{
-  value: number | string | undefined;
-  discountType: 'percentage' | 'fixed';
-  onValueChange: (raw: string) => void;
-  onTypeChange: (v: 'percentage' | 'fixed') => void;
-  error?: boolean;
-}> = ({ value, discountType, onValueChange, onTypeChange, error }) => (
-  <div className="flex items-center gap-1">
-    <div className="relative flex-1 min-w-[60px]">
-      <input
-        type="number"
-        step="any"
-        value={value === 0 || value === undefined ? '' : String(value)}
-        placeholder="0"
-        onChange={(e) => onValueChange(e.target.value)}
-        className={`${BASE_INPUT} ${error ? ERR_INPUT : ''} text-right tabular-nums pr-10`}
-      />
-      <div className="absolute right-0.5 top-1/2 -translate-y-1/2">
-        <select
-          value={discountType}
-          onChange={(e) => onTypeChange(e.target.value as 'percentage' | 'fixed')}
-          className="h-5 rounded border-0 bg-transparent px-1 text-[10px] font-medium text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-100"
-        >
-          {DISCOUNT_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
-          ))}
-        </select>
-      </div>
-    </div>
-  </div>
-);
+// ─── Helper to get error for a field ──────────────────────────────────────
+const getFieldError = (errors: Record<string, string> | undefined, idx: number, field: string): string | undefined => {
+  if (!errors) return undefined;
+  // Try all possible error key formats
+  const keys = [
+    `items.${idx}.${field}`,
+    `${idx}.${field}`,
+    `item_${idx}_${field}`,
+    `${field}_${idx}`,
+    field,
+  ];
+  
+  for (const key of keys) {
+    if (errors[key]) {
+      return errors[key];
+    }
+  }
+  return undefined;
+};
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
@@ -226,9 +199,13 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
   onItemAdd,
   onItemRemove,
   onItemUpdate,
+  oldGoldItems = [],
+  onOldGoldItemsChange,
+  onOldGoldAdd,
+  onOldGoldRemove,
+  onOldGoldUpdate,
   errors = {},
   productSuggestions = [],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   productSearch: _ps = '',
   onProductSearchChange,
   onProductSelect,
@@ -241,43 +218,28 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
   showMakingCharges = false,
   showWeightFields = false,
   showPurity = false,
+  showHSN = false,
   simpleMode = false,
   loading = false,
-  searchPlaceholder = 'Type or click to select an item.',
+  searchPlaceholder = 'Search or select item',
   addButtonLabel = 'Add Item',
-  title = 'Item Table',
+  title = 'Item Selection',
   className = '',
-  columns,
   showSubtotalSection = true,
   additionalCharges = [],
   headerDiscount = 0,
   headerDiscountType = 'percentage',
   showTotalSection = true,
   unitOptions = UNIT_OPTIONS,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  autoAddDefaultRow: _aar = true,
+  autoAddDefaultRow = true,
   addButtonAtBottom = true,
+  showOldGoldSection = false,
+  oldGoldTitle = 'Old Gold Exchange',
+  oldGoldVisible = true,
 }) => {
-  const jewelry = showJewelryFields && !simpleMode;
-  const on = (k: keyof NonNullable<typeof columns>, fb: boolean) =>
-    columns?.[k] !== undefined ? !!columns[k] : fb;
-
-  const show = {
-    item:    on('item',        true),
-    purity:  on('purity',      jewelry && showPurity),
-    desc:    on('description', showDescription),
-    grossWt: on('grossWt',     jewelry && showWeightFields),
-    stoneWt: on('stoneWt',     jewelry && showWeightFields),
-    netWt:   on('netWt',       jewelry && showWeightFields),
-    qty:     on('qty',         true),
-    unit:    on('unit',        showUnit),
-    rate:    on('rate',        true),
-    making:  on('making',      jewelry && showMakingCharges),
-    disc:    on('discount',    showDiscount),
-    tax:     on('tax',         showTax),
-    amount:  on('amount',      true),
-    action:  on('action',      true),
-  };
+  const [showOldGold, setShowOldGold] = useState(oldGoldVisible);
+  const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
+  const [isAddingNewRow, setIsAddingNewRow] = useState(false);
 
   // Convert product suggestions to SearchableDropdown options
   const productOptions: DropdownOption[] = productSuggestions.map((p) => ({
@@ -285,6 +247,10 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
     label: p.name,
     group: p.category,
   }));
+
+  const toggleRow = (idx: number) => {
+    setExpandedRows(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
 
   const updateItem = (idx: number, field: string, raw: string | number) => {
     const num = typeof raw === 'string'
@@ -314,22 +280,60 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
       quantity: 1, unit: unitOptions[0]?.value ?? 'Pcs',
       rate: 0, discount: 0, discountType: 'percentage',
       taxRate: 0, taxAmount: 0, total: 0,
+      grossWt: 0,
+      netWt: 0,
+      makingCharges: 0,
+      hsn: '',
+      purity: '',
     };
     if (onItemAdd) onItemAdd(blank);
     onItemsChange([...items, blank]);
+    setIsAddingNewRow(true);
   };
 
-  // Keep exactly one blank row always available at the bottom
-  const hasTrailingEmptyRow =
-    items.length > 0 && !items[items.length - 1].productName;
+  // Check if the last row is empty (no product selected)
+  const hasTrailingEmptyRow = items.length > 0 && !items[items.length - 1].productName;
 
-  React.useEffect(() => {
+  // Only add a blank row when:
+  // 1. There are no items at all, OR
+  // 2. The last row is not empty AND autoAddDefaultRow is true
+  // 3. We're not in the middle of adding a new row via the "Add Item" button
+  useEffect(() => {
     if (loading) return;
-    if (items.length === 0 || !hasTrailingEmptyRow) {
+    
+    // If there are no items, add a blank row
+    if (items.length === 0) {
+      addItem();
+      return;
+    }
+    
+    // If the last row is empty, we don't need to add another
+    if (hasTrailingEmptyRow) {
+      setIsAddingNewRow(false);
+      return;
+    }
+    
+    // If autoAddDefaultRow is true and the last row is not empty, add a new blank row
+    // But only if we're not already adding a new row
+    if (autoAddDefaultRow && !isAddingNewRow) {
       addItem();
     }
+    
+    // Reset the adding flag after a short delay
+    const timer = setTimeout(() => {
+      setIsAddingNewRow(false);
+    }, 100);
+    
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.length, hasTrailingEmptyRow, loading]);
+  }, [items.length, hasTrailingEmptyRow, loading, autoAddDefaultRow]);
+
+  // Reset isAddingNewRow when items change
+  useEffect(() => {
+    if (!hasTrailingEmptyRow) {
+      setIsAddingNewRow(false);
+    }
+  }, [hasTrailingEmptyRow]);
 
   // totals
   const totals = useMemo(() => {
@@ -343,69 +347,100 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
       return s + (it.discountType==='fixed' ? d : (g*d)/100);
     }, 0);
     const tax   = items.reduce((s, it) => s + (Number(it.taxAmount)||0), 0);
-    const grand = items.reduce((s, it) => s + (Number(it.total)||0), 0);
+    const oldGoldTotal = oldGoldItems.reduce((s, it) => s + (Number(it.amount)||0), 0);
+    const grand = items.reduce((s, it) => s + (Number(it.total)||0), 0) + oldGoldTotal;
     const addCh = additionalCharges.reduce((s, c) => s + (Number(c.value)||0), 0);
     const hd    = headerDiscountType==='fixed'
       ? headerDiscount
       : ((sub - disc) * headerDiscount) / 100;
-    return { sub, disc, tax, grand, addCh, hd, final: grand - hd + addCh };
-  }, [items, additionalCharges, headerDiscount, headerDiscountType]);
+    return { sub, disc, tax, grand, oldGoldTotal, addCh, hd, final: grand - hd + addCh };
+  }, [items, oldGoldItems, additionalCharges, headerDiscount, headerDiscountType]);
+
+  // Check if there are any item errors
+  const hasItemErrors = useMemo(() => {
+    return Object.keys(errors).some(key => key.startsWith('item_') || key.includes('item'));
+  }, [errors]);
 
   return (
     <div className={`w-full overflow-hidden rounded-lg border border-gray-200 bg-white ${className}`}>
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <h2 className="text-sm font-semibold text-gray-800">{title}</h2>
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <h2 className="text-base font-semibold text-amber-800">{title}</h2>
+        <div className="flex items-center gap-3">
+          {showOldGoldSection && (
+            <button
+              type="button"
+              onClick={() => setShowOldGold(!showOldGold)}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                showOldGold 
+                  ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' 
+                  : 'border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50'
+              }`}
+            >
+              <RotateCcw className="h-4 w-4" />
+              {showOldGold ? 'Hide Old Gold' : 'Add Old Gold Exchange'}
+              {showOldGold ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+          )}
+          {hasItemErrors && (
+            <span className="text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Has errors
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* ── Column Headers ── */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse" style={{ minWidth: 1200 }}>
-          <thead>
-            <tr className="border-b bg-gray-50/80 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-              {show.item    && <th className="border-r px-2 py-1.5 text-left min-w-[320px]">Item Details</th>}
-              {show.grossWt && <th className="border-r px-2 py-1.5 text-right w-24">Gross Wt</th>}
-              {show.stoneWt && <th className="border-r px-2 py-1.5 text-right w-24">Stone Wt</th>}
-              {show.netWt   && <th className="border-r px-2 py-1.5 text-right w-24">Net Wt</th>}
-              {show.qty     && <th className="border-r px-2 py-1.5 text-right w-28">Qty</th>}
-              {show.unit    && <th className="border-r px-2 py-1.5 text-left w-24">Unit</th>}
-              {show.rate    && <th className="border-r px-2 py-1.5 text-right w-32">Rate</th>}
-              {show.making  && <th className="border-r px-2 py-1.5 text-right w-32">Making</th>}
-              {show.disc    && <th className="border-r px-2 py-1.5 text-right w-36">Discount</th>}
-              {show.tax     && <th className="border-r px-2 py-1.5 text-left w-24">Tax</th>}
-              {show.amount  && <th className="px-2 py-1.5 text-right w-44">Amount</th>}
-            </tr>
-          </thead>
+      {/* ── NEW ITEMS Section ── */}
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-amber-800">New Items</h3>
+          <span className="text-xs text-amber-600">{items.length} items</span>
+        </div>
 
-          <tbody>
-            {/* loading */}
-            {loading && [...Array(2)].map((_, i) => (
-              <tr key={i} className="border-b border-gray-100">
-                <td colSpan={Object.values(show).filter(Boolean).length + 1} className="px-2 py-1">
-                  <div className="h-7 w-full animate-pulse rounded bg-gray-100" />
-                </td>
+        {/* Items Table - Compact View */}
+        <div className="overflow-x-auto border border-amber-200 rounded-lg">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-amber-50/80 text-xs font-semibold uppercase tracking-wider text-amber-700 border-b border-amber-200">
+                <th className="px-2 py-2 text-center w-8">#</th>
+                <th className="px-2 py-2 text-left min-w-[180px] max-w-[220px]">Item</th>
+                <th className="px-2 py-2 text-center w-24">Qty</th>
+                <th className="px-2 py-2 text-center w-16">Unit</th>
+                <th className="px-2 py-2 text-center w-28">Rate</th>
+                <th className="px-2 py-2 text-center w-28">Purity</th>
+                <th className="px-2 py-2 text-center w-20">Tax</th>
+                <th className="px-2 py-2 text-center w-28">Amount</th>
+                <th className="px-2 py-2 text-center w-10">Details</th>
+                <th className="px-2 py-2 text-center w-10">Action</th>
               </tr>
-            ))}
+            </thead>
+            <tbody>
+              {loading && [...Array(2)].map((_, i) => (
+                <tr key={i} className="border-b border-amber-100">
+                  <td colSpan={10} className="px-2 py-2">
+                    <div className="h-9 w-full animate-pulse rounded bg-amber-100" />
+                  </td>
+                </tr>
+              ))}
 
-            {/* rows */}
-            {!loading && items.map((item, idx) => {
-              const e   = (f: string) => errors[`items.${idx}.${f}`] || errors[`${idx}.${f}`];
+              {!loading && items.map((item, idx) => {
+                // Get errors for this item
+                const itemError = (field: string) => getFieldError(errors, idx, field);
+                const hasError = (field: string) => !!itemError(field);
+                const isExpanded = !!expandedRows[idx];
 
-              return (
-                <tr key={item.id ?? idx} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/40 transition-colors">
-
-                  {/* ITEM DETAILS */}
-                  {show.item && (
-                    <td className="border-r px-2 py-1 align-top min-w-[320px]">
-                      <div className="flex items-start gap-2">
-                        {/* thumbnail - smaller */}
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-100 text-gray-400">
-                          <ImageOff size={12} />
-                        </div>
-
-                        {/* name + description */}
-                        <div className="min-w-0 flex-1">
+                return (
+                  <React.Fragment key={item.id ?? idx}>
+                    {/* Main Row - Compact */}
+                    <tr className={`border-b border-amber-100 hover:bg-amber-50/30 transition-colors ${isExpanded ? 'bg-amber-50/50' : ''}`}>
+                      <td className="px-2 py-2 text-center text-sm text-amber-600">
+                        {idx + 1}
+                      </td>
+                      
+                      <td className="px-2 py-2">
+                        <div className="relative">
                           <SearchableDropdown
                             options={productOptions}
                             value={
@@ -437,184 +472,211 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
                             resetSearchOnOpen
                             showEmptyState
                             emptyStateText="No matching items"
+                            className="min-w-[160px] max-w-[200px]"
                           />
-                          
-                          {/* Purity - below item select */}
-                          {show.purity && (
-                            <div className="mt-1 flex items-center gap-1.5">
-                              <span className="text-[10px] font-medium text-gray-500">Purity:</span>
-                              <SF value={item.purity}
-                                onChange={(v) => updateItem(idx, 'purity', v)}
-                                options={PURITY_OPTIONS} 
-                                error={!!e('purity')} 
-                                className="max-w-[90px]"
-                              />
-                            </div>
-                          )}
-
-                          {(item.sku || item.stock !== undefined) && (
-                            <div className="mt-0.5 flex gap-2 text-[10px] text-gray-400">
-                              {item.sku && <span>SKU: {item.sku}</span>}
-                              {item.stock !== undefined && <span>· Stock: {item.stock}</span>}
-                            </div>
-                          )}
-                          
-                          {/* Description - smaller */}
-                          {show.desc && (
-                            <div className="mt-1">
-                              <textarea
-                                value={item.description ?? ''}
-                                rows={1}
-                                placeholder="Add description"
-                                onChange={(e) => updateItem(idx, 'description', e.target.value)}
-                                className="w-full resize-none rounded border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-700 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100/60"
-                              />
-                            </div>
-                          )}
-                          {e('productName') && (
-                            <p className="mt-0.5 flex items-center gap-1 text-[10px] text-red-500">
-                              <AlertCircle className="h-2.5 w-2.5" />{e('productName')}
-                            </p>
+                          {hasError('productName') && (
+                            <p className="mt-0.5 text-xs text-red-500">{itemError('productName')}</p>
                           )}
                         </div>
-                      </div>
-                    </td>
-                  )}
+                      </td>
 
-                  {/* GROSS WT */}
-                  {show.grossWt && (
-                    <td className={`border-r ${CELL} w-24`}>
-                      <TF value={toStr(item.grossWt)} placeholder="0"
-                        onChange={(v) => updateItem(idx, 'grossWt', v)} error={!!e('grossWt')} step="0.001" />
-                    </td>
-                  )}
+                      <td className="px-2 py-2 text-center">
+                        <div className="relative">
+                          <TF value={toStr(item.quantity)} placeholder="1"
+                            onChange={(v) => updateItem(idx, 'quantity', v)} 
+                            error={hasError('quantity')} step="any"
+                            className={`text-center w-24 ${hasError('quantity') ? 'border-red-400' : ''}`} />
+                          {hasError('quantity') && (
+                            <p className="mt-0.5 text-xs text-red-500">{itemError('quantity')}</p>
+                          )}
+                        </div>
+                      </td>
 
-                  {/* STONE WT */}
-                  {show.stoneWt && (
-                    <td className={`border-r ${CELL} w-24`}>
-                      <TF value={toStr(item.stoneWt)} placeholder="0"
-                        onChange={(v) => updateItem(idx, 'stoneWt', v)} error={!!e('stoneWt')} step="0.001" />
-                    </td>
-                  )}
+                      <td className="px-2 py-2 text-center">
+                        <SF value={item.unit}
+                          onChange={(v) => updateItem(idx, 'unit', v)}
+                          options={unitOptions} 
+                          error={hasError('unit')}
+                          className={`w-16 mx-auto ${hasError('unit') ? 'border-red-400' : ''}`} />
+                      </td>
 
-                  {/* NET WT */}
-                  {show.netWt && (
-                    <td className={`border-r ${CELL} w-24`}>
-                      <TF value={toStr(item.netWt)} placeholder="0"
-                        onChange={(v) => updateItem(idx, 'netWt', v)} error={!!e('netWt')} step="0.001" />
-                    </td>
-                  )}
+                      <td className="px-2 py-2 text-center">
+                        <div className="relative">
+                          <TF value={toStr(item.rate)} placeholder="0"
+                            onChange={(v) => updateItem(idx, 'rate', v)} 
+                            error={hasError('rate')} step="any"
+                            className={`text-center w-28 ${hasError('rate') ? 'border-red-400' : ''}`} />
+                          {hasError('rate') && (
+                            <p className="mt-0.5 text-xs text-red-500">{itemError('rate')}</p>
+                          )}
+                        </div>
+                      </td>
 
-                  {/* QUANTITY */}
-                  {show.qty && (
-                    <td className={`border-r ${CELL} w-28`}>
-                      <TF value={toStr(item.quantity)} placeholder="1"
-                        onChange={(v) => updateItem(idx, 'quantity', v)} error={!!e('quantity')} step="any" />
-                      {e('quantity') && (
-                        <p className="mt-0.5 flex items-center gap-1 text-[10px] text-red-500">
-                          <AlertCircle className="h-2.5 w-2.5" />{e('quantity')}
-                        </p>
-                      )}
-                    </td>
-                  )}
+                      <td className="px-2 py-2 text-center">
+                        <SF value={item.purity}
+                          onChange={(v) => updateItem(idx, 'purity', v)}
+                          options={PURITY_OPTIONS} 
+                          error={hasError('purity')}
+                          className={`w-28 mx-auto ${hasError('purity') ? 'border-red-400' : ''}`} />
+                      </td>
 
-                  {/* UNIT */}
-                  {show.unit && (
-                    <td className={`border-r ${CELL} w-24`}>
-                      <SF value={item.unit}
-                        onChange={(v) => updateItem(idx, 'unit', v)}
-                        options={unitOptions} error={!!e('unit')} />
-                    </td>
-                  )}
+                      <td className="px-2 py-2 text-center">
+                        <SF value={item.taxRate}
+                          onChange={(v) => updateItem(idx, 'taxRate', v)}
+                          options={TAX_RATES} 
+                          error={hasError('taxRate')}
+                          className={`w-20 mx-auto ${hasError('taxRate') ? 'border-red-400' : ''}`} />
+                      </td>
 
-                  {/* RATE */}
-                  {show.rate && (
-                    <td className={`border-r ${CELL} w-32`}>
-                      <TF value={toStr(item.rate)} placeholder="0"
-                        onChange={(v) => updateItem(idx, 'rate', v)} error={!!e('rate')} step="any" />
-                    </td>
-                  )}
+                      <td className="px-2 py-2 text-center">
+                        <span className="text-sm font-semibold text-amber-700 w-28 inline-block">
+                          ₹{fmt(item.total || 0)}
+                        </span>
+                      </td>
 
-                  {/* MAKING */}
-                  {show.making && (
-                    <td className={`border-r ${CELL} w-32`}>
-                      <TF value={toStr(item.makingCharges)} placeholder="0"
-                        onChange={(v) => updateItem(idx, 'makingCharges', v)} error={!!e('makingCharges')} step="any" />
-                    </td>
-                  )}
+                      <td className="px-2 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => toggleRow(idx)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-amber-100 transition-colors"
+                          title={isExpanded ? 'Hide details' : 'Show details'}
+                        >
+                          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </button>
+                      </td>
 
-                  {/* DISCOUNT - with dropdown */}
-                  {show.disc && (
-                    <td className={`border-r ${CELL} w-36`}>
-                      <DiscountInput
-                        value={toStr(item.discount)}
-                        discountType={item.discountType ?? 'percentage'}
-                        onValueChange={(v) => updateItem(idx, 'discount', v)}
-                        onTypeChange={(v) => updateItem(idx, 'discountType', v)}
-                        error={!!e('discount')}
-                      />
-                    </td>
-                  )}
+                      <td className="px-2 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeItem(idx)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-gray-200 text-red-500 hover:bg-red-50 transition-colors"
+                          title="Delete row"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
 
-                  {/* TAX */}
-                  {show.tax && (
-                    <td className={`border-r ${CELL} w-24`}>
-                      <SF value={item.taxRate}
-                        onChange={(v) => updateItem(idx, 'taxRate', v)}
-                        options={TAX_RATES} error={!!e('taxRate')} />
-                    </td>
-                  )}
+                    {/* Expanded Details Row */}
+                    {isExpanded && (
+                      <tr className="bg-amber-50/30">
+                        <td colSpan={10} className="px-4 py-3">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {/* HSN */}
+                            <div>
+                              <label className="block text-xs font-medium text-amber-700 mb-1">HSN</label>
+                              <input
+                                type="text"
+                                value={item.hsn || ''}
+                                placeholder="HSN"
+                                onChange={(e) => updateItem(idx, 'hsn', e.target.value)}
+                                className={`w-full rounded border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-100/60 ${hasError('hsn') ? 'border-red-400' : ''}`}
+                              />
+                            </div>
 
-                  {/* AMOUNT + actions */}
-                  {show.amount && (
-                    <td className={`${CELL} w-44`}>
-                      <div className="flex items-center gap-1">
-                        <TF
-                          value={toStr(item.total)}
-                          placeholder="0"
-                          onChange={(v) => updateAmount(idx, v)}
-                          error={!!e('total')}
-                          className="flex-1 !h-7 text-xs font-semibold text-gray-900"
-                          step="any"
-                        />
-                        {show.action && (
-                          <button
-                            type="button"
-                            onClick={() => removeItem(idx)}
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-200 text-red-500 hover:bg-red-50 transition-colors"
-                            title="Delete row"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                            {/* G.WT */}
+                            <div>
+                              <label className="block text-xs font-medium text-amber-700 mb-1">G.WT</label>
+                              <TF value={toStr(item.grossWt)} placeholder="0"
+                                onChange={(v) => updateItem(idx, 'grossWt', v)} 
+                                error={hasError('grossWt')} step="0.001" />
+                            </div>
+
+                            {/* N.WT */}
+                            <div>
+                              <label className="block text-xs font-medium text-amber-700 mb-1">N.WT</label>
+                              <TF value={toStr(item.netWt)} placeholder="0"
+                                onChange={(v) => updateItem(idx, 'netWt', v)} 
+                                error={hasError('netWt')} step="0.001" />
+                            </div>
+
+                            {/* MC */}
+                            <div>
+                              <label className="block text-xs font-medium text-amber-700 mb-1">MC</label>
+                              <TF value={toStr(item.makingCharges)} placeholder="0"
+                                onChange={(v) => updateItem(idx, 'makingCharges', v)} 
+                                error={hasError('makingCharges')} step="any" />
+                            </div>
+
+                            {/* Discount */}
+                            <div>
+                              <label className="block text-xs font-medium text-amber-700 mb-1">Discount</label>
+                              <div className="flex items-center gap-1">
+                                <TF value={toStr(item.discount)} placeholder="0"
+                                  onChange={(v) => updateItem(idx, 'discount', v)} 
+                                  error={hasError('discount')} step="any"
+                                  className="flex-1" />
+                                <select
+                                  value={item.discountType || 'percentage'}
+                                  onChange={(e) => updateItem(idx, 'discountType', e.target.value)}
+                                  className="h-9 w-16 rounded border border-gray-200 bg-white px-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-100/60"
+                                >
+                                  <option value="percentage">%</option>
+                                  <option value="fixed">₹</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Description */}
+                            {showDescription && (
+                              <div className="col-span-3">
+                                <label className="block text-xs font-medium text-amber-700 mb-1">Description</label>
+                                <input
+                                  type="text"
+                                  value={item.description || ''}
+                                  placeholder="Add description"
+                                  onChange={(e) => updateItem(idx, 'description', e.target.value)}
+                                  className={`w-full rounded border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-100/60 ${hasError('description') ? 'border-red-400' : ''}`}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Add item button - only show when there's at least one item and the last row is not empty OR when items are empty */}
+        {!loading && (items.length === 0 || !hasTrailingEmptyRow) && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={addItem}
+              className="inline-flex items-center gap-1.5 rounded border border-dashed border-amber-300 px-4 py-2 text-sm font-medium text-amber-600 hover:border-amber-400 hover:text-amber-700 hover:bg-amber-50/50 transition-colors"
+            >
+              <Plus className="h-4 w-4" /> {addButtonLabel}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* ── Add button ── */}
-      {!loading && addButtonAtBottom && (
-        <div className="border-t border-gray-100 px-3 py-1.5">
-          <button
-            type="button"
-            onClick={addItem}
-            className="inline-flex items-center gap-1 rounded border border-dashed border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
-          >
-            <Plus className="h-3.5 w-3.5" /> {addButtonLabel}
-          </button>
-        </div>
+      {/* ── OLD GOLD EXCHANGE Section ── */}
+      {showOldGoldSection && showOldGold && (
+        <OldGoldTable
+          items={oldGoldItems}
+          onItemsChange={onOldGoldItemsChange || (() => {})}
+          onItemAdd={onOldGoldAdd}
+          onItemRemove={onOldGoldRemove}
+          onItemUpdate={onOldGoldUpdate}
+          errors={errors}
+          showHSN={showHSN}
+          title={oldGoldTitle}
+        />
       )}
 
       {/* ── Totals ── */}
       {showSubtotalSection && items.length > 0 && (
-        <div className="border-t border-gray-200 bg-gray-50/60 px-3 py-2">
+        <div className="border-t border-amber-200 bg-amber-50/30 px-4 py-3">
           <div className="flex flex-col items-end gap-1">
-            <Row label="Subtotal"       value={`₹${fmt(totals.sub)}`} />
+            <Row label="Subtotal" value={`₹${fmt(totals.sub)}`} />
+            {totals.oldGoldTotal > 0 && (
+              <Row label="Old Gold Exchange" value={`₹${fmt(totals.oldGoldTotal)}`} valueClass="text-amber-600" />
+            )}
             {totals.disc > 0 && (
               <Row label="Discount" value={`−₹${fmt(totals.disc)}`} valueClass="text-green-600" />
             )}
@@ -632,9 +694,9 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
               />
             )}
             {showTotalSection && (
-              <div className="mt-1 flex w-64 items-center justify-between rounded border border-amber-200 bg-amber-50 px-3 py-1.5">
-                <span className="text-xs font-semibold text-gray-800">Grand Total</span>
-                <span className="text-sm font-bold tabular-nums text-amber-600">₹{fmt(totals.final)}</span>
+              <div className="mt-1 flex w-72 items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-2">
+                <span className="text-sm font-semibold text-gray-800">Grand Total</span>
+                <span className="text-lg font-bold tabular-nums text-amber-600">₹{fmt(totals.final)}</span>
               </div>
             )}
           </div>
@@ -648,7 +710,7 @@ export const ItemSelectionTable: React.FC<ItemSelectionTableProps> = ({
 const Row: React.FC<{ label: string; value: string; valueClass?: string }> = ({
   label, value, valueClass = 'text-gray-800',
 }) => (
-  <div className="flex w-64 items-center justify-between text-xs">
+  <div className="flex w-72 items-center justify-between text-sm">
     <span className="text-gray-500">{label}</span>
     <span className={`tabular-nums font-medium ${valueClass}`}>{value}</span>
   </div>

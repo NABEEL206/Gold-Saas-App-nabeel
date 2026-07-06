@@ -1,5 +1,5 @@
 // src/pages/sales/Quote/QuoteCreate.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Save, Send, User, Mail, Phone, MapPin,
@@ -11,6 +11,14 @@ import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
 import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ErrorSummary from '../../../components/common/ErrorSummary';
+import {
+  validateQuoteForm,
+  formatValidationErrors,
+  getErrorCount,
+  hasValidationErrors,
+  type ValidationResult,
+} from '../../../validations/quote.validation';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 
@@ -69,7 +77,12 @@ const QuoteCreate: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [productSuggestions, setProductSuggestions] = useState(MOCK_PRODUCTS);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+  });
 
   const [formData, setFormData] = useState({
     customerId: null as string | null,
@@ -105,6 +118,12 @@ const QuoteCreate: React.FC = () => {
         customerName: selectedOption.label,
       }));
     }
+    // Clear customer error when selected
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.customerId;
+      return newErrors;
+    });
   }, []);
 
   const handleProductSearch = useCallback((search: string) => {
@@ -123,6 +142,12 @@ const QuoteCreate: React.FC = () => {
 
   const handleItemsChange = useCallback((newItems: ItemSelectionItem[]) => {
     setItems(newItems);
+    // Clear items error when items change
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.items;
+      return newErrors;
+    });
   }, []);
 
   const handleAddCustomItem = useCallback(() => {
@@ -145,15 +170,22 @@ const QuoteCreate: React.FC = () => {
       stoneCharges: 0,
     };
     setItems(prev => [...prev, newItem]);
+    // Clear items error when adding an item
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.items;
+      return newErrors;
+    });
   }, []);
 
   const validateForm = useCallback((): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.customerId) newErrors.customerId = 'Please select a customer';
-    if (!formData.customerPhone.trim()) newErrors.customerPhone = 'Phone number is required';
-    if (items.length === 0) newErrors.items = 'Please add at least one item';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const result = validateQuoteForm(formData, items);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result);
+    setValidationErrors(formattedErrors);
+    
+    return result.isValid;
   }, [formData, items]);
 
   const calculateTotals = useCallback(() => {
@@ -188,6 +220,11 @@ const QuoteCreate: React.FC = () => {
   const totals = calculateTotals();
 
   const saveQuote = useCallback(async (status: 'draft' | 'sent') => {
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return;
+    }
+
     setSaving(true);
     try {
       const quoteData = {
@@ -217,13 +254,15 @@ const QuoteCreate: React.FC = () => {
         navigate('/sales/quotes', { replace: true });
       } else {
         showError(result.error || 'Failed to create quote');
+        setValidationErrors(prev => ({ ...prev, submit: result.error || 'Failed to create quote' }));
       }
     } catch (err) {
       showError('Failed to create quote. Please try again.');
+      setValidationErrors(prev => ({ ...prev, submit: 'Failed to create quote. Please try again.' }));
     } finally {
       setSaving(false);
     }
-  }, [formData, items, totals, createQuote, success, showError, navigate]);
+  }, [formData, items, totals, validateForm, createQuote, success, showError, navigate]);
 
   const handleSubmit = useCallback(async (status: 'draft' | 'sent') => {
     if (!validateForm()) {
@@ -256,11 +295,24 @@ const QuoteCreate: React.FC = () => {
     if (confirmed) navigate('/sales/quotes', { replace: true });
   }, [confirm, navigate]);
 
+  // Handle input change with error clearing
+  const handleInputChange = useCallback((field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
+
   const quoteColumns = {
     item: true, purity: true, description: true, grossWt: false,
     stoneWt: false, netWt: false, qty: true, unit: true, rate: true,
     making: true, discount: true, tax: true, amount: true, action: true,
   };
+
+  // Check if there are any errors
+  const hasErrors = Object.keys(validationErrors).length > 0;
 
   if (loading) {
     return (
@@ -288,21 +340,40 @@ const QuoteCreate: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => handleSubmit('draft')} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+            <button
+              onClick={() => handleSubmit('draft')}
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
               <Save className="h-4 w-4" />Save as Draft
             </button>
-            <button onClick={() => handleSubmit('sent')} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2 text-sm text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50">
+            <button
+              onClick={() => handleSubmit('sent')}
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50"
+            >
               {saving ? <LoadingSpinner size="sm" /> : <Send className="h-4 w-4" />}Create & Send
             </button>
           </div>
         </div>
 
-        {/* Error summary */}
-        {errors.submit && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <p className="text-sm text-red-700">{errors.submit}</p>
-          </div>
+        {/* Error summary - Submit errors */}
+        {validationErrors.submit && (
+          <ErrorSummary
+            errors={{ submit: validationErrors.submit }}
+            title="Form Error:"
+            variant="error"
+          />
+        )}
+
+        {/* Validation Error Summary */}
+        {hasErrors && !validationErrors.submit && (
+          <ErrorSummary
+            errors={validationErrors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         {/* Customer Information */}
@@ -324,24 +395,54 @@ const QuoteCreate: React.FC = () => {
                 emptyStateText="No customers found. Type to search."
                 resetSearchOnOpen={true}
               />
-              {errors.customerId && <p className="mt-1 text-xs text-red-500">{errors.customerId}</p>}
+              {validationErrors.customerId && (
+                <p className="mt-1 text-xs text-red-500">{validationErrors.customerId}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-              <input type="email" value={formData.customerEmail} onChange={(e) => setFormData(prev => ({ ...prev, customerEmail: e.target.value }))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="customer@email.com" />
+              <input
+                type="email"
+                value={formData.customerEmail}
+                onChange={(e) => handleInputChange('customerEmail', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="customer@email.com"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone *</label>
-              <input type="tel" value={formData.customerPhone} onChange={(e) => setFormData(prev => ({ ...prev, customerPhone: e.target.value }))} className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.customerPhone ? 'border-red-500' : 'border-gray-200'}`} placeholder="Enter phone number" />
-              {errors.customerPhone && <p className="mt-1 text-xs text-red-500">{errors.customerPhone}</p>}
+              <input
+                type="tel"
+                value={formData.customerPhone}
+                onChange={(e) => handleInputChange('customerPhone', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  validationErrors.customerPhone ? 'border-red-500' : 'border-gray-200'
+                }`}
+                placeholder="Enter phone number"
+              />
+              {validationErrors.customerPhone && (
+                <p className="mt-1 text-xs text-red-500">{validationErrors.customerPhone}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">GST Number</label>
-              <input type="text" value={formData.customerGst} onChange={(e) => setFormData(prev => ({ ...prev, customerGst: e.target.value }))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="GSTIN" />
+              <input
+                type="text"
+                value={formData.customerGst}
+                onChange={(e) => handleInputChange('customerGst', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="GSTIN"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
-              <input type="text" value={formData.customerAddress} onChange={(e) => setFormData(prev => ({ ...prev, customerAddress: e.target.value }))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Customer address" />
+              <input
+                type="text"
+                value={formData.customerAddress}
+                onChange={(e) => handleInputChange('customerAddress', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="Customer address"
+              />
             </div>
           </div>
         </div>
@@ -353,12 +454,27 @@ const QuoteCreate: React.FC = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Date</label>
-              <input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Date *</label>
+              <input
+                type="date"
+                value={formData.date}
+                onChange={(e) => handleInputChange('date', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  validationErrors.date ? 'border-red-500' : 'border-gray-200'
+                }`}
+              />
+              {validationErrors.date && (
+                <p className="mt-1 text-xs text-red-500">{validationErrors.date}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Valid Until</label>
-              <input type="date" value={formData.validUntil} onChange={(e) => setFormData(prev => ({ ...prev, validUntil: e.target.value }))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              <input
+                type="date"
+                value={formData.validUntil}
+                onChange={(e) => handleInputChange('validUntil', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
             </div>
           </div>
         </div>
@@ -379,17 +495,19 @@ const QuoteCreate: React.FC = () => {
           showMakingCharges={true}
           showWeightFields={false}
           showPurity={true}
-          columns={quoteColumns}
           showSubtotalSection={true}
           showTotalSection={true}
           searchPlaceholder="Search jewelry items..."
           addButtonLabel="Add Item"
           title="Quote Items"
           additionalCharges={[]}
-          autoAddDefaultRow={true}
+          autoAddDefaultRow={false}
           addButtonAtBottom={true}
+          errors={validationErrors}
         />
-        {errors.items && <p className="mt-1 text-xs text-red-500">{errors.items}</p>}
+        {validationErrors.items && (
+          <p className="mt-1 text-xs text-red-500">{validationErrors.items}</p>
+        )}
 
         {/* Notes & Terms */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -397,23 +515,51 @@ const QuoteCreate: React.FC = () => {
             <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <FileText className="h-4 w-4 text-amber-500" />Notes
             </h4>
-            <textarea value={formData.notes} onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))} rows={4} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Any additional notes..." />
+            <textarea
+              value={formData.notes}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              placeholder="Any additional notes..."
+            />
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <FileText className="h-4 w-4 text-amber-500" />Terms & Conditions
             </h4>
-            <textarea value={formData.termsAndConditions} onChange={(e) => setFormData(prev => ({ ...prev, termsAndConditions: e.target.value }))} rows={4} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Terms and conditions..." />
+            <textarea
+              value={formData.termsAndConditions}
+              onChange={(e) => handleInputChange('termsAndConditions', e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              placeholder="Terms and conditions..."
+            />
           </div>
         </div>
 
         {/* Footer */}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-200">
-          <button onClick={handleCancelClick} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Cancel</button>
+          <button
+            onClick={handleCancelClick}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            Cancel
+          </button>
           <div className="flex items-center gap-2">
-            <button onClick={() => handleSubmit('draft')} disabled={saving} className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">Save as Draft</button>
-            <button onClick={() => handleSubmit('sent')} disabled={saving} className="px-4 py-2 text-sm text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center gap-2">
-              {saving ? <LoadingSpinner size="sm" /> : <Send className="h-4 w-4" />}Create & Send
+            <button
+              onClick={() => handleSubmit('draft')}
+              disabled={saving}
+              className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Save as Draft
+            </button>
+            <button
+              onClick={() => handleSubmit('sent')}
+              disabled={saving}
+              className="px-4 py-2 text-sm text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving ? <LoadingSpinner size="sm" /> : <Send className="h-4 w-4" />}
+              Create & Send
             </button>
           </div>
         </div>

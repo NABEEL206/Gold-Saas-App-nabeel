@@ -1,9 +1,16 @@
-import { useState, useCallback, useEffect } from 'react';
+// src/hooks/Proforma/useProformaInvoiceCreate.ts
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { 
   ProformaInvoice, 
   ProformaInvoiceFormData, 
   ProformaInvoiceItem 
 } from '../../types/proforma/ProformaInvoiceType';
+import {
+  validateProformaForm,
+  formatValidationErrors,
+  type ValidationResult,
+} from '../../validations/proforma.validation';
+import type { ItemSelectionItem } from '../../components/common/ItemSelectionTable';
 
 // Mock data for suggestions
 const MOCK_CUSTOMERS = [
@@ -51,6 +58,7 @@ interface UseProformaInvoiceCreateReturn {
     taxTotal: number;
     grandTotal: number;
   };
+  validationResult: ValidationResult;
   selectCustomer: (customer: typeof MOCK_CUSTOMERS[0]) => void;
   addItem: (item?: typeof MOCK_ITEMS[0]) => void;
   removeItem: (index: number) => void;
@@ -96,6 +104,46 @@ export const useProformaInvoiceCreate = (): UseProformaInvoiceCreateReturn => {
   const [saving, setSaving] = useState(false);
   const [selectedGST, setSelectedGST] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+  });
+
+  // Get GST rate
+  const getGSTRate = useCallback(() => {
+    const gst = GST_OPTIONS.find(g => g.value === selectedGST);
+    return gst ? gst.rate : 0;
+  }, [selectedGST]);
+
+  // Convert formData.items to ItemSelectionItem format for validation
+  const getItemsForValidation = useCallback((): ItemSelectionItem[] => {
+    return formData.items.map((item: any) => ({
+      productId: item.productId || '',
+      productName: item.productName || '',
+      description: item.description || '',
+      quantity: item.quantity || 1,
+      unit: 'Pcs',
+      rate: item.unitPrice || 0,
+      discount: item.discount || 0,
+      discountType: 'percentage' as const,
+      taxRate: item.taxRate || 0,
+      taxAmount: 0,
+      total: item.total || 0,
+      purity: '22K',
+    }));
+  }, [formData.items]);
+
+  // Calculate totals using useMemo
+  const totals = useMemo(() => {
+    const items = formData.items || [];
+    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    const discountTotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice * (item.discount / 100)), 0);
+    const taxRate = getGSTRate();
+    const taxTotal = (subtotal - discountTotal) * (taxRate / 100);
+    const grandTotal = subtotal - discountTotal + taxTotal;
+    return { subtotal, discountTotal, taxTotal, grandTotal };
+  }, [formData.items, getGSTRate]);
 
   // Filter customers based on search
   useEffect(() => {
@@ -129,23 +177,6 @@ export const useProformaInvoiceCreate = (): UseProformaInvoiceCreateReturn => {
     }
   }, [itemSearch]);
 
-  // Get GST rate
-  const getGSTRate = useCallback(() => {
-    const gst = GST_OPTIONS.find(g => g.value === selectedGST);
-    return gst ? gst.rate : 0;
-  }, [selectedGST]);
-
-  const calculateTotals = useCallback((items: ProformaInvoiceItem[]) => {
-    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const discountTotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice * (item.discount / 100)), 0);
-    const taxRate = getGSTRate();
-    const taxTotal = (subtotal - discountTotal) * (taxRate / 100);
-    const grandTotal = subtotal - discountTotal + taxTotal;
-    return { subtotal, discountTotal, taxTotal, grandTotal };
-  }, [getGSTRate]);
-
-  const totals = calculateTotals(formData.items);
-
   const selectCustomer = useCallback((customer: typeof MOCK_CUSTOMERS[0]) => {
     setSelectedCustomer(customer);
     setCustomerSearch(customer.name);
@@ -158,14 +189,14 @@ export const useProformaInvoiceCreate = (): UseProformaInvoiceCreateReturn => {
       customerPhone: customer.phone,
       customerAddress: customer.address || '',
     }));
-    if (errors.customerId) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.customerId;
-        return newErrors;
-      });
-    }
-  }, [errors]);
+    // Clear customer error when selected
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.customerId;
+      delete newErrors.customerName;
+      return newErrors;
+    });
+  }, []);
 
   const addItem = useCallback((item?: typeof MOCK_ITEMS[0]) => {
     if (item) {
@@ -201,14 +232,13 @@ export const useProformaInvoiceCreate = (): UseProformaInvoiceCreateReturn => {
         }],
       }));
     }
-    if (errors.items) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.items;
-        return newErrors;
-      });
-    }
-  }, [errors]);
+    // Clear items error when adding an item
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.items;
+      return newErrors;
+    });
+  }, []);
 
   const removeItem = useCallback((index: number) => {
     setFormData(prev => ({
@@ -229,28 +259,26 @@ export const useProformaInvoiceCreate = (): UseProformaInvoiceCreateReturn => {
       const taxAmount = (subtotal - discountAmount) * (taxRate / 100);
       item.total = subtotal - discountAmount + taxAmount;
       
-      if (errors[`item_${index}_${field}`]) {
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors[`item_${index}_${field}`];
-          return newErrors;
-        });
-      }
+      // Clear specific item error when field is updated
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`item_${index}_${field}`];
+        return newErrors;
+      });
       
       return { ...prev, items: newItems };
     });
-  }, [errors, getGSTRate]);
+  }, [getGSTRate]);
 
   const updateFormData = useCallback((field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  }, [errors]);
+    // Clear error for this field when updated
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
@@ -280,39 +308,16 @@ export const useProformaInvoiceCreate = (): UseProformaInvoiceCreateReturn => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   }, []);
 
-  const validateForm = useCallback(() => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = useCallback((): boolean => {
+    const items = getItemsForValidation();
+    const result = validateProformaForm(formData, items);
+    setValidationResult(result);
     
-    if (!selectedCustomer && !formData.customerName) {
-      newErrors.customerId = 'Please select a customer';
-    }
-    if (!formData.invoiceDate) {
-      newErrors.date = 'Invoice date is required';
-    }
-    if (!formData.validUntil) {
-      newErrors.validUntil = 'Valid until date is required';
-    }
-    if (formData.invoiceDate && formData.validUntil && formData.validUntil < formData.invoiceDate) {
-      newErrors.validUntil = 'Valid until date must be after invoice date';
-    }
-    if (formData.items.length === 0) {
-      newErrors.items = 'At least one item is required';
-    }
-    formData.items.forEach((item, index) => {
-      if (!item.productName) {
-        newErrors[`item_${index}_name`] = 'Item name is required';
-      }
-      if (item.quantity <= 0) {
-        newErrors[`item_${index}_quantity`] = 'Quantity must be greater than 0';
-      }
-      if (item.unitPrice <= 0) {
-        newErrors[`item_${index}_rate`] = 'Rate must be greater than 0';
-      }
-    });
+    const formattedErrors = formatValidationErrors(result);
+    setErrors(formattedErrors);
     
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [selectedCustomer, formData]);
+    return result.isValid;
+  }, [formData, getItemsForValidation]);
 
   const handleSubmit = useCallback(async (navigate: any) => {
     if (!validateForm()) {
@@ -377,6 +382,11 @@ export const useProformaInvoiceCreate = (): UseProformaInvoiceCreateReturn => {
     setFiles([]);
     setSelectedGST('');
     setErrors({});
+    setValidationResult({
+      isValid: true,
+      errors: {},
+      itemErrors: [],
+    });
   }, []);
 
   return {
@@ -398,6 +408,7 @@ export const useProformaInvoiceCreate = (): UseProformaInvoiceCreateReturn => {
     setSelectedGST,
     files,
     totals,
+    validationResult,
     selectCustomer,
     addItem,
     removeItem,

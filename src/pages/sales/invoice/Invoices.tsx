@@ -16,6 +16,7 @@ import {
   Trash,
   Receipt,
   XCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { useInvoices } from '../../../hooks/Invoices/useInvoices';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
@@ -23,6 +24,7 @@ import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { formatCurrency } from '../../../utils/Invoice/calculations';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { Invoice } from '../../../types/Invoice/InvoiceTypes';
 
@@ -197,6 +199,17 @@ export const Invoices: React.FC = () => {
     setFilters(prev => ({ ...prev, dateRange: { ...prev.dateRange, end: e.target.value } }));
   }, [setFilters]);
 
+  // Get old gold count for an invoice
+  const getOldGoldCount = useCallback((invoice: Invoice): number => {
+    return (invoice as any).oldGoldItems?.length || 0;
+  }, []);
+
+  // Get old gold total for an invoice
+  const getOldGoldTotal = useCallback((invoice: Invoice): number => {
+    const items = (invoice as any).oldGoldItems || [];
+    return items.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+  }, []);
+
   // Columns definition
   const columns: TableColumn<Invoice>[] = [
     {
@@ -227,15 +240,35 @@ export const Invoices: React.FC = () => {
       key: 'total',
       header: 'Total',
       render: (item) => (
-        <span className="text-sm font-semibold text-amber-600">₹{item.total.toLocaleString()}</span>
+        <span className="text-sm font-semibold text-amber-600">{formatCurrency(item.total)}</span>
       ),
+    },
+    {
+      key: 'oldGold',
+      header: 'Old Gold',
+      render: (item) => {
+        const count = getOldGoldCount(item);
+        const total = getOldGoldTotal(item);
+        if (count === 0) return <span className="text-xs text-gray-400">-</span>;
+        return (
+          <div className="flex items-center gap-1.5">
+            <RotateCcw className="h-3 w-3 text-amber-500" />
+            <span className="text-xs font-medium text-amber-600">
+              {count} item{count > 1 ? 's' : ''}
+            </span>
+            {total > 0 && (
+              <span className="text-xs text-amber-500">({formatCurrency(total)})</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'balanceDue',
       header: 'Balance',
       render: (item) => (
         <span className={`text-sm font-medium ${item.balanceDue > 0 ? 'text-red-600' : 'text-green-600'}`}>
-          ₹{item.balanceDue.toLocaleString()}
+          {formatCurrency(item.balanceDue)}
         </span>
       ),
     },

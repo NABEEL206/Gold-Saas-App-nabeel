@@ -64,6 +64,10 @@ export interface QuoteFilters {
 
 // Quote Stats Interface
 export interface QuoteStats {
+  totalAmount(totalAmount: any): import("react").ReactNode;
+  acceptedCount: ReactNode;
+  sentCount: ReactNode;
+  expiredCount: ReactNode;
   totalQuotes: number;
   draft: number;
   sent: number;

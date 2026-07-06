@@ -1,5 +1,5 @@
 // src/pages/sales/deliveryChallan/DeliveryChallanView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -25,20 +25,21 @@ import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { formatCurrency } from '../../../utils/Invoice/calculations';
 import type { DeliveryChallan } from '../../../types/deliveryChallan/DeliveryChallanTypes';
 
 // Status Badge
 const StatusBadge: React.FC<{ status: DeliveryChallan['status'] }> = ({ status }) => {
-  const config = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Draft' },
-    sent: { color: 'bg-blue-100 text-blue-700', icon: Truck, label: 'Sent' },
-    delivered: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Delivered' },
-    cancelled: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Cancelled' },
+  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    draft: { color: 'bg-gray-100 text-gray-700', icon: <Clock className="h-3 w-3" />, label: 'Draft' },
+    sent: { color: 'bg-blue-100 text-blue-700', icon: <Truck className="h-3 w-3" />, label: 'Sent' },
+    delivered: { color: 'bg-green-100 text-green-700', icon: <CheckCircle className="h-3 w-3" />, label: 'Delivered' },
+    cancelled: { color: 'bg-red-100 text-red-700', icon: <XCircle className="h-3 w-3" />, label: 'Cancelled' },
   };
-  const { color, icon: Icon, label } = config[status] || config.draft;
+  const { color, icon, label } = config[status] || config.draft;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+      {icon}
       {label}
     </span>
   );
@@ -98,6 +99,7 @@ const DeliveryChallanView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [challan, setChallan] = useState<DeliveryChallan | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Use the toast and confirm hook
   const {
@@ -152,7 +154,7 @@ const DeliveryChallanView: React.FC = () => {
     }
   };
 
-  const handleStatusUpdate = async (status: DeliveryChallan['status']) => {
+  const handleStatusUpdate = useCallback(async (status: DeliveryChallan['status']) => {
     if (!id) return;
     
     const statusLabels: Record<string, string> = {
@@ -185,9 +187,9 @@ const DeliveryChallanView: React.FC = () => {
         }
       }
     );
-  };
+  }, [id, withConfirmation, updateStatus, success, showError]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!id) return;
     
     await withConfirmation(
@@ -199,37 +201,38 @@ const DeliveryChallanView: React.FC = () => {
         variant: 'danger',
       },
       async () => {
-        await withLoading(
-          async () => {
-            await deleteChallan(id);
-            navigate('/sales/delivery-challan');
-          },
-          'Deleting delivery challan...',
-          'Delivery challan deleted successfully.',
-          'Failed to delete delivery challan. Please try again.'
-        );
+        setDeleteLoading(true);
+        try {
+          await deleteChallan(id);
+          success('Delivery challan deleted successfully.');
+          navigate('/sales/delivery-challan');
+        } catch (err) {
+          showError('Failed to delete delivery challan. Please try again.');
+        } finally {
+          setDeleteLoading(false);
+        }
       }
     );
-  };
+  }, [id, withConfirmation, deleteChallan, success, showError, navigate]);
 
   // Fixed: Direct navigation to edit page
-  const handleEdit = () => {
+  const handleEdit = useCallback(() => {
     console.log('Edit clicked - Challan ID:', id); // Debug log
     if (id) {
       navigate(`/sales/delivery-challan/${id}/edit`);
     } else {
       showError('Cannot edit: Invalid challan ID');
     }
-  };
+  }, [id, navigate, showError]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     success('Preparing document for printing...');
     setTimeout(() => window.print(), 500);
-  };
+  }, [success]);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     warning('Download functionality will be implemented soon.');
-  };
+  }, [warning]);
 
   // Dropdown items with proper configuration
   const dropdownItems = [
@@ -251,9 +254,10 @@ const DeliveryChallanView: React.FC = () => {
     },
     {
       label: 'Delete',
-      icon: <Trash2 className="h-4 w-4 text-red-500" />,
+      icon: deleteLoading ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4 text-red-500" />,
       onClick: handleDelete,
       show: challan?.status === 'draft',
+      disabled: deleteLoading,
     },
     {
       label: 'Send Challan',
@@ -281,7 +285,7 @@ const DeliveryChallanView: React.FC = () => {
   if (loading || hookLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading delivery challan..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -370,7 +374,7 @@ const DeliveryChallanView: React.FC = () => {
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">Total Amount</p>
-                <p className="text-3xl font-bold text-amber-600">₹{challan.total.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-amber-600">{formatCurrency(challan.total)}</p>
               </div>
             </div>
           </div>
@@ -470,7 +474,7 @@ const DeliveryChallanView: React.FC = () => {
                 <tbody className="divide-y divide-gray-200">
                   {challan.items && challan.items.length > 0 ? (
                     challan.items.map((item, index) => (
-                      <tr key={index}>
+                      <tr key={item.id || index}>
                         <td className="px-4 py-3">
                           <p className="font-medium text-gray-900">{item.productName}</p>
                           {item.purity && (
@@ -483,10 +487,10 @@ const DeliveryChallanView: React.FC = () => {
                         <td className="px-4 py-3 text-sm text-gray-500">{item.description}</td>
                         <td className="px-4 py-3 text-right">{item.quantity}</td>
                         <td className="px-4 py-3 text-right">{item.unit}</td>
-                        <td className="px-4 py-3 text-right">₹{item.rate.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right">{formatCurrency(item.rate)}</td>
                         <td className="px-4 py-3 text-right">{item.discount}%</td>
                         <td className="px-4 py-3 text-right">{item.taxRate}%</td>
-                        <td className="px-4 py-3 text-right font-medium">₹{item.total.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.total)}</td>
                       </tr>
                     ))
                   ) : (
@@ -500,35 +504,35 @@ const DeliveryChallanView: React.FC = () => {
                 <tfoot className="bg-gray-50">
                   <tr>
                     <td colSpan={7} className="px-4 py-2 text-right font-medium">Sub Total</td>
-                    <td className="px-4 py-2 text-right">₹{challan.subtotal.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-right">{formatCurrency(challan.subtotal)}</td>
                   </tr>
                   <tr>
                     <td colSpan={7} className="px-4 py-2 text-right font-medium">Tax</td>
-                    <td className="px-4 py-2 text-right">₹{challan.taxAmount.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-right">{formatCurrency(challan.taxAmount)}</td>
                   </tr>
                   {challan.discount > 0 && (
                     <tr>
                       <td colSpan={7} className="px-4 py-2 text-right font-medium">
                         Discount ({challan.discount}{challan.discountType === 'percentage' ? '%' : ''})
                       </td>
-                      <td className="px-4 py-2 text-right">-₹{challan.discount.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right">-{formatCurrency(challan.discount)}</td>
                     </tr>
                   )}
                   {challan.shippingCharge > 0 && (
                     <tr>
                       <td colSpan={7} className="px-4 py-2 text-right font-medium">Shipping</td>
-                      <td className="px-4 py-2 text-right">₹{challan.shippingCharge.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right">{formatCurrency(challan.shippingCharge)}</td>
                     </tr>
                   )}
                   {challan.otherCharges > 0 && (
                     <tr>
                       <td colSpan={7} className="px-4 py-2 text-right font-medium">Other Charges</td>
-                      <td className="px-4 py-2 text-right">₹{challan.otherCharges.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right">{formatCurrency(challan.otherCharges)}</td>
                     </tr>
                   )}
                   <tr className="border-t-2 border-gray-300">
                     <td colSpan={7} className="px-4 py-3 text-right font-bold text-lg">Total</td>
-                    <td className="px-4 py-3 text-right font-bold text-lg text-amber-600">₹{challan.total.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-lg text-amber-600">{formatCurrency(challan.total)}</td>
                   </tr>
                 </tfoot>
               </table>

@@ -1,10 +1,16 @@
 // src/hooks/DeliveryChallan/useDeliveryChallanCreate.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { 
   DeliveryChallan, 
   DeliveryChallanItem,
   DeliveryChallanFormData 
 } from '../../types/deliveryChallan/DeliveryChallanTypes';
+import {
+  validateDeliveryChallanForm,
+  formatValidationErrors,
+  type ValidationResult,
+} from '../../validations/deliveryChallan.validation';
+import type { ItemSelectionItem } from '../../components/common/ItemSelectionTable';
 
 // Mock customer data
 const MOCK_CUSTOMERS = [
@@ -62,6 +68,29 @@ export const useDeliveryChallanCreate = (existingChallan?: DeliveryChallan) => {
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+  });
+
+  // Convert formData.items to ItemSelectionItem format for validation
+  const getItemsForValidation = useCallback((): ItemSelectionItem[] => {
+    return formData.items.map((item: any) => ({
+      productId: item.productId || '',
+      productName: item.productName || '',
+      description: item.description || '',
+      quantity: item.quantity || 1,
+      unit: item.unit || 'Pcs',
+      rate: item.rate || 0,
+      discount: item.discount || 0,
+      discountType: 'percentage' as const,
+      taxRate: item.taxRate || 0,
+      taxAmount: item.taxAmount || 0,
+      total: item.total || 0,
+      purity: item.purity || '22K',
+    }));
+  }, [formData.items]);
 
   // Load existing data for edit
   useEffect(() => {
@@ -153,7 +182,7 @@ export const useDeliveryChallanCreate = (existingChallan?: DeliveryChallan) => {
     }
   }, [productSearch]);
 
-  const selectCustomer = (customer: typeof MOCK_CUSTOMERS[0]) => {
+  const selectCustomer = useCallback((customer: typeof MOCK_CUSTOMERS[0]) => {
     setSelectedCustomer(customer);
     setFormData(prev => ({
       ...prev,
@@ -167,9 +196,16 @@ export const useDeliveryChallanCreate = (existingChallan?: DeliveryChallan) => {
     }));
     setCustomerSearch(customer.name);
     setShowCustomerDropdown(false);
-  };
+    // Clear customer errors when selected
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.customerId;
+      delete newErrors.customerName;
+      return newErrors;
+    });
+  }, []);
 
-  const addItem = (product?: typeof MOCK_PRODUCTS[0]) => {
+  const addItem = useCallback((product?: typeof MOCK_PRODUCTS[0]) => {
     const newItem: DeliveryChallanItem = {
       productId: product?.id || `temp_${Date.now()}`,
       productName: product?.name || '',
@@ -195,16 +231,22 @@ export const useDeliveryChallanCreate = (existingChallan?: DeliveryChallan) => {
     }));
     setProductSearch('');
     setShowProductDropdown(false);
-  };
+    // Clear items error when adding an item
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.items;
+      return newErrors;
+    });
+  }, []);
 
-  const removeItem = (index: number) => {
+  const removeItem = useCallback((index: number) => {
     setFormData(prev => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index)
     }));
-  };
+  }, []);
 
-  const updateItem = (index: number, field: keyof DeliveryChallanItem, value: any) => {
+  const updateItem = useCallback((index: number, field: keyof DeliveryChallanItem, value: any) => {
     setFormData(prev => {
       const updatedItems = prev.items.map((item, i) => {
         if (i === index) {
@@ -214,9 +256,15 @@ export const useDeliveryChallanCreate = (existingChallan?: DeliveryChallan) => {
       });
       return { ...prev, items: updatedItems };
     });
-  };
+    // Clear specific item error when field is updated
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[`item_${index}_${field}`];
+      return newErrors;
+    });
+  }, []);
 
-  const calculateTotals = () => {
+  const calculateTotals = useCallback(() => {
     let subtotal = 0;
     let totalTax = 0;
     
@@ -232,29 +280,33 @@ export const useDeliveryChallanCreate = (existingChallan?: DeliveryChallan) => {
     const total = subtotal + totalTax + (formData.shippingCharge || 0) + (formData.otherCharges || 0) - discountAmount;
     
     return { subtotal, totalTax, discountAmount, total };
-  };
+  }, [formData.items, formData.discount, formData.discountType, formData.shippingCharge, formData.otherCharges]);
 
-  const totals = calculateTotals();
+  const totals = useMemo(() => calculateTotals(), [calculateTotals]);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = useCallback((): boolean => {
+    const items = getItemsForValidation();
+    const result = validateDeliveryChallanForm(formData, items);
+    setValidationResult(result);
     
-    if (!formData.customerId) newErrors.customerId = 'Customer is required';
-    if (!formData.challanDate) newErrors.challanDate = 'Date is required';
-    if (!formData.deliveryAddress) newErrors.deliveryAddress = 'Delivery address is required';
-    if (formData.items.length === 0) newErrors.items = 'At least one item is required';
+    const formattedErrors = formatValidationErrors(result);
+    setErrors(formattedErrors);
     
-    formData.items.forEach((item, index) => {
-      if (!item.productName) newErrors[`item_${index}_productName`] = 'Product name is required';
-      if ((item.quantity || 0) <= 0) newErrors[`item_${index}_quantity`] = 'Quantity is required';
+    return result.isValid;
+  }, [formData, getItemsForValidation]);
+
+  const updateFormData = useCallback((field: keyof DeliveryChallanFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error for this field when updated
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
     });
+  }, []);
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
+  const handleSubmit = useCallback(async () => {
+    if (!validateForm()) return null;
     
     setSaving(true);
     try {
@@ -275,11 +327,7 @@ export const useDeliveryChallanCreate = (existingChallan?: DeliveryChallan) => {
       setSaving(false);
       throw error;
     }
-  };
-
-  const updateFormData = (field: keyof DeliveryChallanFormData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, [formData, totals, validateForm]);
 
   return {
     formData,
@@ -297,6 +345,7 @@ export const useDeliveryChallanCreate = (existingChallan?: DeliveryChallan) => {
     errors,
     saving,
     totals,
+    validationResult,
     selectCustomer,
     addItem,
     removeItem,

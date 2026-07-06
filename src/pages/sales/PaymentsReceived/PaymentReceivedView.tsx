@@ -1,5 +1,5 @@
 // src/pages/sales/PaymentsReceived/PaymentReceivedView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -29,20 +29,21 @@ import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { formatCurrency } from '../../../utils/Invoice/calculations';
 import type { PaymentReceived } from '../../../types/paymentReceived/PaymentReceivedTypes';
 
 // Status Badge
 const StatusBadge: React.FC<{ status: PaymentReceived['status'] }> = ({ status }) => {
-  const config = {
-    completed: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Completed' },
-    pending: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Pending' },
-    failed: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Failed' },
-    refunded: { color: 'bg-gray-100 text-gray-700', icon: XCircle, label: 'Refunded' },
+  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    completed: { color: 'bg-green-100 text-green-700', icon: <CheckCircle className="h-3 w-3" />, label: 'Completed' },
+    pending: { color: 'bg-yellow-100 text-yellow-700', icon: <Clock className="h-3 w-3" />, label: 'Pending' },
+    failed: { color: 'bg-red-100 text-red-700', icon: <XCircle className="h-3 w-3" />, label: 'Failed' },
+    refunded: { color: 'bg-gray-100 text-gray-700', icon: <XCircle className="h-3 w-3" />, label: 'Refunded' },
   };
-  const { color, icon: Icon, label } = config[status] || config.pending;
+  const { color, icon, label } = config[status] || config.pending;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+      {icon}
       {label}
     </span>
   );
@@ -50,18 +51,18 @@ const StatusBadge: React.FC<{ status: PaymentReceived['status'] }> = ({ status }
 
 // Payment Method Badge
 const PaymentMethodBadge: React.FC<{ method: PaymentReceived['paymentMethod'] }> = ({ method }) => {
-  const config = {
-    cash: { icon: Banknote, label: 'Cash', color: 'bg-green-100 text-green-700' },
-    bank_transfer: { icon: Landmark, label: 'Bank Transfer', color: 'bg-blue-100 text-blue-700' },
-    cheque: { icon: Receipt, label: 'Cheque', color: 'bg-purple-100 text-purple-700' },
-    credit_card: { icon: CreditCard, label: 'Credit Card', color: 'bg-indigo-100 text-indigo-700' },
-    upi: { icon: Wallet, label: 'UPI', color: 'bg-amber-100 text-amber-700' },
-    other: { icon: Receipt, label: 'Other', color: 'bg-gray-100 text-gray-700' },
+  const config: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
+    cash: { icon: <Banknote className="h-3 w-3" />, label: 'Cash', color: 'bg-green-100 text-green-700' },
+    bank_transfer: { icon: <Landmark className="h-3 w-3" />, label: 'Bank Transfer', color: 'bg-blue-100 text-blue-700' },
+    cheque: { icon: <Receipt className="h-3 w-3" />, label: 'Cheque', color: 'bg-purple-100 text-purple-700' },
+    credit_card: { icon: <CreditCard className="h-3 w-3" />, label: 'Credit Card', color: 'bg-indigo-100 text-indigo-700' },
+    upi: { icon: <Wallet className="h-3 w-3" />, label: 'UPI', color: 'bg-amber-100 text-amber-700' },
+    other: { icon: <Receipt className="h-3 w-3" />, label: 'Other', color: 'bg-gray-100 text-gray-700' },
   };
-  const { icon: Icon, label, color } = config[method] || config.other;
+  const { icon, label, color } = config[method] || config.other;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+      {icon}
       {label}
     </span>
   );
@@ -69,18 +70,18 @@ const PaymentMethodBadge: React.FC<{ method: PaymentReceived['paymentMethod'] }>
 
 // Payment Method Icon
 const PaymentMethodIcon: React.FC<{ method: PaymentReceived['paymentMethod'] }> = ({ method }) => {
-  const config = {
-    cash: { icon: Banknote, label: 'Cash' },
-    bank_transfer: { icon: Landmark, label: 'Bank Transfer' },
-    cheque: { icon: Receipt, label: 'Cheque' },
-    credit_card: { icon: CreditCard, label: 'Credit Card' },
-    upi: { icon: Wallet, label: 'UPI' },
-    other: { icon: Receipt, label: 'Other' },
+  const config: Record<string, { icon: React.ReactNode; label: string }> = {
+    cash: { icon: <Banknote className="h-5 w-5" />, label: 'Cash' },
+    bank_transfer: { icon: <Landmark className="h-5 w-5" />, label: 'Bank Transfer' },
+    cheque: { icon: <Receipt className="h-5 w-5" />, label: 'Cheque' },
+    credit_card: { icon: <CreditCard className="h-5 w-5" />, label: 'Credit Card' },
+    upi: { icon: <Wallet className="h-5 w-5" />, label: 'UPI' },
+    other: { icon: <Receipt className="h-5 w-5" />, label: 'Other' },
   };
-  const { icon: Icon, label } = config[method] || config.other;
+  const { icon, label } = config[method] || config.other;
   return (
     <span className="inline-flex items-center gap-2 text-gray-600">
-      <Icon className="h-5 w-5" />
+      {icon}
       {label}
     </span>
   );
@@ -186,6 +187,7 @@ const PaymentReceivedView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [payment, setPayment] = useState<PaymentReceived | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Use the toast and confirm hook
   const {
@@ -210,29 +212,28 @@ const PaymentReceivedView: React.FC = () => {
     }
   }, [id]);
 
-  const loadPayment = async (paymentId: string) => {
+  const loadPayment = useCallback(async (paymentId: string) => {
     setLoading(true);
     try {
       const data = await getPayment(paymentId) as PaymentReceived;
       if (data) {
         setPayment(data);
       } else {
-        // If no data from hook, generate dummy data
         const dummyData = generateDummyPayment(paymentId);
         setPayment(dummyData);
+        warning('Loaded demo data. Some features may be limited.');
       }
     } catch (error) {
       console.error('Error loading payment:', error);
-      showError('Failed to load payment details. Loading demo data.');
-      // Generate dummy data on error
       const dummyData = generateDummyPayment(paymentId);
       setPayment(dummyData);
+      showError('Failed to load payment details. Loading demo data.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [getPayment, showError, warning]);
 
-  const handleStatusUpdate = async (status: PaymentReceived['status']) => {
+  const handleStatusUpdate = useCallback(async (status: PaymentReceived['status']) => {
     if (!id) return;
     
     const statusLabels: Record<string, string> = {
@@ -266,9 +267,9 @@ const PaymentReceivedView: React.FC = () => {
         }
       }
     );
-  };
+  }, [id, withConfirmation, updateStatus, loadPayment, success, showError]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!id) return;
     
     await withConfirmation(
@@ -280,36 +281,38 @@ const PaymentReceivedView: React.FC = () => {
         variant: 'danger',
       },
       async () => {
-        await withLoading(
-          async () => {
-            await deletePayment(id);
-            navigate('/sales/payments-received');
-          },
-          'Deleting payment...',
-          'Payment deleted successfully.',
-          'Failed to delete payment. Please try again.'
-        );
+        setDeleteLoading(true);
+        try {
+          await deletePayment(id);
+          success('Payment deleted successfully.');
+          navigate('/sales/payments-received');
+        } catch (error) {
+          console.error('Error deleting payment:', error);
+          showError('Failed to delete payment. Please try again.');
+        } finally {
+          setDeleteLoading(false);
+        }
       }
     );
-  };
+  }, [id, withConfirmation, deletePayment, success, showError, navigate]);
 
-  const handleEdit = () => {
+  const handleEdit = useCallback(() => {
     console.log('Edit clicked - Payment ID:', id);
     if (id) {
       navigate(`/sales/payments-received/${id}/edit`);
     } else {
       showError('Cannot edit: Invalid payment ID');
     }
-  };
+  }, [id, navigate, showError]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     success('Preparing document for printing...');
     setTimeout(() => window.print(), 500);
-  };
+  }, [success]);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     warning('Download functionality will be implemented soon.');
-  };
+  }, [warning]);
 
   // Dropdown items for three-dot menu
   const dropdownItems = [
@@ -331,9 +334,10 @@ const PaymentReceivedView: React.FC = () => {
     },
     {
       label: 'Delete',
-      icon: <Trash2 className="h-4 w-4 text-red-500" />,
+      icon: deleteLoading ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4 text-red-500" />,
       onClick: handleDelete,
       show: payment?.status === 'pending',
+      disabled: deleteLoading,
     },
     {
       label: 'Mark as Completed',
@@ -354,7 +358,7 @@ const PaymentReceivedView: React.FC = () => {
   if (loading || hookLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading payment..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -454,7 +458,7 @@ const PaymentReceivedView: React.FC = () => {
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">Amount</p>
-                <p className="text-3xl font-bold text-amber-600">₹{payment.amount.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-amber-600">{formatCurrency(payment.amount)}</p>
                 <p className="text-xs text-gray-400 mt-1">
                   <PaymentMethodBadge method={payment.paymentMethod} />
                 </p>
@@ -516,7 +520,7 @@ const PaymentReceivedView: React.FC = () => {
               </div>
               <div className="bg-white p-3 rounded-lg border border-gray-200">
                 <p className="text-xs text-gray-500">Amount</p>
-                <p className="font-medium text-amber-600">₹{payment.amount.toLocaleString()}</p>
+                <p className="font-medium text-amber-600">{formatCurrency(payment.amount)}</p>
               </div>
               <div className="bg-white p-3 rounded-lg border border-gray-200">
                 <p className="text-xs text-gray-500">Status</p>
@@ -539,6 +543,14 @@ const PaymentReceivedView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {deleteLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

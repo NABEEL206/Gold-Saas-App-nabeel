@@ -2,6 +2,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDeliveryChallan } from './useDeliveryChallan';
+import {
+  validateDeliveryChallanForm,
+  formatValidationErrors,
+  type ValidationResult,
+} from '../../validations/deliveryChallan.validation';
 import type { 
   DeliveryChallanFormData, 
   DeliveryChallanItem 
@@ -162,6 +167,41 @@ export const useDeliveryChallanEdit = (challanId?: string) => {
   const [challanStatus, setChallanStatus] = useState<string>('draft');
   const [productSearch, setProductSearch] = useState('');
   const [productSuggestions] = useState(MOCK_PRODUCTS);
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+  });
+
+  // Convert formData.items to ItemSelectionItem format for validation
+  const getItemsForValidation = useCallback(() => {
+    return formData.items.map((item: any) => ({
+      productId: item.productId || '',
+      productName: item.productName || '',
+      description: item.description || '',
+      quantity: item.quantity || 1,
+      unit: item.unit || 'Pcs',
+      rate: item.rate || 0,
+      discount: item.discount || 0,
+      discountType: 'percentage' as const,
+      taxRate: item.taxRate || 0,
+      taxAmount: item.taxAmount || 0,
+      total: item.total || 0,
+      purity: item.purity || '22K',
+    }));
+  }, [formData.items]);
+
+  // Validate form using the validation file
+  const validateForm = useCallback(() => {
+    const items = getItemsForValidation();
+    const result = validateDeliveryChallanForm(formData, items);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result);
+    setErrors(formattedErrors);
+    
+    return result.isValid;
+  }, [formData, getItemsForValidation]);
 
   // Load challan data
   const loadChallan = useCallback(async (id: string, showRefresh = false) => {
@@ -205,6 +245,11 @@ export const useDeliveryChallanEdit = (challanId?: string) => {
         });
         setChallanStatus(data.status || 'draft');
         setErrors({});
+        setValidationResult({
+          isValid: true,
+          errors: {},
+          itemErrors: [],
+        });
       } else {
         // If no data found, navigate back
         navigate('/sales/delivery-challan');
@@ -235,14 +280,13 @@ export const useDeliveryChallanEdit = (challanId?: string) => {
   // Update form field
   const updateFormData = useCallback((field: keyof DeliveryChallanFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  }, [errors]);
+    // Clear error for this field when updated
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
 
   // Update item
   const updateItem = useCallback((index: number, field: string, value: any) => {
@@ -265,6 +309,12 @@ export const useDeliveryChallanEdit = (challanId?: string) => {
       item.taxAmount = taxAmount;
       
       return { ...prev, items: updatedItems };
+    });
+    // Clear specific item error when field is updated
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[`item_${index}_${field}`];
+      return newErrors;
     });
   }, [formData.discountType]);
 
@@ -294,6 +344,12 @@ export const useDeliveryChallanEdit = (challanId?: string) => {
       ...prev,
       items: [...prev.items, newItem],
     }));
+    // Clear items error when adding an item
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.items;
+      return newErrors;
+    });
   }, []);
 
   // Remove item
@@ -331,30 +387,6 @@ export const useDeliveryChallanEdit = (challanId?: string) => {
     
     return { subtotal, totalTax, discountAmount, total };
   }, [formData.items, formData.discountType, formData.shippingCharge, formData.otherCharges]);
-
-  // Validate form
-  const validateForm = useCallback(() => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.challanNumber) {
-      newErrors.challanNumber = 'Challan number is required';
-    }
-    if (!formData.challanDate) {
-      newErrors.challanDate = 'Challan date is required';
-    }
-    if (!formData.customerId) {
-      newErrors.customerId = 'Please select a customer';
-    }
-    if (!formData.deliveryAddress) {
-      newErrors.deliveryAddress = 'Delivery address is required';
-    }
-    if (formData.items.length === 0) {
-      newErrors.items = 'At least one item is required';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [formData]);
 
   // Submit form
   const handleSubmit = useCallback(async () => {
@@ -409,6 +441,7 @@ export const useDeliveryChallanEdit = (challanId?: string) => {
     challanStatus,
     isEditable,
     totals: calculateTotals(),
+    validationResult,
     
     // Actions
     updateFormData,

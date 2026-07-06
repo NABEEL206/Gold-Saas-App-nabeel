@@ -46,14 +46,7 @@ import type { MenuItem, SidebarProps } from '../types/sidebar/sidebartype';
 const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [openDropdowns, setOpenDropdowns] = useState<{ [key: string]: boolean }>({
-    Items: false,
-    Inventory: false,
-    Sales: true, // Default open
-    Purchases: false,
-    Accountant: false,
-    Quote: false,
-  });
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ top: 0, left: 0 });
@@ -153,7 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
     const hasSubItems = item.subItems && item.subItems.length > 0;
     if (!hasSubItems) return false;
     
-    const isOpen = openDropdowns[item.name];
+    const isOpen = openDropdown === item.name;
     const hasActiveSubItem = isAnySubItemActive(item.subItems!);
     
     // Show light color if dropdown is open OR any sub-item is active
@@ -162,10 +155,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
 
   const toggleDropdown = (menuName: string) => {
     if (sidebarOpen) {
-      setOpenDropdowns(prev => ({
-        ...prev,
-        [menuName]: !prev[menuName]
-      }));
+      setOpenDropdown(prev => prev === menuName ? null : menuName);
     }
   };
 
@@ -198,21 +188,14 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
     setHoveredMenu(null);
   };
 
-  // Reset all dropdowns when sidebar collapses
+  // Reset dropdown when sidebar collapses
   useEffect(() => {
     if (!sidebarOpen) {
-      setOpenDropdowns({
-        Items: false,
-        Inventory: false,
-        Sales: false,
-        Purchases: false,
-        Accountant: false,
-        Quote: false,
-      });
+      setOpenDropdown(null);
     }
   }, [sidebarOpen]);
 
-  // Complete menu structure
+  // Complete menu structure with consistent icon sizes
   const menuItems: MenuItem[] = [
     { name: 'Home', icon: <LayoutDashboard size={20} />, path: '/home' },
     { 
@@ -267,13 +250,13 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
       ]
     },
     { name: 'Reports', icon: <FileText size={20} />, path: '/reports' },
-    { name: 'Documents', icon: <FileSpreadsheet size={18} />, path: '/documents' },
+    // { name: 'Documents', icon: <FileSpreadsheet size={20} />, path: '/documents' },
   ];
 
-  // Update the renderMenuItem function
+  // Update the renderMenuItem function with consistent active background
   const renderMenuItem = (item: MenuItem, depth: number = 0) => {
     const hasSubItems = item.subItems && item.subItems.length > 0;
-    const isOpen = openDropdowns[item.name];
+    const isOpen = openDropdown === item.name;
     const isHovered = hoveredMenu === item.name;
     const paddingLeft = depth > 0 ? `pl-${depth * 4}` : '';
     const showLight = shouldShowLightColor(item);
@@ -286,18 +269,18 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
             onClick={(e) => handleParentClick(item, e)}
             onMouseEnter={(e) => handleMouseEnter(item, e)}
             onMouseLeave={handleMouseLeave}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 whitespace-nowrap ${
               showLight
-                ? 'bg-amber-50 text-amber-600' // Light amber when expanded or has active child
+                ? 'bg-amber-50 text-amber-600'
                 : 'text-gray-700 hover:bg-amber-50 hover:text-amber-600'
-            } ${!sidebarOpen ? 'justify-center' : ''} ${paddingLeft}`}
+            } ${!sidebarOpen ? 'justify-center px-2' : ''} ${paddingLeft}`}
             title={!sidebarOpen ? item.name : ''}
           >
-            <span className="flex-shrink-0">{item.icon}</span>
+            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">{item.icon}</span>
             {sidebarOpen && (
               <>
                 <span className="text-sm font-medium flex-1 text-left">{item.name}</span>
-                <span className="flex-shrink-0">
+                <span className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
                   {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                 </span>
               </>
@@ -315,9 +298,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
                     <NavLink
                       to={subItem.path}
                       className={({ isActive: isNavActive }) => {
-                        // Check if this specific sub-item is active
                         let isSubActive = isNavActive;
-                        // Special handling for nested routes
                         if (subItem.path === '/sales/delivery-challans') {
                           isSubActive = location.pathname.startsWith('/sales/delivery-challan') || 
                                        location.pathname.startsWith('/sales/delivery-challans');
@@ -338,7 +319,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
                           isSubActive = location.pathname.startsWith('/sales/customers') || 
                                        location.pathname.startsWith('/customers');
                         }
-                        // Purchases sub-items
                         if (subItem.path === '/purchases/vendors') {
                           isSubActive = location.pathname.startsWith('/purchases/vendors');
                         }
@@ -360,14 +340,14 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
                         if (subItem.path === '/purchases/vendor-credits') {
                           isSubActive = location.pathname.startsWith('/purchases/vendor-credits');
                         }
-                        return `flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 ml-6 ${
+                        return `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ml-4 whitespace-nowrap ${
                           isSubActive
                             ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md'
                             : 'text-gray-600 hover:bg-amber-50 hover:text-amber-600'
                         }`;
                       }}
                     >
-                      <span className="flex-shrink-0">{subItem.icon}</span>
+                      <span className="flex-shrink-0 w-[18px] h-[18px] flex items-center justify-center">{subItem.icon}</span>
                       <span className="text-sm font-medium">{subItem.name}</span>
                     </NavLink>
                   )}
@@ -388,14 +368,14 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
               onMouseLeave={handleMouseLeave}
             >
               <div className="px-3 py-2 border-b border-gray-100">
-                <span className="text-xs font-semibold text-gray-500">{item.name}</span>
+                <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">{item.name}</span>
               </div>
               {item.subItems.map((subItem) => (
                 <NavLink
                   key={subItem.name}
                   to={subItem.path}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                    `flex items-center gap-3 px-4 py-2 text-sm transition-colors whitespace-nowrap ${
                       isActive
                         ? 'bg-amber-50 text-amber-600'
                         : 'text-gray-700 hover:bg-gray-50 hover:text-amber-600'
@@ -403,7 +383,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
                   }
                   onClick={() => setHoveredMenu(null)}
                 >
-                  <span className="flex-shrink-0">{subItem.icon}</span>
+                  <span className="flex-shrink-0 w-[18px] h-[18px] flex items-center justify-center">{subItem.icon}</span>
                   <span>{subItem.name}</span>
                 </NavLink>
               ))}
@@ -413,13 +393,12 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
       );
     }
 
-    // Regular menu item without dropdown
+    // Regular menu item without dropdown - same styling as parent items
     return (
       <li key={item.name} className="w-full">
         <NavLink
           to={item.path!}
           className={({ isActive }) => {
-            // Special handling for non-exact matches
             let isLinkActive = isActive;
             if (item.path === '/sales/delivery-challans') {
               isLinkActive = location.pathname.startsWith('/sales/delivery-challan') || 
@@ -465,15 +444,15 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
             if (item.path === '/purchases/vendor-credits') {
               isLinkActive = location.pathname.startsWith('/purchases/vendor-credits');
             }
-            return `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 w-full ${
+            return `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full whitespace-nowrap ${
               isLinkActive
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md'
                 : 'text-gray-700 hover:bg-amber-50 hover:text-amber-600'
-            } ${!sidebarOpen ? 'justify-center' : ''} ${paddingLeft}`;
+            } ${!sidebarOpen ? 'justify-center px-2' : ''} ${paddingLeft}`;
           }}
           title={!sidebarOpen ? item.name : ''}
         >
-          <span className="flex-shrink-0">{item.icon}</span>
+          <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">{item.icon}</span>
           {sidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
         </NavLink>
       </li>
@@ -500,9 +479,9 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
             <div className="p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <HelpCircle size={16} className="text-amber-600" />
-                <span className="text-xs font-medium text-gray-700">Need Help?</span>
+                <span className="text-xs font-medium text-gray-700 whitespace-nowrap">Need Help?</span>
               </div>
-              <p className="text-xs text-gray-500">Contact support</p>
+              <p className="text-xs text-gray-500 whitespace-nowrap">Contact support</p>
             </div>
           </div>
         )}

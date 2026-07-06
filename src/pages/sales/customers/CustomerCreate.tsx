@@ -1,6 +1,5 @@
 // src/pages/Customer/CustomerCreate.tsx
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -19,6 +18,15 @@ import type { CustomerFormData } from '../../../types/customer/CustomerTypes';
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import ErrorSummary from '../../../components/common/ErrorSummary';
+import {
+  validateCustomerForm,
+  formatValidationErrors,
+  hasValidationErrors,
+  getErrorCount,
+} from '../../../validations/customer.validation';
+
+import countryList from 'react-select-country-list';
 
 export const CustomerCreate: React.FC = () => {
   const navigate = useNavigate();
@@ -48,7 +56,7 @@ export const CustomerCreate: React.FC = () => {
     city: '',
     state: '',
     pincode: '',
-    country: 'India',
+    country: 'IN',
     openingBalance: 0,
     creditLimit: 0,
     gstNumber: '',
@@ -58,6 +66,17 @@ export const CustomerCreate: React.FC = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  // Get country list from react-select-country-list
+  const countryData = useMemo(() => countryList().getData(), []);
+
+  // Convert to dropdown options format
+  const countryOptions: DropdownOption[] = useMemo(() => {
+    return countryData.map((country) => ({
+      value: country.value,
+      label: country.label,
+    }));
+  }, [countryData]);
 
   // Dropdown options
   const salutationOptions: DropdownOption[] = [
@@ -75,18 +94,8 @@ export const CustomerCreate: React.FC = () => {
     { value: 'non-profit', label: 'Non-Profit' },
   ];
 
-  const countryOptions: DropdownOption[] = [
-    { value: 'India', label: 'India' },
-    { value: 'USA', label: 'USA' },
-    { value: 'UK', label: 'UK' },
-    { value: 'Canada', label: 'Canada' },
-    { value: 'Australia', label: 'Australia' },
-    { value: 'UAE', label: 'UAE' },
-    { value: 'Singapore', label: 'Singapore' },
-  ];
-
   // Auto-generate display name
-  React.useEffect(() => {
+  useEffect(() => {
     if (formData.firstName || formData.lastName) {
       const display = `${formData.firstName} ${formData.lastName}`.trim();
       if (display) {
@@ -96,23 +105,10 @@ export const CustomerCreate: React.FC = () => {
   }, [formData.firstName, formData.lastName]);
 
   const validateForm = useCallback((): boolean => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last Name is required';
-    if (!formData.displayName.trim()) newErrors.displayName = 'Display Name is required';
-    if (!formData.mobileNumber.trim()) newErrors.mobileNumber = 'Mobile Number is required';
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-    if (formData.gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.gstNumber)) {
-      newErrors.gstNumber = 'Invalid GST number format';
-    }
-    if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
-      newErrors.panNumber = 'Invalid PAN number format';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const validationErrors = validateCustomerForm(formData);
+    const formattedErrors = formatValidationErrors(validationErrors);
+    setErrors(formattedErrors);
+    return !hasValidationErrors(validationErrors);
   }, [formData]);
 
   const saveCustomer = useCallback(async () => {
@@ -173,18 +169,38 @@ export const CustomerCreate: React.FC = () => {
 
   const handleSalutationSelect = useCallback((option: DropdownOption) => {
     setFormData(prev => ({ ...prev, salutation: option.value as CustomerFormData['salutation'] }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.salutation;
+      return newErrors;
+    });
   }, []);
 
   const handleCustomerTypeSelect = useCallback((option: DropdownOption) => {
     setFormData(prev => ({ ...prev, customerType: option.value as CustomerFormData['customerType'] }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.customerType;
+      return newErrors;
+    });
   }, []);
 
   const handleCountrySelect = useCallback((option: DropdownOption) => {
-    setFormData(prev => ({ ...prev, country: option.value as CustomerFormData['country'] }));
+    setFormData(prev => ({ ...prev, country: option.value }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.country;
+      return newErrors;
+    });
   }, []);
 
   const handleInputChange = useCallback((field: keyof CustomerFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
   }, []);
 
   const getSelectedSalutation = (): string | null => {
@@ -199,29 +215,67 @@ export const CustomerCreate: React.FC = () => {
     return formData.country || null;
   };
 
+  // Check if there are any errors
+  const hasErrors = Object.keys(errors).length > 0;
+  const errorCount = getErrorCount(errors);
+
+  // Get country label for display
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="w-full">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={handleCancelClick}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Create Customer</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Add a new customer to your database</p>
+        {/* Header with Save button on right */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCancelClick}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5 text-gray-600" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Create Customer</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Add a new customer to your database</p>
+            </div>
           </div>
+          
+          {/* Save Button - Top Right */}
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="px-6 py-2.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          >
+            {saving ? (
+              <>
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Save Customer
+              </>
+            )}
+          </button>
         </div>
 
-        {/* Error summary */}
+        {/* Error summary - Submit errors */}
         {errors.submit && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <p className="text-sm text-red-700">{errors.submit}</p>
-          </div>
+          <ErrorSummary
+            errors={{ submit: errors.submit }}
+            title="Form Error:"
+            variant="error"
+          />
+        )}
+
+        {/* Validation Error Summary */}
+        {hasErrors && !errors.submit && (
+          <ErrorSummary
+            errors={errors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         {/* Form */}
@@ -456,7 +510,7 @@ export const CustomerCreate: React.FC = () => {
                       resetSearchOnOpen={true}
                       showEmptyState={true}
                       emptyStateText="No countries found"
-                      maxListHeight={200}
+                      maxListHeight={250}
                     />
                   </div>
                 </div>
@@ -546,34 +600,6 @@ export const CustomerCreate: React.FC = () => {
               />
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleCancelClick}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <>
-                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  Save Customer
-                </>
-              )}
-            </button>
-          </div>
         </form>
       </div>
 
@@ -592,3 +618,5 @@ export const CustomerCreate: React.FC = () => {
     </div>
   );
 };
+
+export default CustomerCreate;

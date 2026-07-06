@@ -1,5 +1,5 @@
 // src/pages/sales/proforma/ProformaInvoiceView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -22,66 +22,25 @@ import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { formatCurrency } from '../../../utils/Invoice/calculations';
 import type { ProformaInvoice as ProformaInvoiceType } from '../../../types/proforma/ProformaInvoiceType';
-
-// Format currency in Rupees
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-};
 
 // Status Badge
 const StatusBadge: React.FC<{ status: ProformaInvoiceType['status'] }> = ({ status }) => {
-  const config = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: FileText, label: 'Draft' },
-    sent: { color: 'bg-blue-100 text-blue-700', icon: Send, label: 'Sent' },
-    approved: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Approved' },
-    rejected: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Rejected' },
-    expired: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Expired' },
+  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    draft: { color: 'bg-gray-100 text-gray-700', icon: <FileText className="h-3 w-3" />, label: 'Draft' },
+    sent: { color: 'bg-blue-100 text-blue-700', icon: <Send className="h-3 w-3" />, label: 'Sent' },
+    approved: { color: 'bg-green-100 text-green-700', icon: <CheckCircle className="h-3 w-3" />, label: 'Approved' },
+    rejected: { color: 'bg-red-100 text-red-700', icon: <XCircle className="h-3 w-3" />, label: 'Rejected' },
+    expired: { color: 'bg-yellow-100 text-yellow-700', icon: <Clock className="h-3 w-3" />, label: 'Expired' },
   };
-  const { color, icon: Icon, label } = config[status as keyof typeof config] || config.draft;
+  const { color, icon, label } = config[status] || config.draft;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+      {icon}
       {label}
     </span>
   );
-};
-
-// Generate demo items for any proforma invoice
-const generateDemoItems = (invoice: ProformaInvoiceType) => {
-  if (invoice.items && invoice.items.length > 0) {
-    return invoice.items;
-  }
-
-  return [
-    {
-      id: `demo_${Date.now()}_1`,
-      productId: 'prod1',
-      productName: 'Gold Chain',
-      description: '22K Gold Chain with pendant',
-      quantity: 2,
-      unitPrice: 4500,
-      discount: 0,
-      taxRate: 18,
-      total: 9000,
-    },
-    {
-      id: `demo_${Date.now()}_2`,
-      productId: 'prod2',
-      productName: 'Diamond Ring',
-      description: '18K Diamond Ring with 0.5ct diamond',
-      quantity: 1,
-      unitPrice: 8500,
-      discount: 5,
-      taxRate: 18,
-      total: 8075,
-    },
-  ];
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -120,12 +79,12 @@ const ProformaInvoiceView: React.FC = () => {
           const data = await getInvoice(id);
           if (data) {
             // Ensure items exist
-            const items = generateDemoItems(data);
+            const items = data.items && data.items.length > 0 ? data.items : generateDemoItems();
 
             // Calculate totals
             const subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-            const discountTotal = items.reduce((sum, item) => sum + (item.discount * item.quantity), 0);
-            const taxTotal = items.reduce((sum, item) => sum + ((item.unitPrice * item.quantity - item.discount * item.quantity) * (item.taxRate / 100)), 0);
+            const discountTotal = items.reduce((sum, item) => sum + ((item.discount || 0) * item.quantity), 0);
+            const taxTotal = items.reduce((sum, item) => sum + ((item.unitPrice * item.quantity - (item.discount || 0) * item.quantity) * ((item.taxRate || 0) / 100)), 0);
             const grandTotal = subtotal - discountTotal + taxTotal;
 
             setInvoice({
@@ -152,8 +111,36 @@ const ProformaInvoiceView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, getInvoice, navigate]);
 
-  // Delete handler using confirmation modal instead of window.confirm
-  const handleDelete = () => {
+  // Generate demo items
+  const generateDemoItems = useCallback(() => {
+    return [
+      {
+        id: `demo_${Date.now()}_1`,
+        productId: 'prod1',
+        productName: 'Gold Chain',
+        description: '22K Gold Chain with pendant',
+        quantity: 2,
+        unitPrice: 4500,
+        discount: 0,
+        taxRate: 18,
+        total: 9000,
+      },
+      {
+        id: `demo_${Date.now()}_2`,
+        productId: 'prod2',
+        productName: 'Diamond Ring',
+        description: '18K Diamond Ring with 0.5ct diamond',
+        quantity: 1,
+        unitPrice: 8500,
+        discount: 5,
+        taxRate: 18,
+        total: 8075,
+      },
+    ];
+  }, []);
+
+  // Delete handler using confirmation modal
+  const handleDelete = useCallback(() => {
     if (!id) return;
 
     withConfirmation(
@@ -176,10 +163,10 @@ const ProformaInvoiceView: React.FC = () => {
         }
       }
     );
-  };
+  }, [id, withConfirmation, deleteInvoice, success, showError, navigate]);
 
-  // Status update handler using confirmation modal instead of window.confirm
-  const handleStatusUpdate = (status: ProformaInvoiceType['status']) => {
+  // Status update handler using confirmation modal
+  const handleStatusUpdate = useCallback((status: ProformaInvoiceType['status']) => {
     if (!id) return;
 
     withConfirmation(
@@ -187,7 +174,7 @@ const ProformaInvoiceView: React.FC = () => {
         title: 'Update Invoice Status',
         message: `Mark this proforma invoice as ${STATUS_LABELS[status] ?? status}?`,
         confirmText: 'Confirm',
-        variant: status === 'rejected' ? 'danger' : undefined,
+        variant: status === 'rejected' ? 'danger' : 'primary',
       },
       async () => {
         setUpdating(true);
@@ -205,24 +192,24 @@ const ProformaInvoiceView: React.FC = () => {
         }
       }
     );
-  };
+  }, [id, withConfirmation, updateInvoiceStatus, getInvoice, success, showError]);
 
-  const handleEdit = () => {
+  const handleEdit = useCallback(() => {
     if (id) {
       navigate(`/sales/proforma/${id}/edit`);
     }
-  };
+  }, [id, navigate]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     window.print();
-  };
+  }, []);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     // TODO: replace with real download/export call
     success('Download started.');
-  };
+  }, [success]);
 
-  // Dropdown items for three-dot menu - includes ALL actions
+  // Dropdown items for three-dot menu
   const dropdownItems = [
     {
       label: 'Print',
@@ -317,7 +304,6 @@ const ProformaInvoiceView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Three Dot Dropdown - Contains ALL actions */}
             <ThreeDotDropdown
               items={dropdownItems.filter(item => item.show !== false)}
               position="right"
@@ -325,7 +311,7 @@ const ProformaInvoiceView: React.FC = () => {
           </div>
         </div>
 
-        {/* Status - Removed action buttons, only showing status */}
+        {/* Status */}
         <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">Status:</span>
@@ -408,11 +394,11 @@ const ProformaInvoiceView: React.FC = () => {
                 <tbody className="divide-y divide-gray-200">
                   {invoice.items && invoice.items.length > 0 ? (
                     invoice.items.map((item, index) => {
-                      const itemTotal = (item.unitPrice * item.quantity) - (item.discount || 0) * item.quantity;
+                      const itemTotal = (item.unitPrice * item.quantity) - ((item.discount || 0) * item.quantity);
                       const taxAmount = itemTotal * ((item.taxRate || 0) / 100);
                       const total = itemTotal + taxAmount;
                       return (
-                        <tr key={index}>
+                        <tr key={item.id || index}>
                           <td className="px-4 py-3">
                             <p className="font-medium text-gray-900">{item.productName}</p>
                           </td>

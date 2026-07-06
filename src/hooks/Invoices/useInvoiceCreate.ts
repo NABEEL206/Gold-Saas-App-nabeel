@@ -1,7 +1,82 @@
 // src/hooks/Invoices/useInvoiceCreate.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { InvoiceItemFormData } from '../../types/Invoice/InvoiceTypes';
 import type { CustomerSuggestion, ItemSuggestion } from '../../types/Invoice/InvoiceTypes';
+import {
+  validateInvoiceItems,
+  validateOldGoldItems,
+  type ValidationResult,
+} from '../../validations/invoice.validation';
+
+const calculateItemTotals = (item: InvoiceItemFormData) => {
+  const quantity = Number(item.quantity) || 0;
+  const rate = Number(item.rate) || 0;
+  const makingCharges = Number(item.makingCharges) || 0;
+  const stoneCharges = Number(item.stoneCharges) || 0;
+  const baseAmount = quantity * rate + makingCharges + stoneCharges;
+  const discountAmount = Number(item.discount) || 0;
+  const taxableAmount = Math.max(baseAmount - discountAmount, 0);
+  const taxAmount = (taxableAmount * (Number(item.taxRate) || 0)) / 100;
+  const total = taxableAmount + taxAmount;
+
+  return {
+    baseAmount,
+    discountAmount,
+    taxableAmount,
+    taxAmount,
+    total,
+  };
+};
+
+const getInvoiceSummary = (items: InvoiceItemFormData[], oldGoldItems: any[]) => {
+  const itemCount = items.length;
+  const oldGoldItemCount = oldGoldItems?.length || 0;
+  const totalWeight = items.reduce((sum, item) => sum + (Number(item.weight) || 0), 0);
+  const totalAmount = items.reduce((sum, item) => sum + calculateItemTotals(item).total, 0);
+
+  return {
+    itemCount,
+    oldGoldItemCount,
+    totalWeight,
+    totalAmount,
+  };
+};
+
+const calculateInvoiceTotals = (
+  items: InvoiceItemFormData[],
+  oldGoldItems: any[],
+  additionalCharges: any[],
+  discount: number,
+  discountType: string
+) => {
+  const itemTotals = items.map(calculateItemTotals);
+  const subtotal = itemTotals.reduce((sum, item) => sum + item.baseAmount, 0);
+  const totalItemDiscount = itemTotals.reduce((sum, item) => sum + item.discountAmount, 0);
+  const taxAmount = itemTotals.reduce((sum, item) => sum + item.taxAmount, 0);
+  const additionalChargesTotal = additionalCharges?.reduce((sum, charge) => {
+    const amount = Number(charge?.amount ?? charge?.value ?? 0);
+    return sum + (isNaN(amount) ? 0 : amount);
+  }, 0) || 0;
+  const oldGoldTotal = oldGoldItems?.reduce((sum, goldItem) => sum + Number(goldItem?.amount ?? 0), 0) || 0;
+
+  const subtotalBeforeGlobalDiscount = subtotal - totalItemDiscount + taxAmount + additionalChargesTotal + oldGoldTotal;
+  const globalDiscountAmount = discountType === 'percentage'
+    ? (subtotalBeforeGlobalDiscount * (discount || 0)) / 100
+    : Number(discount || 0);
+
+  const grandTotal = Math.max(subtotalBeforeGlobalDiscount - globalDiscountAmount, 0);
+  const netTotal = grandTotal;
+
+  return {
+    subtotal,
+    totalDiscount: totalItemDiscount + globalDiscountAmount,
+    taxAmount,
+    oldGoldTotal,
+    additionalChargesTotal,
+    grandTotal,
+    netTotal,
+  };
+};
 
 // Mock data
 const MOCK_CUSTOMERS: CustomerSuggestion[] = [
@@ -19,7 +94,41 @@ const MOCK_ITEMS: ItemSuggestion[] = [
   { id: '5', name: 'Gold Bracelet', code: 'GB-001', category: 'Bracelet', purity: '22K', price: 3800 },
 ];
 
-export const useInvoiceCreate = () => {
+// Types for the hook
+interface UseInvoiceCreateReturn {
+  formData: any;
+  customerSearch: string;
+  setCustomerSearch: (value: string) => void;
+  customerSuggestions: CustomerSuggestion[];
+  showCustomerDropdown: boolean;
+  setShowCustomerDropdown: (value: boolean) => void;
+  selectedCustomer: CustomerSuggestion | null;
+  itemSearch: string;
+  setItemSearch: (value: string) => void;
+  itemSuggestions: ItemSuggestion[];
+  showItemDropdown: boolean;
+  setShowItemDropdown: (value: boolean) => void;
+  errors: Record<string, string>;
+  saving: boolean;
+  selectedTax: string;
+  setSelectedTax: (value: string) => void;
+  files: File[];
+  totals: ReturnType<typeof calculateInvoiceTotals>;
+  selectCustomer: (customer: CustomerSuggestion) => void;
+  addItem: (item?: ItemSuggestion) => void;
+  removeItem: (index: number) => void;
+  updateItem: (index: number, field: keyof InvoiceItemFormData, value: any) => void;
+  handleSubmit: (navigate: any) => Promise<any>;
+  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  removeFile: (index: number) => void;
+  updateFormData: (field: string, value: any) => void;
+  validateForm: () => boolean;
+  summary: ReturnType<typeof getInvoiceSummary>;
+  validationResult: ValidationResult;
+  clearErrors: () => void;
+}
+
+export const useInvoiceCreate = (): UseInvoiceCreateReturn => {
   const [formData, setFormData] = useState<any>({
     invoiceNo: `INV-${String(Math.floor(Math.random() * 900000) + 100000)}`,
     customerId: '',
@@ -29,6 +138,7 @@ export const useInvoiceCreate = () => {
     date: new Date().toISOString().split('T')[0],
     dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     items: [],
+    oldGoldItems: [],
     discount: 0,
     discountType: 'fixed',
     shippingCharge: 0,
@@ -36,6 +146,7 @@ export const useInvoiceCreate = () => {
     notes: 'Thank you for your business.',
     termsAndConditions: '1. All prices are in Indian Rupee (₹)\n2. Taxes as applicable\n3. Payment terms: 15 days',
     paymentTerms: 'Net 15',
+    additionalCharges: [],
   });
 
   const [customerSearch, setCustomerSearch] = useState('');
@@ -51,6 +162,28 @@ export const useInvoiceCreate = () => {
   const [saving, setSaving] = useState(false);
   const [selectedTax, setSelectedTax] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+    oldGoldErrors: [],
+  });
+
+  // Calculate totals using the utility
+  const totals = useMemo(() => {
+    return calculateInvoiceTotals(
+      formData.items || [],
+      formData.oldGoldItems || [],
+      formData.additionalCharges || [],
+      formData.discount || 0,
+      formData.discountType || 'percentage'
+    );
+  }, [formData.items, formData.oldGoldItems, formData.additionalCharges, formData.discount, formData.discountType]);
+
+  // Get invoice summary
+  const summary = useMemo(() => {
+    return getInvoiceSummary(formData.items || [], formData.oldGoldItems || []);
+  }, [formData.items, formData.oldGoldItems]);
 
   // Search customers
   useEffect(() => {
@@ -95,6 +228,13 @@ export const useInvoiceCreate = () => {
     }));
     setCustomerSearch(customer.name);
     setShowCustomerDropdown(false);
+    // Clear customer error when selected
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.customerId;
+      delete newErrors.customerName;
+      return newErrors;
+    });
   };
 
   const addItem = (item?: ItemSuggestion) => {
@@ -119,6 +259,12 @@ export const useInvoiceCreate = () => {
     }));
     setItemSearch('');
     setShowItemDropdown(false);
+    // Clear items error when adding an item
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.items;
+      return newErrors;
+    });
   };
 
   const removeItem = (index: number) => {
@@ -138,39 +284,63 @@ export const useInvoiceCreate = () => {
         return item;
       })
     }));
-  };
-
-  const calculateTotals = () => {
-    let subtotal = 0;
-    let totalTax = 0;
-    
-    formData.items.forEach((item: any) => {
-      const itemTotal = item.quantity * item.rate;
-      subtotal += itemTotal;
-      totalTax += itemTotal * (item.taxRate / 100);
+    // Clear specific item error when field is updated
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[`item_${index}_${field}`];
+      return newErrors;
     });
-
-    const discountAmount = formData.discountType === 'percentage' 
-      ? (subtotal * formData.discount / 100)
-      : formData.discount;
-
-    const total = subtotal + totalTax + formData.shippingCharge + formData.otherCharges - discountAmount;
-    
-    return { subtotal, totalTax, discountAmount, total };
   };
 
-  const totals = calculateTotals();
+  const clearErrors = () => {
+    setErrors({});
+    setValidationResult({
+      isValid: true,
+      errors: {},
+      itemErrors: [],
+      oldGoldErrors: [],
+    });
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.customerId) newErrors.customerId = 'Customer is required';
-    if (!formData.date) newErrors.date = 'Date is required';
-    if (formData.items.length === 0) newErrors.items = 'At least one item is required';
+    // ─── 1. Validate Customer ───
+    if (!formData.customerId || formData.customerId.trim() === '') {
+      newErrors.customerId = 'Customer is required';
+    }
+    if (!formData.customerName || formData.customerName.trim() === '') {
+      newErrors.customerName = 'Customer name is required';
+    }
     
-    formData.items.forEach((item: any, index: number) => {
-      if (item.quantity <= 0) newErrors[`item_${index}_quantity`] = 'Quantity is required';
-      if (item.rate <= 0) newErrors[`item_${index}_rate`] = 'Rate is required';
+    // ─── 2. Validate Date ───
+    if (!formData.date || formData.date.trim() === '') {
+      newErrors.date = 'Invoice date is required';
+    }
+    
+    // ─── 3. Validate Items ───
+    if (formData.items.length === 0) {
+      newErrors.items = 'At least one item is required';
+    }
+    
+    // ─── 4. Validate each item ───
+    const itemValidation = validateInvoiceItems(formData.items || []);
+    itemValidation.itemErrors.forEach((err) => {
+      newErrors[`item_${err.index}_${err.field}`] = err.message;
+    });
+
+    // ─── 5. Validate Old Gold Items ───
+    const oldGoldValidation = validateOldGoldItems(formData.oldGoldItems || []);
+    oldGoldValidation.oldGoldErrors.forEach((err) => {
+      newErrors[`oldGold_${err.index}_${err.field}`] = err.message;
+    });
+
+    // Update validation result
+    setValidationResult({
+      isValid: Object.keys(newErrors).length === 0,
+      errors: {},
+      itemErrors: itemValidation.itemErrors,
+      oldGoldErrors: oldGoldValidation.oldGoldErrors,
     });
 
     setErrors(newErrors);
@@ -182,8 +352,22 @@ export const useInvoiceCreate = () => {
     
     setSaving(true);
     try {
+      // Prepare invoice data with calculated totals
+      const invoiceData = {
+        ...formData,
+        totals: {
+          subtotal: totals.subtotal,
+          totalDiscount: totals.totalDiscount,
+          taxAmount: totals.taxAmount,
+          oldGoldTotal: totals.oldGoldTotal,
+          grandTotal: totals.grandTotal,
+          netTotal: totals.netTotal,
+        },
+        summary,
+      };
+      
       setSaving(false);
-      return formData;
+      return invoiceData;
     } catch (error) {
       setErrors({ submit: 'Failed to create invoice. Please try again.' });
       setSaving(false);
@@ -208,6 +392,12 @@ export const useInvoiceCreate = () => {
 
   const updateFormData = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
+    // Clear error for this field when updated
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
   };
 
   return {
@@ -238,5 +428,8 @@ export const useInvoiceCreate = () => {
     removeFile,
     updateFormData,
     validateForm,
+    summary,
+    validationResult,
+    clearErrors,
   };
 };

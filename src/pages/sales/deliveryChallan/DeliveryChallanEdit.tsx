@@ -1,5 +1,5 @@
 // src/pages/sales/deliveryChallan/DeliveryChallanEdit.tsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -21,6 +21,12 @@ import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import { useDeliveryChallanEdit } from '../../../hooks/DeliveryChallan/useDeliveryChallanEdit';
+import ErrorSummary from '../../../components/common/ErrorSummary';
+import {
+  validateDeliveryChallanForm,
+  formatValidationErrors,
+  type ValidationResult,
+} from '../../../validations/deliveryChallan.validation';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
@@ -42,16 +48,35 @@ const CUSTOMER_DETAILS: Record<string, any> = {
   'CUST-005': { name: 'Vikram Gems', email: 'vikram@gems.com', phone: '+91-98765-43214', address: '654, Gem Tower, Mumbai', gst: '22EEEEE0000E1Z5' },
 };
 
+// Mock product suggestions
+const MOCK_PRODUCTS = [
+  { id: '1', name: 'Gold Ring', code: 'GR-001', category: 'Ring', purity: '22K', price: 7500, description: '22K Gold Ring with diamond', unit: 'Pcs' },
+  { id: '2', name: 'Gold Chain', code: 'GC-001', category: 'Chain', purity: '22K', price: 4500, description: '22K Gold Chain with pendant', unit: 'Pcs' },
+  { id: '3', name: 'Gold Earrings', code: 'GE-001', category: 'Earring', purity: '22K', price: 3200, description: '22K Gold Earrings with pearl', unit: 'Pair' },
+  { id: '4', name: 'Diamond Ring', code: 'DR-001', category: 'Ring', purity: '18K', price: 8500, description: '18K Diamond Ring with 0.5ct diamond', unit: 'Pcs' },
+  { id: '5', name: 'Gold Bracelet', code: 'GB-001', category: 'Bracelet', purity: '22K', price: 3800, description: '22K Gold Bracelet with diamonds', unit: 'Pcs' },
+  { id: '6', name: 'Silver Necklace', code: 'SN-001', category: 'Necklace', purity: '18K', price: 2800, description: '18K Silver Necklace with chain', unit: 'Pcs' },
+];
+
+// Default columns configuration for Delivery Challan
+const deliveryChallanColumns: any[] = [
+  { key: 'productName', label: 'Product' },
+  { key: 'description', label: 'Description' },
+  { key: 'quantity', label: 'Qty' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'rate', label: 'Rate' },
+  { key: 'discount', label: 'Discount' },
+  { key: 'taxRate', label: 'Tax' },
+  { key: 'total', label: 'Total' },
+];
+
 const DeliveryChallanEdit: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  // Debug log to check if id is being received
-  console.log('DeliveryChallanEdit - ID from params:', id);
-
   const {
     formData,
-    errors,
+    errors: hookErrors,
     loading,
     refreshing,
     saving,
@@ -70,7 +95,6 @@ const DeliveryChallanEdit: React.FC = () => {
     setProductSearch,
   } = useDeliveryChallanEdit(id);
 
-  // Use the toast and confirm hook
   const {
     success,
     error: showError,
@@ -84,11 +108,36 @@ const DeliveryChallanEdit: React.FC = () => {
     handleCancel: onModalCancel,
   } = useToastAndConfirm();
 
+  const [items, setItems] = useState<ItemSelectionItem[]>(formData?.items || []);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+  });
+
   // Snapshot the loaded form once, to detect unsaved changes on Cancel
   const initialSnapshotRef = useRef<string | null>(null);
   useEffect(() => {
     if (!loading && initialSnapshotRef.current === null && formData) {
       initialSnapshotRef.current = JSON.stringify(formData);
+      // Set items from formData
+      if (formData.items) {
+        setItems(formData.items.map((item: any) => ({
+          productId: item.productId || '',
+          productName: item.productName || '',
+          description: item.description || '',
+          quantity: item.quantity || 1,
+          unit: item.unit || 'Pcs',
+          rate: item.rate || 0,
+          discount: item.discount || 0,
+          discountType: 'percentage' as const,
+          taxRate: item.taxRate || 0,
+          taxAmount: item.taxAmount || 0,
+          total: item.total || 0,
+          purity: item.purity || '22K',
+        })));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, formData]);
@@ -99,18 +148,18 @@ const DeliveryChallanEdit: React.FC = () => {
     JSON.stringify(formData) !== initialSnapshotRef.current
   );
 
-  // Surface load errors as a toast as well as the inline banner
+  // Surface load errors as a toast
   const hasShownLoadErrorRef = useRef(false);
   useEffect(() => {
-    if (errors?.load && !hasShownLoadErrorRef.current) {
+    if (hookErrors?.load && !hasShownLoadErrorRef.current) {
       hasShownLoadErrorRef.current = true;
-      showError(errors.load);
+      showError(hookErrors.load);
     }
-    if (!errors?.load) {
+    if (!hookErrors?.load) {
       hasShownLoadErrorRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [errors?.load]);
+  }, [hookErrors?.load]);
 
   // Show error if id is missing
   useEffect(() => {
@@ -121,7 +170,7 @@ const DeliveryChallanEdit: React.FC = () => {
   }, [id, navigate, showError]);
 
   // Handle customer selection from dropdown
-  const handleCustomerSelect = (selectedOption: DropdownOption) => {
+  const handleCustomerSelect = useCallback((selectedOption: DropdownOption) => {
     const details = CUSTOMER_DETAILS[selectedOption.value];
     if (details) {
       updateFormData('customerId', selectedOption.value);
@@ -135,10 +184,18 @@ const DeliveryChallanEdit: React.FC = () => {
       updateFormData('customerId', selectedOption.value);
       updateFormData('customerName', selectedOption.label);
     }
-  };
+    // Clear customer error when selected
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.customerId;
+      delete newErrors.customerName;
+      return newErrors;
+    });
+  }, [updateFormData]);
 
   // Handle items change from ItemSelectionTable
-  const handleItemsChange = (newItems: ItemSelectionItem[]) => {
+  const handleItemsChange = useCallback((newItems: ItemSelectionItem[]) => {
+    setItems(newItems);
     const convertedItems = newItems.map(item => ({
       productId: item.productId,
       productName: item.productName,
@@ -153,45 +210,32 @@ const DeliveryChallanEdit: React.FC = () => {
       purity: item.purity || '22K',
     }));
     updateFormData('items', convertedItems);
-  };
+    // Clear items error when items change
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.items;
+      return newErrors;
+    });
+  }, [updateFormData]);
 
-  // Convert formData.items to ItemSelectionItem format for the table
-  const tableItems: ItemSelectionItem[] = (formData?.items || []).map((item: any) => ({
-    productId: item.productId || '',
-    productName: item.productName || '',
-    description: item.description || '',
-    quantity: item.quantity || 1,
-    unit: item.unit || 'Pcs',
-    rate: item.rate || 0,
-    discount: item.discount || 0,
-    discountType: 'percentage' as const,
-    taxRate: item.taxRate || 0,
-    taxAmount: item.taxAmount || 0,
-    total: item.total || 0,
-    purity: item.purity || '22K',
-  }));
-
-  // Custom columns configuration for Delivery Challan
-  const deliveryChallanColumns = {
-    item: true,
-    purity: true,
-    description: true,
-    grossWt: false,
-    stoneWt: false,
-    netWt: false,
-    qty: true,
-    unit: true,
-    rate: true,
-    making: false,
-    discount: true,
-    tax: true,
-    amount: true,
-    action: true,
-  };
+  const validateForm = useCallback((): boolean => {
+    const result = validateDeliveryChallanForm(formData || { items: [] }, items);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result);
+    setValidationErrors(formattedErrors);
+    
+    return result.isValid;
+  }, [formData, items]);
 
   // Handle form submit with loading toast
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return;
+    }
     
     await withLoading(
       async () => {
@@ -199,17 +243,16 @@ const DeliveryChallanEdit: React.FC = () => {
         if (!result) {
           throw new Error('Validation failed');
         }
-        // Navigate back on success
         navigate('/sales/delivery-challan');
       },
       'Updating delivery challan...',
       'Delivery challan updated successfully.',
       'Failed to update delivery challan. Please try again.'
     );
-  };
+  }, [validateForm, showError, withLoading, handleSubmit, navigate]);
 
   // Refresh handler with confirmation for unsaved changes
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     if (hasUnsavedChanges) {
       await withConfirmation(
         {
@@ -220,7 +263,6 @@ const DeliveryChallanEdit: React.FC = () => {
         },
         async () => {
           await handleRefresh();
-          // Reset snapshot after refresh
           initialSnapshotRef.current = JSON.stringify(formData);
         },
         'Delivery challan data refreshed.',
@@ -237,10 +279,10 @@ const DeliveryChallanEdit: React.FC = () => {
         'Failed to refresh. Please try again.'
       );
     }
-  };
+  }, [hasUnsavedChanges, withConfirmation, withLoading, handleRefresh, formData]);
 
   // Cancel handler - confirm before discarding unsaved changes
-  const handleCancel = async () => {
+  const handleCancel = useCallback(async () => {
     if (!hasUnsavedChanges) {
       navigate('/sales/delivery-challan');
       return;
@@ -257,7 +299,10 @@ const DeliveryChallanEdit: React.FC = () => {
         navigate('/sales/delivery-challan');
       }
     );
-  };
+  }, [hasUnsavedChanges, withConfirmation, navigate]);
+
+  // Check if there are any errors
+  const hasErrors = Object.keys(validationErrors).length > 0 || Object.keys(hookErrors).length > 0;
 
   // If no id provided, show error state
   if (!id) {
@@ -280,7 +325,7 @@ const DeliveryChallanEdit: React.FC = () => {
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading delivery challan..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -367,10 +412,7 @@ const DeliveryChallanEdit: React.FC = () => {
               className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving || submitLoading ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  Saving...
-                </>
+                <LoadingSpinner size="sm" />
               ) : (
                 <>
                   <Save className="h-4 w-4" />
@@ -396,22 +438,31 @@ const DeliveryChallanEdit: React.FC = () => {
           </div>
         )}
 
-        {/* Error summary */}
-        {errors?.submit && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm text-red-700">{errors.submit}</p>
-            </div>
-          </div>
+        {/* Error summary - Submit errors */}
+        {(hookErrors.submit || validationErrors.submit) && (
+          <ErrorSummary
+            errors={{ submit: hookErrors.submit || validationErrors.submit || '' }}
+            title="Form Error:"
+            variant="error"
+          />
+        )}
+
+        {/* Validation Error Summary */}
+        {hasErrors && !hookErrors.submit && !validationErrors.submit && (
+          <ErrorSummary
+            errors={validationErrors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         {/* Load error */}
-        {errors?.load && (
+        {hookErrors?.load && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm text-red-700">{errors.load}</p>
+              <p className="text-sm text-red-700">{hookErrors.load}</p>
               <button
                 onClick={onRefresh}
                 className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
@@ -441,14 +492,12 @@ const DeliveryChallanEdit: React.FC = () => {
                   onChange={(e) => updateFormData('challanNumber', e.target.value)}
                   disabled={!isEditable}
                   className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors?.challanNumber ? 'border-red-500' : 'border-gray-300'
+                    validationErrors.challanNumber ? 'border-red-500' : 'border-gray-300'
                   } ${!isEditable ? 'bg-gray-50 text-gray-500' : 'bg-white text-gray-900'}`}
                   placeholder="Enter challan number"
                 />
-                {errors?.challanNumber && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.challanNumber}
-                  </p>
+                {validationErrors.challanNumber && (
+                  <p className="mt-1 text-xs text-red-500">{validationErrors.challanNumber}</p>
                 )}
               </div>
               <div>
@@ -461,13 +510,11 @@ const DeliveryChallanEdit: React.FC = () => {
                   onChange={(e) => updateFormData('challanDate', e.target.value)}
                   disabled={!isEditable}
                   className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors?.challanDate ? 'border-red-500' : 'border-gray-300'
+                    validationErrors.challanDate ? 'border-red-500' : 'border-gray-300'
                   } ${!isEditable ? 'bg-gray-50' : ''}`}
                 />
-                {errors?.challanDate && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.challanDate}
-                  </p>
+                {validationErrors.challanDate && (
+                  <p className="mt-1 text-xs text-red-500">{validationErrors.challanDate}</p>
                 )}
               </div>
               <div>
@@ -487,13 +534,249 @@ const DeliveryChallanEdit: React.FC = () => {
             </div>
           </div>
 
-          {/* Rest of the form sections remain the same */}
-          {/* Customer Section, Delivery Address, Items Section, etc. */}
-          
+          {/* Customer Section - Using SearchableDropdown */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Users className="h-5 w-5 text-amber-500" />
+              Customer Details
+            </h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Customer <span className="text-red-500">*</span>
+              </label>
+              <SearchableDropdown
+                options={MOCK_CUSTOMERS}
+                value={formData.customerId}
+                onChange={handleCustomerSelect}
+                placeholder="Search customer by name..."
+                triggerPlaceholder="Select or search customer..."
+                className="w-full max-w-full"
+                showEmptyState={true}
+                emptyStateText="No customers found"
+                resetSearchOnOpen={true}
+                disabled={!isEditable}
+              />
+              {validationErrors.customerId && (
+                <p className="mt-1 text-xs text-red-500">{validationErrors.customerId}</p>
+              )}
+            </div>
+
+            {formData.customerName && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{formData.customerName}</p>
+                  {formData.customerEmail && (
+                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                      <Mail className="h-4 w-4" /> {formData.customerEmail}
+                    </p>
+                  )}
+                  {formData.customerPhone && (
+                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                      <Phone className="h-4 w-4" /> {formData.customerPhone}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  {formData.customerGst && (
+                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                      <FileText className="h-4 w-4" /> GST: {formData.customerGst}
+                    </p>
+                  )}
+                  {formData.customerAddress && (
+                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                      <Building2 className="h-4 w-4" /> {formData.customerAddress}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Delivery Address */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-amber-500" />
+              Delivery Address
+            </h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Delivery Address <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={formData.deliveryAddress || ''}
+                onChange={(e) => updateFormData('deliveryAddress', e.target.value)}
+                disabled={!isEditable}
+                rows={3}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  validationErrors.deliveryAddress ? 'border-red-500' : 'border-gray-300'
+                } ${!isEditable ? 'bg-gray-50' : ''}`}
+                placeholder="Enter delivery address..."
+              />
+              {validationErrors.deliveryAddress && (
+                <p className="mt-1 text-xs text-red-500">{validationErrors.deliveryAddress}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Items */}
+          <ItemSelectionTable
+            items={items}
+            onItemsChange={handleItemsChange}
+            productSuggestions={productSuggestions}
+            productSearch={productSearch}
+            onProductSearchChange={setProductSearch}
+            errors={validationErrors}
+            columns={deliveryChallanColumns}
+            showJewelryFields={true}
+            showDescription={true}
+            showDiscount={true}
+            showTax={true}
+            showUnit={true}
+            showPurity={true}
+            showMakingCharges={false}
+            showWeightFields={false}
+            showSubtotalSection={true}
+            showTotalSection={true}
+            searchPlaceholder="Search jewelry items..."
+            addButtonLabel="Add Item"
+            title="Jewelry Items"
+            additionalCharges={[]}
+            autoAddDefaultRow={false}
+            addButtonAtBottom={true}
+            className={!isEditable ? 'pointer-events-none opacity-75' : ''}
+          />
+          {validationErrors.items && (
+            <p className="mt-1 text-xs text-red-500">{validationErrors.items}</p>
+          )}
+
+          {/* Transport Details */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <TruckIcon className="h-5 w-5 text-amber-500" />
+              Transport Details
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Transporter Name</label>
+                <input
+                  type="text"
+                  value={formData.transporterName || ''}
+                  onChange={(e) => updateFormData('transporterName', e.target.value)}
+                  disabled={!isEditable}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    !isEditable ? 'bg-gray-50' : 'bg-white'
+                  } border-gray-300`}
+                  placeholder="Enter transporter name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Number</label>
+                <input
+                  type="text"
+                  value={formData.vehicleNumber || ''}
+                  onChange={(e) => updateFormData('vehicleNumber', e.target.value)}
+                  disabled={!isEditable}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    !isEditable ? 'bg-gray-50' : 'bg-white'
+                  } border-gray-300`}
+                  placeholder="Enter vehicle number"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">LR Number</label>
+                <input
+                  type="text"
+                  value={formData.lrNumber || ''}
+                  onChange={(e) => updateFormData('lrNumber', e.target.value)}
+                  disabled={!isEditable}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    !isEditable ? 'bg-gray-50' : 'bg-white'
+                  } border-gray-300`}
+                  placeholder="Enter LR number"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">LR Date</label>
+                <input
+                  type="date"
+                  value={formData.lrDate || ''}
+                  onChange={(e) => updateFormData('lrDate', e.target.value)}
+                  disabled={!isEditable}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    !isEditable ? 'bg-gray-50' : 'bg-white'
+                  } border-gray-300`}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Terms */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Terms</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+              <select
+                value={formData.paymentTerms || 'Net 15'}
+                onChange={(e) => updateFormData('paymentTerms', e.target.value)}
+                disabled={!isEditable}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  !isEditable ? 'bg-gray-50' : 'bg-white'
+                } border-gray-300`}
+              >
+                <option value="Net 7">Net 7</option>
+                <option value="Net 15">Net 15</option>
+                <option value="Net 30">Net 30</option>
+                <option value="Net 45">Net 45</option>
+                <option value="Net 60">Net 60</option>
+                <option value="COD">COD</option>
+                <option value="Advance">Advance</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Notes & Terms */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={formData.notes || ''}
+                  onChange={(e) => updateFormData('notes', e.target.value)}
+                  disabled={!isEditable}
+                  rows={3}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    !isEditable ? 'bg-gray-50' : 'bg-white'
+                  } border-gray-300`}
+                  placeholder="Enter any notes..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Terms & Conditions</label>
+                <textarea
+                  value={formData.termsAndConditions || ''}
+                  onChange={(e) => updateFormData('termsAndConditions', e.target.value)}
+                  disabled={!isEditable}
+                  rows={3}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    !isEditable ? 'bg-gray-50' : 'bg-white'
+                  } border-gray-300`}
+                  placeholder="Enter terms and conditions..."
+                />
+              </div>
+            </div>
+          </div>
         </form>
       </div>
 
-      {/* Confirmation Modal - THIS WAS MISSING! */}
+      {saving && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      )}
+
+      {/* Reusable Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

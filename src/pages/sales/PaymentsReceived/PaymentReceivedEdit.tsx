@@ -1,5 +1,5 @@
 // src/pages/sales/PaymentsReceived/PaymentReceivedEdit.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -21,6 +21,11 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ErrorSummary from '../../../components/common/ErrorSummary';
+import {
+  validatePaymentReceivedForm,
+  formatValidationErrors,
+} from '../../../validations/paymentReceived.validation';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { PaymentReceived } from '../../../types/paymentReceived/PaymentReceivedTypes';
 
@@ -229,7 +234,6 @@ const PaymentReceivedEdit: React.FC = () => {
       const data = await getPayment(paymentId) as PaymentReceived;
       if (data) {
         setOriginalPayment(data);
-        // Populate form with payment data
         setFormData({
           customerId: data.customerId || '',
           customerName: data.customerName || '',
@@ -246,13 +250,11 @@ const PaymentReceivedEdit: React.FC = () => {
           notes: data.notes || '',
           status: data.status as PaymentStatus || 'completed',
         });
-        // Set initial snapshot after form is populated
         setTimeout(() => {
           initialSnapshotRef.current = JSON.stringify(formData);
           setHasChanges(false);
         }, 0);
       } else {
-        // Fallback to dummy data if API returns nothing
         const dummyData = generateDummyPayment(paymentId);
         if (dummyData) {
           setOriginalPayment(dummyData);
@@ -284,7 +286,6 @@ const PaymentReceivedEdit: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading payment:', error);
-      // Try dummy data on error
       const dummyData = generateDummyPayment(paymentId);
       if (dummyData) {
         setOriginalPayment(dummyData);
@@ -327,7 +328,7 @@ const PaymentReceivedEdit: React.FC = () => {
   }, [formData, loading]);
 
   // Handle customer selection from dropdown
-  const handleCustomerSelect = (selectedOption: DropdownOption) => {
+  const handleCustomerSelect = useCallback((selectedOption: DropdownOption) => {
     const details = CUSTOMER_DETAILS[selectedOption.value];
     if (details) {
       setFormData(prev => ({
@@ -345,17 +346,15 @@ const PaymentReceivedEdit: React.FC = () => {
       }));
     }
     // Clear customer error if exists
-    if (errors.customerId) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.customerId;
-        return newErrors;
-      });
-    }
-  };
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.customerId;
+      return newErrors;
+    });
+  }, []);
 
   // Handle invoice selection from dropdown
-  const handleInvoiceSelect = (selectedOption: DropdownOption) => {
+  const handleInvoiceSelect = useCallback((selectedOption: DropdownOption) => {
     const details = INVOICE_DETAILS[selectedOption.value];
     if (details) {
       setFormData(prev => ({
@@ -365,28 +364,26 @@ const PaymentReceivedEdit: React.FC = () => {
         amount: details.amount,
       }));
     }
-  };
+  }, []);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.customerId) newErrors.customerId = 'Customer is required';
-    if (!formData.amount || formData.amount <= 0) newErrors.amount = 'Valid amount is required';
-    if (!formData.paymentMethod) newErrors.paymentMethod = 'Payment method is required';
-    
-    // Additional validations based on payment method
-    if (formData.paymentMethod === 'cheque') {
-      if (!formData.chequeNumber) newErrors.chequeNumber = 'Cheque number is required';
-      if (!formData.chequeDate) newErrors.chequeDate = 'Cheque date is required';
-    }
-    if (formData.paymentMethod === 'bank_transfer' && !formData.referenceNumber) {
-      newErrors.referenceNumber = 'Reference number is required for bank transfer';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const handleInputChange = useCallback((field: keyof PaymentFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error for this field when updated
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validateForm = useCallback((): boolean => {
+    const result = validatePaymentReceivedForm(formData);
+    const formattedErrors = formatValidationErrors(result.errors);
+    setErrors(formattedErrors);
+    return result.isValid;
+  }, [formData]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
       showError('Please fix the validation errors before submitting.');
@@ -401,7 +398,6 @@ const PaymentReceivedEdit: React.FC = () => {
     await withLoading(
       async () => {
         await updatePayment(id, formData);
-        // Small delay to show success before navigation
         await new Promise(resolve => setTimeout(resolve, 500));
         navigate(`/sales/payments-received/${id}/view`);
       },
@@ -409,10 +405,10 @@ const PaymentReceivedEdit: React.FC = () => {
       `Payment of ₹${formData.amount.toLocaleString()} updated successfully.`,
       'Failed to update payment. Please try again.'
     );
-  };
+  }, [formData, id, validateForm, showError, withLoading, updatePayment, navigate]);
 
   // Cancel handler with unsaved changes confirmation
-  const handleCancel = async () => {
+  const handleCancel = useCallback(async () => {
     if (!hasChanges) {
       navigate(`/sales/payments-received/${id}/view`);
       return;
@@ -429,10 +425,10 @@ const PaymentReceivedEdit: React.FC = () => {
         navigate(`/sales/payments-received/${id}/view`);
       }
     );
-  };
+  }, [hasChanges, withConfirmation, navigate, id]);
 
   // Reset form to original state
-  const handleReset = async () => {
+  const handleReset = useCallback(async () => {
     if (!hasChanges) {
       warning('No changes to reset.');
       return;
@@ -470,10 +466,10 @@ const PaymentReceivedEdit: React.FC = () => {
         }
       }
     );
-  };
+  }, [hasChanges, withConfirmation, originalPayment, formData, warning, success]);
 
   // Delete payment handler
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!id) return;
     
     await withConfirmation(
@@ -496,12 +492,18 @@ const PaymentReceivedEdit: React.FC = () => {
         );
       }
     );
-  };
+  }, [id, withConfirmation, withLoading, deletePayment, navigate]);
+
+  // Check if there are any errors
+  const hasErrors = Object.keys(errors).length > 0;
+
+  // Check if editable
+  const isEditable = originalPayment?.status === 'pending';
 
   if (loading || hookLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading payment data..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -522,9 +524,6 @@ const PaymentReceivedEdit: React.FC = () => {
       </div>
     );
   }
-
-  // Show warning if payment is not pending
-  const isEditable = originalPayment.status === 'pending';
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -565,7 +564,15 @@ const PaymentReceivedEdit: React.FC = () => {
               <Trash2 className="h-4 w-4" />
               Delete
             </button>
-
+            {hasChanges && (
+              <button
+                type="button"
+                onClick={handleReset}
+                className="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Reset
+              </button>
+            )}
             <button
               type="button"
               onClick={handleCancel}
@@ -581,10 +588,7 @@ const PaymentReceivedEdit: React.FC = () => {
               title={!isEditable ? 'Only pending payments can be edited' : ''}
             >
               {saving ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  Saving...
-                </>
+                <LoadingSpinner size="sm" />
               ) : (
                 <>
                   <Save className="h-4 w-4" />
@@ -609,18 +613,13 @@ const PaymentReceivedEdit: React.FC = () => {
         )}
 
         {/* Error Summary */}
-        {Object.keys(errors).length > 0 && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.values(errors).map((error, index) => (
-                  <li key={index}>{error}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        {hasErrors && (
+          <ErrorSummary
+            errors={errors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -647,9 +646,7 @@ const PaymentReceivedEdit: React.FC = () => {
                 disabled={!isEditable}
               />
               {errors.customerId && (
-                <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" /> {errors.customerId}
-                </p>
+                <p className="mt-1 text-xs text-red-500">{errors.customerId}</p>
               )}
             </div>
 
@@ -712,16 +709,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   <input
                     type="number"
                     value={formData.amount || ''}
-                    onChange={(e) => {
-                      setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 });
-                      if (errors.amount) {
-                        setErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.amount;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                    onChange={(e) => handleInputChange('amount', parseFloat(e.target.value) || 0)}
                     className={`w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.amount ? 'border-red-500' : 'border-gray-300'
                     } ${!isEditable ? 'bg-gray-50' : 'bg-white'}`}
@@ -732,9 +720,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   />
                 </div>
                 {errors.amount && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.amount}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.amount}</p>
                 )}
               </div>
               <div>
@@ -745,16 +731,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <select
                     value={formData.paymentMethod}
-                    onChange={(e) => {
-                      setFormData({ ...formData, paymentMethod: e.target.value as any });
-                      if (errors.paymentMethod) {
-                        setErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.paymentMethod;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                    onChange={(e) => handleInputChange('paymentMethod', e.target.value as any)}
                     className={`w-full pl-9 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none ${
                       errors.paymentMethod ? 'border-red-500' : 'border-gray-300'
                     } ${!isEditable ? 'bg-gray-50' : 'bg-white'}`}
@@ -769,9 +746,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   </select>
                 </div>
                 {errors.paymentMethod && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.paymentMethod}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.paymentMethod}</p>
                 )}
               </div>
               <div>
@@ -784,16 +759,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   <input
                     type="text"
                     value={formData.referenceNumber}
-                    onChange={(e) => {
-                      setFormData({ ...formData, referenceNumber: e.target.value });
-                      if (errors.referenceNumber) {
-                        setErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.referenceNumber;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                    onChange={(e) => handleInputChange('referenceNumber', e.target.value)}
                     className={`w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.referenceNumber ? 'border-red-500' : 'border-gray-300'
                     } ${!isEditable ? 'bg-gray-50' : 'bg-white'}`}
@@ -802,9 +768,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   />
                 </div>
                 {errors.referenceNumber && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.referenceNumber}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.referenceNumber}</p>
                 )}
               </div>
               <div>
@@ -816,7 +780,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   <input
                     type="text"
                     value={formData.bankName}
-                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                    onChange={(e) => handleInputChange('bankName', e.target.value)}
                     className={`w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       !isEditable ? 'bg-gray-50' : 'bg-white'
                     }`}
@@ -835,16 +799,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   <input
                     type="text"
                     value={formData.chequeNumber}
-                    onChange={(e) => {
-                      setFormData({ ...formData, chequeNumber: e.target.value });
-                      if (errors.chequeNumber) {
-                        setErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.chequeNumber;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                    onChange={(e) => handleInputChange('chequeNumber', e.target.value)}
                     className={`w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.chequeNumber ? 'border-red-500' : 'border-gray-300'
                     } ${!isEditable ? 'bg-gray-50' : 'bg-white'}`}
@@ -853,9 +808,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   />
                 </div>
                 {errors.chequeNumber && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.chequeNumber}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.chequeNumber}</p>
                 )}
               </div>
               <div>
@@ -868,16 +821,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   <input
                     type="date"
                     value={formData.chequeDate}
-                    onChange={(e) => {
-                      setFormData({ ...formData, chequeDate: e.target.value });
-                      if (errors.chequeDate) {
-                        setErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.chequeDate;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                    onChange={(e) => handleInputChange('chequeDate', e.target.value)}
                     className={`w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.chequeDate ? 'border-red-500' : 'border-gray-300'
                     } ${!isEditable ? 'bg-gray-50' : 'bg-white'}`}
@@ -885,9 +829,7 @@ const PaymentReceivedEdit: React.FC = () => {
                   />
                 </div>
                 {errors.chequeDate && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.chequeDate}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.chequeDate}</p>
                 )}
               </div>
             </div>
@@ -902,7 +844,7 @@ const PaymentReceivedEdit: React.FC = () => {
             <div>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                onChange={(e) => handleInputChange('status', e.target.value as any)}
                 className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                   !isEditable ? 'bg-gray-50' : 'bg-white'
                 }`}
@@ -927,7 +869,7 @@ const PaymentReceivedEdit: React.FC = () => {
             </h2>
             <textarea
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
               rows={3}
               className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                 !isEditable ? 'bg-gray-50' : 'bg-white'
@@ -936,10 +878,16 @@ const PaymentReceivedEdit: React.FC = () => {
               disabled={!isEditable}
             />
           </div>
-
-
         </form>
       </div>
+
+      {saving && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

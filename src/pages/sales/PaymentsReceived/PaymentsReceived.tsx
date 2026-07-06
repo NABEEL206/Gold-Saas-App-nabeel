@@ -25,21 +25,22 @@ import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { formatCurrency } from '../../../utils/Invoice/calculations';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { PaymentReceived } from '../../../types/paymentReceived/PaymentReceivedTypes';
 
 // Status Badge
 const StatusBadge: React.FC<{ status: PaymentReceived['status'] }> = ({ status }) => {
-  const config = {
-    completed: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Completed' },
-    pending: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Pending' },
-    failed: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Failed' },
-    refunded: { color: 'bg-gray-100 text-gray-700', icon: XCircle, label: 'Refunded' },
+  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    completed: { color: 'bg-green-100 text-green-700', icon: <CheckCircle className="h-3 w-3" />, label: 'Completed' },
+    pending: { color: 'bg-yellow-100 text-yellow-700', icon: <Clock className="h-3 w-3" />, label: 'Pending' },
+    failed: { color: 'bg-red-100 text-red-700', icon: <XCircle className="h-3 w-3" />, label: 'Failed' },
+    refunded: { color: 'bg-gray-100 text-gray-700', icon: <XCircle className="h-3 w-3" />, label: 'Refunded' },
   };
-  const { color, icon: Icon, label } = config[status] || config.pending;
+  const { color, icon, label } = config[status] || config.pending;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+      {icon}
       {label}
     </span>
   );
@@ -47,18 +48,18 @@ const StatusBadge: React.FC<{ status: PaymentReceived['status'] }> = ({ status }
 
 // Payment Method Badge
 const PaymentMethodBadge: React.FC<{ method: PaymentReceived['paymentMethod'] }> = ({ method }) => {
-  const config = {
-    cash: { icon: Banknote, label: 'Cash' },
-    bank_transfer: { icon: Landmark, label: 'Bank Transfer' },
-    cheque: { icon: Receipt, label: 'Cheque' },
-    credit_card: { icon: CreditCard, label: 'Credit Card' },
-    upi: { icon: Wallet, label: 'UPI' },
-    other: { icon: Receipt, label: 'Other' },
+  const config: Record<string, { icon: React.ReactNode; label: string }> = {
+    cash: { icon: <Banknote className="h-3 w-3" />, label: 'Cash' },
+    bank_transfer: { icon: <Landmark className="h-3 w-3" />, label: 'Bank Transfer' },
+    cheque: { icon: <Receipt className="h-3 w-3" />, label: 'Cheque' },
+    credit_card: { icon: <CreditCard className="h-3 w-3" />, label: 'Credit Card' },
+    upi: { icon: <Wallet className="h-3 w-3" />, label: 'UPI' },
+    other: { icon: <Receipt className="h-3 w-3" />, label: 'Other' },
   };
-  const { icon: Icon, label } = config[method] || config.other;
+  const { icon, label } = config[method] || config.other;
   return (
     <span className="inline-flex items-center gap-1 text-xs text-gray-600">
-      <Icon className="h-3 w-3" />
+      {icon}
       {label}
     </span>
   );
@@ -75,6 +76,8 @@ const PaymentsReceived: React.FC = () => {
     totalItems,
     itemsPerPage,
     totalPages,
+    startIndex,
+    endIndex,
     setFilters,
     setCurrentPage,
     deletePayment,
@@ -110,8 +113,8 @@ const PaymentsReceived: React.FC = () => {
     navigate(`/sales/payments-received/${payment.id}/view`);
   }, [navigate]);
 
-  const handleEdit = useCallback((payment: PaymentReceived) => {
-    navigate(`/sales/payments-received/${payment.id}/edit`);
+  const handleCreateNew = useCallback(() => {
+    navigate('/sales/payments-received/create');
   }, [navigate]);
 
   // Single delete handler using confirmation modal
@@ -254,6 +257,26 @@ const PaymentsReceived: React.FC = () => {
     }
   }, [handleImport, success, showError]);
 
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters({ ...filters, search: e.target.value });
+  }, [filters, setFilters]);
+
+  const handleStatusFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilters({ ...filters, status: e.target.value });
+  }, [filters, setFilters]);
+
+  const handlePaymentMethodFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilters({ ...filters, paymentMethod: e.target.value });
+  }, [filters, setFilters]);
+
+  const handleDateFromChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters({ ...filters, dateFrom: e.target.value });
+  }, [filters, setFilters]);
+
+  const handleDateToChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters({ ...filters, dateTo: e.target.value });
+  }, [filters, setFilters]);
+
   // Columns
   const columns: TableColumn<PaymentReceived>[] = [
     {
@@ -291,7 +314,7 @@ const PaymentsReceived: React.FC = () => {
       key: 'amount',
       header: 'Amount',
       render: (item) => (
-        <span className="text-sm font-semibold text-amber-600">₹{item.amount.toLocaleString()}</span>
+        <span className="text-sm font-semibold text-amber-600">{formatCurrency(item.amount)}</span>
       ),
     },
     {
@@ -334,7 +357,7 @@ const PaymentsReceived: React.FC = () => {
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading payments..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -348,23 +371,26 @@ const PaymentsReceived: React.FC = () => {
             <Receipt className="h-6 w-6 text-amber-500" />
             Payments Received
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage customer payments</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {totalItems > 0 ? `${totalItems} total payments` : 'Manage customer payments'}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleRefreshWithLoading}
             disabled={refreshLoading}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh payment list"
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
           <button
-            onClick={() => navigate('/sales/payments-received/create')}
+            onClick={handleCreateNew}
             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
           >
             <Plus className="h-4 w-4" />
@@ -412,7 +438,7 @@ const PaymentsReceived: React.FC = () => {
                 type="text"
                 placeholder="Search by payment # or customer..."
                 value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                onChange={handleSearchChange}
                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -420,8 +446,8 @@ const PaymentsReceived: React.FC = () => {
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-gray-400" />
             <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              value={filters.status || ''}
+              onChange={handleStatusFilterChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="">All Status</option>
@@ -434,7 +460,7 @@ const PaymentsReceived: React.FC = () => {
           <div className="flex items-center gap-2">
             <select
               value={filters.paymentMethod || ''}
-              onChange={(e) => setFilters({ ...filters, paymentMethod: e.target.value })}
+              onChange={handlePaymentMethodFilterChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="">All Methods</option>
@@ -450,7 +476,7 @@ const PaymentsReceived: React.FC = () => {
             <input
               type="date"
               value={filters.dateFrom || ''}
-              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+              onChange={handleDateFromChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="Start Date"
             />
@@ -458,7 +484,7 @@ const PaymentsReceived: React.FC = () => {
             <input
               type="date"
               value={filters.dateTo || ''}
-              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+              onChange={handleDateToChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="End Date"
             />

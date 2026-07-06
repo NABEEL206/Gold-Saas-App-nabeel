@@ -1,5 +1,5 @@
 // src/pages/sales/PaymentReceived/PaymentReceivedCreate.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -22,6 +22,11 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ErrorSummary from '../../../components/common/ErrorSummary';
+import {
+  validatePaymentReceivedForm,
+  formatValidationErrors,
+} from '../../../validations/paymentReceived.validation';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 
 // Demo customers as DropdownOption[]
@@ -125,7 +130,7 @@ const PaymentReceivedCreate: React.FC = () => {
   }, [formData]);
 
   // Handle customer selection from dropdown
-  const handleCustomerSelect = (selectedOption: DropdownOption) => {
+  const handleCustomerSelect = useCallback((selectedOption: DropdownOption) => {
     const details = CUSTOMER_DETAILS[selectedOption.value];
     if (details) {
       setFormData(prev => ({
@@ -143,17 +148,15 @@ const PaymentReceivedCreate: React.FC = () => {
       }));
     }
     // Clear customer error if exists
-    if (errors.customerId) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.customerId;
-        return newErrors;
-      });
-    }
-  };
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.customerId;
+      return newErrors;
+    });
+  }, []);
 
   // Handle invoice selection from dropdown
-  const handleInvoiceSelect = (selectedOption: DropdownOption) => {
+  const handleInvoiceSelect = useCallback((selectedOption: DropdownOption) => {
     const details = INVOICE_DETAILS[selectedOption.value];
     if (details) {
       setFormData(prev => ({
@@ -163,28 +166,26 @@ const PaymentReceivedCreate: React.FC = () => {
         amount: details.amount,
       }));
     }
-  };
+  }, []);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.customerId) newErrors.customerId = 'Customer is required';
-    if (!formData.amount || formData.amount <= 0) newErrors.amount = 'Valid amount is required';
-    if (!formData.paymentMethod) newErrors.paymentMethod = 'Payment method is required';
-    
-    // Additional validations based on payment method
-    if (formData.paymentMethod === 'cheque') {
-      if (!formData.chequeNumber) newErrors.chequeNumber = 'Cheque number is required';
-      if (!formData.chequeDate) newErrors.chequeDate = 'Cheque date is required';
-    }
-    if (formData.paymentMethod === 'bank_transfer' && !formData.referenceNumber) {
-      newErrors.referenceNumber = 'Reference number is required for bank transfer';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const validateForm = useCallback((): boolean => {
+    const result = validatePaymentReceivedForm(formData);
+    const formattedErrors = formatValidationErrors(result.errors);
+    setErrors(formattedErrors);
+    return result.isValid;
+  }, [formData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleInputChange = useCallback((field: keyof PaymentFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error for this field when updated
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
       showError('Please fix the validation errors before submitting.');
@@ -194,7 +195,6 @@ const PaymentReceivedCreate: React.FC = () => {
     await withLoading(
       async () => {
         await createPayment(formData);
-        // Small delay to show success before navigation
         await new Promise(resolve => setTimeout(resolve, 500));
         navigate('/sales/payments-received');
       },
@@ -202,10 +202,10 @@ const PaymentReceivedCreate: React.FC = () => {
       `Payment of ₹${formData.amount.toLocaleString()} recorded successfully.`,
       'Failed to record payment. Please try again.'
     );
-  };
+  }, [formData, validateForm, showError, withLoading, createPayment, navigate]);
 
   // Cancel handler with unsaved changes confirmation
-  const handleCancel = async () => {
+  const handleCancel = useCallback(async () => {
     if (!hasChanges) {
       navigate('/sales/payments-received');
       return;
@@ -222,10 +222,10 @@ const PaymentReceivedCreate: React.FC = () => {
         navigate('/sales/payments-received');
       }
     );
-  };
+  }, [hasChanges, withConfirmation, navigate]);
 
   // Clear form handler with confirmation
-  const handleClearForm = async () => {
+  const handleClearForm = useCallback(async () => {
     if (!hasChanges) return;
 
     await withConfirmation(
@@ -257,12 +257,15 @@ const PaymentReceivedCreate: React.FC = () => {
         success('Form cleared successfully.');
       }
     );
-  };
+  }, [hasChanges, withConfirmation, success]);
+
+  // Check if there are any errors
+  const hasErrors = Object.keys(errors).length > 0;
 
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -313,10 +316,7 @@ const PaymentReceivedCreate: React.FC = () => {
               className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  Saving...
-                </>
+                <LoadingSpinner size="sm" />
               ) : (
                 <>
                   <Save className="h-4 w-4" />
@@ -328,18 +328,13 @@ const PaymentReceivedCreate: React.FC = () => {
         </div>
 
         {/* Error Summary */}
-        {Object.keys(errors).length > 0 && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.values(errors).map((error, index) => (
-                  <li key={index}>{error}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        {hasErrors && (
+          <ErrorSummary
+            errors={errors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -365,9 +360,7 @@ const PaymentReceivedCreate: React.FC = () => {
                 resetSearchOnOpen={true}
               />
               {errors.customerId && (
-                <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" /> {errors.customerId}
-                </p>
+                <p className="mt-1 text-xs text-red-500">{errors.customerId}</p>
               )}
             </div>
 
@@ -413,16 +406,7 @@ const PaymentReceivedCreate: React.FC = () => {
                   <input
                     type="number"
                     value={formData.amount || ''}
-                    onChange={(e) => {
-                      setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 });
-                      if (errors.amount) {
-                        setErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.amount;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                    onChange={(e) => handleInputChange('amount', parseFloat(e.target.value) || 0)}
                     className={`w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.amount ? 'border-red-500' : 'border-gray-300'
                     }`}
@@ -432,9 +416,7 @@ const PaymentReceivedCreate: React.FC = () => {
                   />
                 </div>
                 {errors.amount && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.amount}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.amount}</p>
                 )}
               </div>
               <div>
@@ -445,16 +427,7 @@ const PaymentReceivedCreate: React.FC = () => {
                   <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <select
                     value={formData.paymentMethod}
-                    onChange={(e) => {
-                      setFormData({ ...formData, paymentMethod: e.target.value as any });
-                      if (errors.paymentMethod) {
-                        setErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.paymentMethod;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                    onChange={(e) => handleInputChange('paymentMethod', e.target.value as any)}
                     className={`w-full pl-9 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none bg-white ${
                       errors.paymentMethod ? 'border-red-500' : 'border-gray-300'
                     }`}
@@ -468,9 +441,7 @@ const PaymentReceivedCreate: React.FC = () => {
                   </select>
                 </div>
                 {errors.paymentMethod && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.paymentMethod}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.paymentMethod}</p>
                 )}
               </div>
               <div>
@@ -483,16 +454,7 @@ const PaymentReceivedCreate: React.FC = () => {
                   <input
                     type="text"
                     value={formData.referenceNumber}
-                    onChange={(e) => {
-                      setFormData({ ...formData, referenceNumber: e.target.value });
-                      if (errors.referenceNumber) {
-                        setErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.referenceNumber;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                    onChange={(e) => handleInputChange('referenceNumber', e.target.value)}
                     className={`w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.referenceNumber ? 'border-red-500' : 'border-gray-300'
                     }`}
@@ -500,9 +462,7 @@ const PaymentReceivedCreate: React.FC = () => {
                   />
                 </div>
                 {errors.referenceNumber && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.referenceNumber}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.referenceNumber}</p>
                 )}
               </div>
               <div>
@@ -514,7 +474,7 @@ const PaymentReceivedCreate: React.FC = () => {
                   <input
                     type="text"
                     value={formData.bankName}
-                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                    onChange={(e) => handleInputChange('bankName', e.target.value)}
                     className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Enter bank name"
                   />
@@ -530,16 +490,7 @@ const PaymentReceivedCreate: React.FC = () => {
                   <input
                     type="text"
                     value={formData.chequeNumber}
-                    onChange={(e) => {
-                      setFormData({ ...formData, chequeNumber: e.target.value });
-                      if (errors.chequeNumber) {
-                        setErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.chequeNumber;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                    onChange={(e) => handleInputChange('chequeNumber', e.target.value)}
                     className={`w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.chequeNumber ? 'border-red-500' : 'border-gray-300'
                     }`}
@@ -547,9 +498,7 @@ const PaymentReceivedCreate: React.FC = () => {
                   />
                 </div>
                 {errors.chequeNumber && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.chequeNumber}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.chequeNumber}</p>
                 )}
               </div>
               <div>
@@ -562,25 +511,14 @@ const PaymentReceivedCreate: React.FC = () => {
                   <input
                     type="date"
                     value={formData.chequeDate}
-                    onChange={(e) => {
-                      setFormData({ ...formData, chequeDate: e.target.value });
-                      if (errors.chequeDate) {
-                        setErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.chequeDate;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                    onChange={(e) => handleInputChange('chequeDate', e.target.value)}
                     className={`w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       errors.chequeDate ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />
                 </div>
                 {errors.chequeDate && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.chequeDate}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.chequeDate}</p>
                 )}
               </div>
             </div>
@@ -595,7 +533,7 @@ const PaymentReceivedCreate: React.FC = () => {
             <div>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                onChange={(e) => handleInputChange('status', e.target.value as any)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
               >
                 <option value="completed">Completed</option>
@@ -614,7 +552,7 @@ const PaymentReceivedCreate: React.FC = () => {
             </h2>
             <textarea
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="Enter any notes..."
@@ -622,6 +560,14 @@ const PaymentReceivedCreate: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {saving && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

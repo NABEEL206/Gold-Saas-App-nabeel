@@ -1,10 +1,16 @@
-// src/hooks/sales/usePaymentReceived.ts
+// src/hooks/PaymentReceived/usePaymentReceived.ts
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { 
   PaymentReceived, 
   PaymentReceivedFilters,
   PaymentReceivedStats 
 } from '../../types/paymentReceived/PaymentReceivedTypes';
+import {
+  validatePaymentReceivedForm,
+  formatValidationErrors,
+  type PaymentReceivedValidationErrors,
+  type ValidationResult,
+} from '../../validations/paymentReceived.validation';
 
 // Mock data
 const MOCK_PAYMENTS: PaymentReceived[] = [
@@ -99,7 +105,12 @@ export const usePaymentReceived = () => {
     customerId: '',
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+  });
 
   // Load payments
   const loadPayments = useCallback(() => {
@@ -137,6 +148,10 @@ export const usePaymentReceived = () => {
       filtered = filtered.filter((payment) => payment.paymentMethod === filters.paymentMethod);
     }
 
+    if (filters.customerId) {
+      filtered = filtered.filter((payment) => payment.customerId === filters.customerId);
+    }
+
     if (filters.dateFrom) {
       filtered = filtered.filter(
         (payment) => new Date(payment.paymentDate) >= new Date(filters.dateFrom)
@@ -153,26 +168,73 @@ export const usePaymentReceived = () => {
 
   const totalItems = filteredPayments.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const currentItems = filteredPayments.slice(startIndex, endIndex);
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(startIndex + itemsPerPage - 1, totalItems);
+  const currentItems = filteredPayments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   // Stats
   const stats = useMemo<PaymentReceivedStats>(() => {
     const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
     const completedCount = payments.filter((p) => p.status === 'completed').length;
     const pendingCount = payments.filter((p) => p.status === 'pending').length;
+    const failedCount = payments.filter((p) => p.status === 'failed').length;
+    const refundedCount = payments.filter((p) => p.status === 'refunded').length;
 
     return {
       totalPayments: payments.length,
       totalAmount,
       completedCount,
       pendingCount,
+      failedCount,
+      refundedCount,
     };
   }, [payments]);
 
-  // CRUD operations
+  // ─── Validation ───
+
+  /**
+   * Validate payment form data
+   */
+  const validatePayment = useCallback((formData: any): boolean => {
+    const result = validatePaymentReceivedForm(formData);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result.errors);
+    setErrors(formattedErrors);
+    
+    return result.isValid;
+  }, []);
+
+  /**
+   * Clear all errors
+   */
+  const clearErrors = useCallback(() => {
+    setErrors({});
+    setValidationResult({
+      isValid: true,
+      errors: {},
+    });
+  }, []);
+
+  /**
+   * Clear error for a specific field
+   */
+  const clearFieldError = useCallback((field: string) => {
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
+
+  // ─── CRUD Operations ───
+
   const createPayment = useCallback(async (data: any) => {
+    // Validate before creating
+    if (!validatePayment(data)) {
+      throw new Error('Validation failed');
+    }
+
     return new Promise((resolve) => {
       setTimeout(() => {
         const newPayment: PaymentReceived = {
@@ -183,26 +245,32 @@ export const usePaymentReceived = () => {
           customerName: data.customerName,
           customerEmail: data.customerEmail,
           customerPhone: data.customerPhone,
-          invoiceId: data.invoiceId,
-          invoiceNumber: data.invoiceNumber,
+          invoiceId: data.invoiceId || '',
+          invoiceNumber: data.invoiceNumber || '',
           amount: data.amount,
           paymentMethod: data.paymentMethod || 'cash',
-          referenceNumber: data.referenceNumber,
-          bankName: data.bankName,
-          chequeNumber: data.chequeNumber,
-          chequeDate: data.chequeDate,
-          notes: data.notes,
+          referenceNumber: data.referenceNumber || '',
+          bankName: data.bankName || '',
+          chequeNumber: data.chequeNumber || '',
+          chequeDate: data.chequeDate || '',
+          notes: data.notes || '',
           status: data.status || 'completed',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
         setPayments(prev => [newPayment, ...prev]);
+        clearErrors();
         resolve(newPayment);
       }, 500);
     });
-  }, []);
+  }, [validatePayment, clearErrors]);
 
   const updatePayment = useCallback(async (id: string, data: any) => {
+    // Validate before updating
+    if (!validatePayment(data)) {
+      throw new Error('Validation failed');
+    }
+
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         const index = payments.findIndex((p) => p.id === id);
@@ -211,13 +279,14 @@ export const usePaymentReceived = () => {
           const newPayments = [...payments];
           newPayments[index] = updated;
           setPayments(newPayments);
+          clearErrors();
           resolve(updated);
         } else {
           reject(new Error('Payment not found'));
         }
       }, 500);
     });
-  }, [payments]);
+  }, [payments, validatePayment, clearErrors]);
 
   const deletePayment = useCallback(async (id: string) => {
     return new Promise((resolve, reject) => {
@@ -237,9 +306,24 @@ export const usePaymentReceived = () => {
   const getPayment = useCallback(async (id: string) => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
+        // Check state first
         const payment = payments.find((p) => p.id === id);
         if (payment) {
           resolve({ ...payment });
+          return;
+        }
+
+        // Check mock data directly
+        const mockPayment = MOCK_PAYMENTS.find((p) => p.id === id);
+        if (mockPayment) {
+          setPayments(prev => {
+            const exists = prev.some(p => p.id === id);
+            if (!exists) {
+              return [...prev, { ...mockPayment }];
+            }
+            return prev;
+          });
+          resolve({ ...mockPayment });
         } else {
           reject(new Error('Payment not found'));
         }
@@ -286,7 +370,22 @@ export const usePaymentReceived = () => {
     });
   }, []);
 
+  const setPage = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  const handleSetItemsPerPage = useCallback((newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  }, []);
+
+  const handleSetFilters = useCallback((newFilters: PaymentReceivedFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  }, []);
+
   return {
+    // State
     loading,
     payments,
     currentItems,
@@ -298,8 +397,13 @@ export const usePaymentReceived = () => {
     startIndex,
     endIndex,
     totalPages,
-    setFilters,
-    setCurrentPage,
+    errors,
+    validationResult,
+    
+    // Actions
+    setFilters: handleSetFilters,
+    setCurrentPage: setPage,
+    setItemsPerPage: handleSetItemsPerPage,
     createPayment,
     updatePayment,
     deletePayment,
@@ -308,5 +412,9 @@ export const usePaymentReceived = () => {
     handleExport,
     handleImport,
     handleRefresh,
+    loadPayments,
+    validatePayment,
+    clearErrors,
+    clearFieldError,
   };
 };

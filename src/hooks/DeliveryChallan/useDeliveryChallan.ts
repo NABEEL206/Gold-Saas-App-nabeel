@@ -274,6 +274,21 @@ const MOCK_CHALLANS: DeliveryChallan[] = [
 
 let challanCounter = 5;
 
+// Helper to get initial form data
+const getInitialState = () => ({
+  loading: true,
+  challans: [] as DeliveryChallan[],
+  filters: {
+    search: '',
+    status: '',
+    dateFrom: '',
+    dateTo: '',
+    customerId: '',
+  } as DeliveryChallanFilters,
+  currentPage: 1,
+  itemsPerPage: 5,
+});
+
 export const useDeliveryChallan = () => {
   const [loading, setLoading] = useState(true);
   const [challans, setChallans] = useState<DeliveryChallan[]>([]);
@@ -285,7 +300,7 @@ export const useDeliveryChallan = () => {
     customerId: '',
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   // Load challans
   const loadChallans = useCallback(() => {
@@ -296,6 +311,7 @@ export const useDeliveryChallan = () => {
     }, 500);
   }, []);
 
+  // Initial load
   useEffect(() => {
     loadChallans();
   }, [loadChallans]);
@@ -329,14 +345,18 @@ export const useDeliveryChallan = () => {
       );
     }
 
+    if (filters.customerId) {
+      filtered = filtered.filter((challan) => challan.customerId === filters.customerId);
+    }
+
     return filtered;
   }, [challans, filters]);
 
   const totalItems = filteredChallans.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const currentItems = filteredChallans.slice(startIndex, endIndex);
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(startIndex + itemsPerPage - 1, totalItems);
+  const currentItems = filteredChallans.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   // Stats
   const stats = useMemo<DeliveryChallanStats>(() => {
@@ -360,7 +380,7 @@ export const useDeliveryChallan = () => {
       setTimeout(() => {
         const newChallan: DeliveryChallan = {
           id: String(challanCounter++),
-          challanNumber: `DC-2024-${String(challanCounter - 1).padStart(3, '0')}`,
+          challanNumber: data.challanNumber || `DC-2024-${String(challanCounter - 1).padStart(3, '0')}`,
           challanDate: data.challanDate || new Date().toISOString().split('T')[0],
           deliveryDate: data.deliveryDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           customerId: data.customerId,
@@ -432,24 +452,26 @@ export const useDeliveryChallan = () => {
   const getChallan = useCallback(async (id: string) => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
+        // Check state first
         const challan = challans.find((ch) => ch.id === id);
         if (challan) {
           resolve({ ...challan });
+          return;
+        }
+
+        // Check mock data directly
+        const mockChallan = MOCK_CHALLANS.find((ch) => ch.id === id);
+        if (mockChallan) {
+          setChallans(prev => {
+            const exists = prev.some(ch => ch.id === id);
+            if (!exists) {
+              return [...prev, { ...mockChallan }];
+            }
+            return prev;
+          });
+          resolve({ ...mockChallan });
         } else {
-          // Check mock data directly
-          const mockChallan = MOCK_CHALLANS.find((ch) => ch.id === id);
-          if (mockChallan) {
-            setChallans(prev => {
-              const exists = prev.some(ch => ch.id === id);
-              if (!exists) {
-                return [...prev, { ...mockChallan }];
-              }
-              return prev;
-            });
-            resolve({ ...mockChallan });
-          } else {
-            reject(new Error('Delivery Challan not found'));
-          }
+          reject(new Error('Delivery Challan not found'));
         }
       }, 300);
     });
@@ -494,7 +516,22 @@ export const useDeliveryChallan = () => {
     });
   }, []);
 
+  const setPage = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  const handleSetItemsPerPage = useCallback((newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  }, []);
+
+  const handleSetFilters = useCallback((newFilters: DeliveryChallanFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  }, []);
+
   return {
+    // State
     loading,
     challans,
     currentItems,
@@ -506,8 +543,11 @@ export const useDeliveryChallan = () => {
     startIndex,
     endIndex,
     totalPages,
-    setFilters,
-    setCurrentPage,
+    
+    // Actions
+    setFilters: handleSetFilters,
+    setCurrentPage: setPage,
+    setItemsPerPage: handleSetItemsPerPage,
     createChallan,
     updateChallan,
     deleteChallan,
@@ -516,5 +556,6 @@ export const useDeliveryChallan = () => {
     handleExport,
     handleImport,
     handleRefresh,
+    loadChallans,
   };
 };

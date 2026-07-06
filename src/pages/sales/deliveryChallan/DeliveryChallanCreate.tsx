@@ -1,5 +1,5 @@
 // src/pages/sales/deliveryChallan/DeliveryChallanCreate.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -21,6 +21,12 @@ import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ErrorSummary from '../../../components/common/ErrorSummary';
+import {
+  validateDeliveryChallanForm,
+  formatValidationErrors,
+  type ValidationResult,
+} from '../../../validations/deliveryChallan.validation';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
@@ -43,6 +49,18 @@ const MOCK_PRODUCTS = [
   { id: '6', name: 'Silver Necklace', code: 'SN-001', category: 'Necklace', purity: '18K', price: 2800, description: '18K Silver Necklace with chain', unit: 'Pcs' },
 ];
 
+// Default columns configuration for Delivery Challan
+const deliveryChallanColumns: any[] = [
+  { key: 'productName', label: 'Product' },
+  { key: 'description', label: 'Description' },
+  { key: 'quantity', label: 'Qty' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'rate', label: 'Rate' },
+  { key: 'discount', label: 'Discount' },
+  { key: 'taxRate', label: 'Tax' },
+  { key: 'total', label: 'Total' },
+];
+
 const DeliveryChallanCreate: React.FC = () => {
   const navigate = useNavigate();
   const { createChallan } = useDeliveryChallan();
@@ -51,7 +69,7 @@ const DeliveryChallanCreate: React.FC = () => {
     productSearch,
     setProductSearch,
     productSuggestions,
-    errors,
+    errors: hookErrors,
     saving,
     totals,
     addItem,
@@ -74,6 +92,12 @@ const DeliveryChallanCreate: React.FC = () => {
 
   const [savingForm, setSavingForm] = useState(false);
   const [items, setItems] = useState<ItemSelectionItem[]>(formData.items || []);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+  });
 
   // Whether the user has entered anything worth confirming before discarding
   const hasUnsavedChanges = Boolean(
@@ -81,7 +105,7 @@ const DeliveryChallanCreate: React.FC = () => {
   );
 
   // Handle customer selection from dropdown
-  const handleCustomerSelect = (selectedOption: DropdownOption) => {
+  const handleCustomerSelect = useCallback((selectedOption: DropdownOption) => {
     const customerDetails: Record<string, any> = {
       'CUST-001': { name: 'Rajesh Jewelers', email: 'rajesh@jewelers.com', phone: '+91-98765-43210', address: '123, Jewelry Market, Mumbai', gst: '22AAAAA0000A1Z5' },
       'CUST-002': { name: 'Priya Gold House', email: 'priya@goldhouse.com', phone: '+91-98765-43211', address: '45, Gold Street, Chennai', gst: '22BBBBB0000B1Z5' },
@@ -103,21 +127,50 @@ const DeliveryChallanCreate: React.FC = () => {
       updateFormData('customerId', selectedOption.value);
       updateFormData('customerName', selectedOption.label);
     }
-  };
+    // Clear customer error when selected
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.customerId;
+      delete newErrors.customerName;
+      return newErrors;
+    });
+  }, [updateFormData]);
 
   // Handle items change from ItemSelectionTable
-  const handleItemsChange = (newItems: ItemSelectionItem[]) => {
+  const handleItemsChange = useCallback((newItems: ItemSelectionItem[]) => {
     setItems(newItems);
     updateFormData('items', newItems);
-  };
+    // Clear items error when items change
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.items;
+      return newErrors;
+    });
+  }, [updateFormData]);
 
   // Handle custom item add
-  const handleAddCustomItem = () => {
+  const handleAddCustomItem = useCallback(() => {
     addItem();
-  };
+    // Clear items error when adding an item
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.items;
+      return newErrors;
+    });
+  }, [addItem]);
+
+  const validateForm = useCallback((): boolean => {
+    const result = validateDeliveryChallanForm(formData, items);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result);
+    setValidationErrors(formattedErrors);
+    
+    return result.isValid;
+  }, [formData, items]);
 
   // Cancel handler - confirm before discarding unsaved changes
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     if (!hasUnsavedChanges) {
       navigate('/sales/delivery-challan');
       return;
@@ -134,10 +187,16 @@ const DeliveryChallanCreate: React.FC = () => {
         navigate('/sales/delivery-challan');
       }
     );
-  };
+  }, [hasUnsavedChanges, withConfirmation, navigate]);
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return;
+    }
+    
     try {
       const data = await handleSubmit();
       if (data) {
@@ -153,25 +212,10 @@ const DeliveryChallanCreate: React.FC = () => {
     } finally {
       setSavingForm(false);
     }
-  };
+  }, [validateForm, showError, handleSubmit, createChallan, success, navigate]);
 
-  // Custom columns configuration for Delivery Challan
-  const deliveryChallanColumns = {
-    item: true,
-    purity: true,
-    description: true,
-    grossWt: false,
-    stoneWt: false,
-    netWt: false,
-    qty: true,
-    unit: true,
-    rate: true,
-    making: false,
-    discount: true,
-    tax: true,
-    amount: true,
-    action: true,
-  };
+  // Check if there are any errors
+  const hasErrors = Object.keys(validationErrors).length > 0 || Object.keys(hookErrors).length > 0;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -206,10 +250,7 @@ const DeliveryChallanCreate: React.FC = () => {
               className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               {savingForm ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  Saving...
-                </>
+                <LoadingSpinner size="sm" />
               ) : (
                 <>
                   <Save className="h-4 w-4" />
@@ -219,6 +260,25 @@ const DeliveryChallanCreate: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Error summary - Submit errors */}
+        {(hookErrors.submit || validationErrors.submit) && (
+          <ErrorSummary
+            errors={{ submit: hookErrors.submit || validationErrors.submit || '' }}
+            title="Form Error:"
+            variant="error"
+          />
+        )}
+
+        {/* Validation Error Summary */}
+        {hasErrors && !hookErrors.submit && !validationErrors.submit && (
+          <ErrorSummary
+            errors={validationErrors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
+        )}
 
         <form onSubmit={handleFormSubmit} className="space-y-6">
           {/* Basic Information */}
@@ -239,6 +299,9 @@ const DeliveryChallanCreate: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-gray-900"
                   placeholder="Enter challan number"
                 />
+                {validationErrors.challanNumber && (
+                  <p className="mt-1 text-xs text-red-500">{validationErrors.challanNumber}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -249,13 +312,11 @@ const DeliveryChallanCreate: React.FC = () => {
                   value={formData.challanDate}
                   onChange={(e) => updateFormData('challanDate', e.target.value)}
                   className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.challanDate ? 'border-red-500' : 'border-gray-300'
+                    validationErrors.challanDate ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
-                {errors.challanDate && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.challanDate}
-                  </p>
+                {validationErrors.challanDate && (
+                  <p className="mt-1 text-xs text-red-500">{validationErrors.challanDate}</p>
                 )}
               </div>
               <div>
@@ -293,10 +354,8 @@ const DeliveryChallanCreate: React.FC = () => {
                 emptyStateText="No customers found"
                 resetSearchOnOpen={true}
               />
-              {errors.customerId && (
-                <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" /> {errors.customerId}
-                </p>
+              {validationErrors.customerId && (
+                <p className="mt-1 text-xs text-red-500">{validationErrors.customerId}</p>
               )}
             </div>
 
@@ -346,44 +405,45 @@ const DeliveryChallanCreate: React.FC = () => {
                 onChange={(e) => updateFormData('deliveryAddress', e.target.value)}
                 rows={3}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.deliveryAddress ? 'border-red-500' : 'border-gray-300'
+                  validationErrors.deliveryAddress ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter delivery address..."
               />
-              {errors.deliveryAddress && (
-                <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" /> {errors.deliveryAddress}
-                </p>
+              {validationErrors.deliveryAddress && (
+                <p className="mt-1 text-xs text-red-500">{validationErrors.deliveryAddress}</p>
               )}
             </div>
           </div>
 
-        <ItemSelectionTable
-          items={items}
-          onItemsChange={handleItemsChange}
-          productSuggestions={productSuggestions}
-          productSearch={productSearch}
-          onProductSearchChange={setProductSearch}
-          // Remove onAddCustomItem prop
-          errors={errors}
-          columns={deliveryChallanColumns}
-          showJewelryFields={true}
-          showDescription={true}
-          showDiscount={true}
-          showTax={true}
-          showUnit={true}
-          showPurity={true}
-          showMakingCharges={false}
-          showWeightFields={false}
-          showSubtotalSection={true}
-          showTotalSection={true}
-          searchPlaceholder="Search jewelry items..."
-          addButtonLabel="Add Item"
-          title="Jewelry Items"
-          additionalCharges={[]}
-          autoAddDefaultRow={true}
-          addButtonAtBottom={true}
-        />
+          {/* Items */}
+          <ItemSelectionTable
+            items={items}
+            onItemsChange={handleItemsChange}
+            productSuggestions={productSuggestions}
+            productSearch={productSearch}
+            onProductSearchChange={setProductSearch}
+            errors={validationErrors}
+            columns={deliveryChallanColumns}
+            showJewelryFields={true}
+            showDescription={true}
+            showDiscount={true}
+            showTax={true}
+            showUnit={true}
+            showPurity={true}
+            showMakingCharges={false}
+            showWeightFields={false}
+            showSubtotalSection={true}
+            showTotalSection={true}
+            searchPlaceholder="Search jewelry items..."
+            addButtonLabel="Add Item"
+            title="Jewelry Items"
+            additionalCharges={[]}
+            autoAddDefaultRow={false}
+            addButtonAtBottom={true}
+          />
+          {validationErrors.items && (
+            <p className="mt-1 text-xs text-red-500">{validationErrors.items}</p>
+          )}
 
           {/* Transport Details */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -483,7 +543,13 @@ const DeliveryChallanCreate: React.FC = () => {
         </form>
       </div>
 
-      {savingForm && <LoadingSpinner fullScreen text="Creating delivery challan..." />}
+      {savingForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      )}
 
       {/* Reusable Confirmation Modal */}
       <ConfirmationModal

@@ -13,6 +13,7 @@ import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { formatCurrency } from '../../../utils/Invoice/calculations';
 import type { ThreeDotDropdownItem } from '../../../components/common/ThreeDotDropdown';
 
 const QuoteView: React.FC = () => {
@@ -104,6 +105,12 @@ const QuoteView: React.FC = () => {
   const handleStatusChange = useCallback(async (status: Quote['status']) => {
     if (!quote) return;
 
+    const statusLabels: Record<string, string> = {
+      sent: 'Send Quote',
+      accepted: 'Accept Quote',
+      rejected: 'Reject Quote',
+    };
+
     const statusMessages: Record<string, string> = {
       sent: 'Are you sure you want to send this quote to the customer?',
       accepted: 'Are you sure you want to mark this quote as accepted?',
@@ -112,9 +119,9 @@ const QuoteView: React.FC = () => {
 
     await withConfirmation(
       {
-        title: `${status.charAt(0).toUpperCase() + status.slice(1)} Quote`,
+        title: statusLabels[status] || `${status.charAt(0).toUpperCase() + status.slice(1)} Quote`,
         message: statusMessages[status] || `Are you sure you want to mark this quote as ${status}?`,
-        confirmText: status.charAt(0).toUpperCase() + status.slice(1),
+        confirmText: statusLabels[status] || status.charAt(0).toUpperCase() + status.slice(1),
         variant: status === 'rejected' ? 'danger' : status === 'accepted' ? 'primary' : 'primary',
       },
       async () => {
@@ -319,7 +326,7 @@ const QuoteView: React.FC = () => {
                 </span>
               </div>
               <p className="text-sm text-gray-500 mt-0.5">
-                Created on {new Date(quote.createdAt).toLocaleDateString()} by {quote.createdBy}
+                Created on {new Date(quote.createdAt).toLocaleDateString()} by {quote.createdBy || 'Admin'}
               </p>
             </div>
           </div>
@@ -431,7 +438,7 @@ const QuoteView: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <IndianRupee className="h-4 w-4 text-gray-400" />
                     <span className="text-sm text-gray-600">Total Value: </span>
-                    <span className="text-sm font-bold text-amber-600">₹{quote.total.toLocaleString()}</span>
+                    <span className="text-sm font-bold text-amber-600">{formatCurrency(quote.total)}</span>
                   </div>
                 </div>
               </div>
@@ -465,7 +472,7 @@ const QuoteView: React.FC = () => {
                     const total = itemTotal + makingTotal + wastageTotal + (item.stoneCharges * item.quantity);
                     
                     return (
-                      <tr key={index}>
+                      <tr key={item.id || index}>
                         <td className="px-3 py-2">
                           <div>
                             <p className="font-medium text-gray-900">{item.itemName}</p>
@@ -473,11 +480,11 @@ const QuoteView: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-3 py-2"><span className="text-sm text-gray-600">{item.purity}</span></td>
-                        <td className="px-3 py-2 text-right text-sm text-gray-600">{item.weight.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right text-sm text-gray-600">{item.weight?.toFixed(2) || '0.00'}</td>
                         <td className="px-3 py-2 text-right text-sm text-gray-600">{item.quantity}</td>
-                        <td className="px-3 py-2 text-right text-sm text-gray-600">₹{item.unitPrice.toFixed(2)}</td>
-                        <td className="px-3 py-2 text-right text-sm text-gray-600">₹{item.makingCharges.toFixed(2)}</td>
-                        <td className="px-3 py-2 text-right font-medium text-gray-900">₹{total.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right text-sm text-gray-600">{formatCurrency(item.unitPrice)}</td>
+                        <td className="px-3 py-2 text-right text-sm text-gray-600">{formatCurrency(item.makingCharges)}</td>
+                        <td className="px-3 py-2 text-right font-medium text-gray-900">{formatCurrency(total)}</td>
                       </tr>
                     );
                   })}
@@ -491,14 +498,20 @@ const QuoteView: React.FC = () => {
             <div className="lg:col-span-2 space-y-4">
               {quote.notes && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Notes</h4>
-                  <p className="text-sm text-gray-600">{quote.notes}</p>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-amber-500" />
+                    Notes
+                  </h4>
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{quote.notes}</p>
                 </div>
               )}
               {quote.termsAndConditions && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Terms & Conditions</h4>
-                  <p className="text-sm text-gray-600">{quote.termsAndConditions}</p>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-amber-500" />
+                    Terms & Conditions
+                  </h4>
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{quote.termsAndConditions}</p>
                 </div>
               )}
             </div>
@@ -508,40 +521,42 @@ const QuoteView: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Subtotal</span>
-                  <span className="font-medium">₹{quote.subtotal.toFixed(2)}</span>
+                  <span className="font-medium">{formatCurrency(quote.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Tax</span>
-                  <span className="font-medium">₹{quote.tax.toFixed(2)}</span>
+                  <span className="font-medium">{formatCurrency(quote.tax)}</span>
                 </div>
                 {quote.discount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Discount</span>
-                    <span className="font-medium text-red-500">-₹{(quote.discountType === 'percentage' ? (quote.subtotal * quote.discount / 100) : quote.discount).toFixed(2)}</span>
+                    <span className="font-medium text-red-500">
+                      -{formatCurrency(quote.discountType === 'percentage' ? (quote.subtotal * quote.discount / 100) : quote.discount)}
+                    </span>
                   </div>
                 )}
                 {quote.shippingCharge > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Shipping</span>
-                    <span className="font-medium">₹{quote.shippingCharge.toFixed(2)}</span>
+                    <span className="font-medium">{formatCurrency(quote.shippingCharge)}</span>
                   </div>
                 )}
                 {quote.otherCharges > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Other Charges</span>
-                    <span className="font-medium">₹{quote.otherCharges.toFixed(2)}</span>
+                    <span className="font-medium">{formatCurrency(quote.otherCharges)}</span>
                   </div>
                 )}
                 {quote.roundOff !== 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Round Off</span>
-                    <span className="font-medium">₹{quote.roundOff.toFixed(2)}</span>
+                    <span className="font-medium">{formatCurrency(quote.roundOff)}</span>
                   </div>
                 )}
                 <div className="border-t border-gray-200 pt-3 mt-3">
                   <div className="flex justify-between text-base font-bold">
                     <span className="text-gray-900">Total</span>
-                    <span className="text-amber-600">₹{quote.total.toFixed(2)}</span>
+                    <span className="text-amber-600">{formatCurrency(quote.total)}</span>
                   </div>
                   {quote.amountInWords && (
                     <p className="text-xs text-gray-500 mt-1 text-right">{quote.amountInWords}</p>
@@ -557,7 +572,7 @@ const QuoteView: React.FC = () => {
         </div>
       </div>
 
-      {/* Reusable Confirmation Modal - Replaces all inline modals */}
+      {/* Reusable Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

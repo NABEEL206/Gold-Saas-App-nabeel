@@ -17,13 +17,19 @@ import {
   Building2,
   Receipt,
   Trash2,
+  RotateCcw,
 } from 'lucide-react';
 import { useInvoices } from '../../../hooks/Invoices/useInvoices';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import {
+  formatCurrency,
+  calculateInvoiceTotals,
+} from '../../../utils/Invoice/calculations';
 import type { Invoice } from '../../../types/Invoice/InvoiceTypes';
+import type { OldGoldItem } from '../../../components/common/OldGoldTable';
 
 // Status Badge
 const StatusBadge: React.FC<{ status: Invoice['status'] }> = ({ status }) => {
@@ -68,6 +74,9 @@ const generateDemoItems = (invoice: Invoice) => {
       makingCharges: 500,
       wastagePercentage: 2,
       stoneCharges: 1000,
+      grossWt: 4.5,
+      netWt: 4.2,
+      hsn: '71131910',
     },
     {
       id: `demo_${Date.now()}_2`,
@@ -87,6 +96,26 @@ const generateDemoItems = (invoice: Invoice) => {
       makingCharges: 400,
       wastagePercentage: 3,
       stoneCharges: 0,
+      grossWt: 10.5,
+      netWt: 10.2,
+      hsn: '71131920',
+    },
+  ];
+};
+
+// Generate demo old gold items
+const generateDemoOldGoldItems = (): OldGoldItem[] => {
+  return [
+    {
+      id: `old_${Date.now()}_1`,
+      description: 'Old Gold Chain',
+      grossWt: 15.770,
+      lessWastage: 0.237,
+      netWt: 15.533,
+      purity: '91.6',
+      rate: 13400,
+      amount: 208142.00,
+      hsn: '71131930',
     },
   ];
 };
@@ -109,6 +138,7 @@ export const InvoiceView: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [oldGoldItems, setOldGoldItems] = useState<OldGoldItem[]>([]);
   const [updating, setUpdating] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
@@ -136,6 +166,14 @@ export const InvoiceView: React.FC = () => {
         taxAmount: taxAmount,
         total: total,
       });
+
+      // Load old gold items if they exist
+      if ((data as any).oldGoldItems && (data as any).oldGoldItems.length > 0) {
+        setOldGoldItems((data as any).oldGoldItems);
+      } else {
+        // Add demo old gold items for view
+        setOldGoldItems(generateDemoOldGoldItems());
+      }
     } catch (error) {
       console.error('Error loading invoice:', error);
       try {
@@ -144,6 +182,7 @@ export const InvoiceView: React.FC = () => {
         if (mockData) {
           const items = generateDemoItems(mockData);
           setInvoice({ ...mockData, items: items });
+          setOldGoldItems(generateDemoOldGoldItems());
         } else {
           setInvoice(null);
         }
@@ -249,6 +288,9 @@ export const InvoiceView: React.FC = () => {
   const handleGoBack = useCallback(() => {
     navigate('/sales/invoices', { replace: true });
   }, [navigate]);
+
+  // Calculate old gold total
+  const oldGoldTotal = oldGoldItems.reduce((sum, item) => sum + (item.amount || 0), 0);
 
   // Dropdown items
   const dropdownItems = [
@@ -363,6 +405,12 @@ export const InvoiceView: React.FC = () => {
             <span className="text-sm text-gray-500">Status:</span>
             <StatusBadge status={invoice.status} />
           </div>
+          {oldGoldItems.length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-amber-600">
+              <RotateCcw className="h-4 w-4" />
+              <span>Old Gold: {formatCurrency(oldGoldTotal)}</span>
+            </div>
+          )}
         </div>
 
         {/* Invoice Content */}
@@ -378,9 +426,9 @@ export const InvoiceView: React.FC = () => {
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">Total Amount</p>
-                <p className="text-3xl font-bold text-amber-600">₹{invoice.total.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-amber-600">{formatCurrency(invoice.total)}</p>
                 {invoice.balanceDue > 0 && (
-                  <p className="text-sm text-red-600 mt-1">Balance Due: ₹{invoice.balanceDue.toLocaleString()}</p>
+                  <p className="text-sm text-red-600 mt-1">Balance Due: {formatCurrency(invoice.balanceDue)}</p>
                 )}
               </div>
             </div>
@@ -422,9 +470,12 @@ export const InvoiceView: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">HSN</th>
                     <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Rate</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Discount</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">G.WT</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">N.WT</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">MC</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Purity</th>
                     <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tax</th>
                     <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                   </tr>
@@ -436,30 +487,144 @@ export const InvoiceView: React.FC = () => {
                         <td className="px-4 py-3">
                           <p className="font-medium text-gray-900">{item.itemName}</p>
                           <p className="text-xs text-gray-500">{item.description}</p>
-                          {item.purity && <span className="text-xs text-amber-600">{item.purity}</span>}
-                          {item.weight && <span className="text-xs text-gray-500 ml-2">Weight: {item.weight}g</span>}
-                          {item.makingCharges && item.makingCharges > 0 && <span className="text-xs text-gray-500 ml-2">MC: ₹{item.makingCharges}</span>}
+                          {item.category && <span className="text-xs text-gray-400">{item.category}</span>}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {(item as any).hsn || '71131910'}
                         </td>
                         <td className="px-4 py-3 text-right">{item.quantity}</td>
-                        <td className="px-4 py-3 text-right">₹{item.rate.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right">{item.discount}%</td>
+                        <td className="px-4 py-3 text-right">
+                          {(item as any).grossWt || item.weight || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {(item as any).netWt || item.weight || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {item.makingCharges || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {item.purity && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">{item.purity}</span>}
+                        </td>
                         <td className="px-4 py-3 text-right">{item.taxRate}%</td>
-                        <td className="px-4 py-3 text-right font-medium">₹{item.total.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.total)}</td>
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">No items in this invoice</td></tr>
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">No items in this invoice</td></tr>
                   )}
                 </tbody>
-                <tfoot className="bg-gray-50">
-                  <tr><td colSpan={5} className="px-4 py-2 text-right font-medium">Sub Total</td><td className="px-4 py-2 text-right">₹{(invoice.items || []).reduce((sum, item) => sum + (item.total || 0), 0).toFixed(2)}</td></tr>
-                  <tr><td colSpan={5} className="px-4 py-2 text-right font-medium">Tax</td><td className="px-4 py-2 text-right">₹{invoice.taxAmount.toFixed(2)}</td></tr>
-                  {invoice.discount > 0 && <tr><td colSpan={5} className="px-4 py-2 text-right font-medium">Discount ({invoice.discount}{invoice.discountType === 'percentage' ? '%' : ''})</td><td className="px-4 py-2 text-right">-₹{invoice.discount.toFixed(2)}</td></tr>}
-                  {invoice.shippingCharge > 0 && <tr><td colSpan={5} className="px-4 py-2 text-right font-medium">Shipping</td><td className="px-4 py-2 text-right">₹{invoice.shippingCharge.toFixed(2)}</td></tr>}
-                  {invoice.otherCharges > 0 && <tr><td colSpan={5} className="px-4 py-2 text-right font-medium">Other Charges</td><td className="px-4 py-2 text-right">₹{invoice.otherCharges.toFixed(2)}</td></tr>}
-                  <tr className="border-t-2 border-gray-300"><td colSpan={5} className="px-4 py-3 text-right font-bold text-lg">Total</td><td className="px-4 py-3 text-right font-bold text-lg text-amber-600">₹{invoice.total.toFixed(2)}</td></tr>
-                </tfoot>
               </table>
+            </div>
+          </div>
+
+          {/* Old Gold Section */}
+          {oldGoldItems.length > 0 && (
+            <div className="p-6 border-b border-amber-200 bg-amber-50/30">
+              <div className="flex items-center gap-2 mb-3">
+                <RotateCcw className="h-5 w-5 text-amber-600" />
+                <h3 className="text-sm font-semibold text-amber-800 uppercase tracking-wider">Old Gold Exchange</h3>
+                <span className="text-xs text-amber-600 ml-2">({oldGoldItems.length} items)</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-amber-100/50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-amber-700 uppercase">#</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-amber-700 uppercase">Description</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-amber-700 uppercase">HSN</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-amber-700 uppercase">G.WT</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-amber-700 uppercase">Less W</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-amber-700 uppercase">N.WT</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-amber-700 uppercase">Purity</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-amber-700 uppercase">Rate</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-amber-700 uppercase">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-100">
+                    {oldGoldItems.map((item, index) => (
+                      <tr key={item.id || index} className="hover:bg-amber-50/30">
+                        <td className="px-4 py-2 text-center text-sm text-gray-500">{index + 1}</td>
+                        <td className="px-4 py-2 text-sm text-gray-700">{item.description}</td>
+                        <td className="px-4 py-2 text-sm">{item.hsn || '-'}</td>
+                        <td className="px-4 py-2 text-right text-sm">{item.grossWt?.toFixed(3) || '0.000'}</td>
+                        <td className="px-4 py-2 text-right text-sm">{item.lessWastage?.toFixed(3) || '0.000'}</td>
+                        <td className="px-4 py-2 text-right text-sm font-medium text-amber-700">{item.netWt?.toFixed(3) || '0.000'}</td>
+                        <td className="px-4 py-2 text-center">
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">{item.purity || '91.6'}</span>
+                        </td>
+                        <td className="px-4 py-2 text-right text-sm">{formatCurrency(item.rate || 0)}</td>
+                        <td className="px-4 py-2 text-right text-sm font-bold text-amber-700">{formatCurrency(item.amount || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-amber-100/50">
+                    <tr>
+                      <td colSpan={8} className="px-4 py-2 text-right font-semibold text-amber-800">Total Exchange Amount</td>
+                      <td className="px-4 py-2 text-right font-bold text-amber-700">
+                        {formatCurrency(oldGoldTotal)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Totals Section */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex justify-end">
+              <div className="w-80 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Subtotal</span>
+                  <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
+                </div>
+                {invoice.discount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Discount</span>
+                    <span className="font-medium text-green-600">-{formatCurrency(invoice.discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Tax</span>
+                  <span className="font-medium">{formatCurrency(invoice.taxAmount)}</span>
+                </div>
+                {oldGoldTotal > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-amber-600">Old Gold Exchange</span>
+                    <span className="font-medium text-amber-600">-{formatCurrency(oldGoldTotal)}</span>
+                  </div>
+                )}
+                {invoice.shippingCharge > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Shipping</span>
+                    <span className="font-medium">{formatCurrency(invoice.shippingCharge)}</span>
+                  </div>
+                )}
+                {invoice.otherCharges > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Other Charges</span>
+                    <span className="font-medium">{formatCurrency(invoice.otherCharges)}</span>
+                  </div>
+                )}
+                <div className="border-t border-gray-200 pt-2">
+                  <div className="flex justify-between text-base font-bold">
+                    <span className="text-gray-800">Grand Total</span>
+                    <span className="text-amber-600">{formatCurrency(invoice.total)}</span>
+                  </div>
+                </div>
+                {invoice.amountPaid > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-600">Amount Paid</span>
+                    <span className="font-medium text-green-600">{formatCurrency(invoice.amountPaid)}</span>
+                  </div>
+                )}
+                {invoice.balanceDue > 0 && (
+                  <div className="flex justify-between text-sm font-semibold">
+                    <span className="text-red-600">Balance Due</span>
+                    <span className="text-red-600">{formatCurrency(invoice.balanceDue)}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

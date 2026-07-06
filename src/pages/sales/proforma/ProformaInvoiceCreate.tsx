@@ -1,5 +1,5 @@
 // src/pages/sales/proforma/ProformaInvoiceCreate.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -20,6 +20,12 @@ import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ErrorSummary from '../../../components/common/ErrorSummary';
+import {
+  validateProformaForm,
+  formatValidationErrors,
+  type ValidationResult,
+} from '../../../validations/proforma.validation';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
@@ -47,18 +53,30 @@ const MOCK_PRODUCTS = [
   { id: '6', name: 'Silver Necklace', code: 'SN-001', category: 'Necklace', purity: '18K', price: 2800, description: '18K Silver Necklace with chain', unit: 'Pcs' },
 ];
 
+// Default columns configuration for ItemSelectionTable used in Proforma
+const proformaColumns: any[] = [
+  { key: 'productName', label: 'Product' },
+  { key: 'description', label: 'Description' },
+  { key: 'quantity', label: 'Qty' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'rate', label: 'Rate' },
+  { key: 'discount', label: 'Discount' },
+  { key: 'taxRate', label: 'Tax' },
+  { key: 'total', label: 'Total' },
+];
+
 const ProformaInvoiceCreate: React.FC = () => {
   const navigate = useNavigate();
   const {
     formData,
     updateFormData,
-    errors,
+    errors: hookErrors,
     saving,
     files,
     totals,
     handleFileUpload,
     removeFile,
-    handleSubmit,
+    handleSubmit: handleSubmitHook,
   } = useProformaInvoiceCreate();
 
   const {
@@ -75,6 +93,12 @@ const ProformaInvoiceCreate: React.FC = () => {
   const [productSearch, setProductSearch] = useState('');
   const [productSuggestions] = useState(MOCK_PRODUCTS);
   const [items, setItems] = useState<ItemSelectionItem[]>([]);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+  });
 
   // Whether the user has entered anything worth confirming before discarding
   const hasUnsavedChanges = Boolean(
@@ -82,7 +106,7 @@ const ProformaInvoiceCreate: React.FC = () => {
   );
 
   // Handle customer selection from dropdown
-  const handleCustomerSelect = (selectedOption: DropdownOption) => {
+  const handleCustomerSelect = useCallback((selectedOption: DropdownOption) => {
     const customerDetails: Record<string, any> = {
       'CUST-001': { name: 'Rajesh Kumar', email: 'rajesh@email.com', phone: '9876543210', address: '123 Main St, Mumbai', gst: 'GSTIN001' },
       'CUST-002': { name: 'Priya Sharma', email: 'priya@email.com', phone: '9876543211', address: '456 Park Ave, Delhi', gst: 'GSTIN002' },
@@ -108,10 +132,16 @@ const ProformaInvoiceCreate: React.FC = () => {
       updateFormData('customerId', selectedOption.value);
       updateFormData('customerName', selectedOption.label);
     }
-  };
+    // Clear customer error when selected
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.customerId;
+      return newErrors;
+    });
+  }, [updateFormData]);
 
   // Handle items change from ItemSelectionTable
-  const handleItemsChange = (newItems: ItemSelectionItem[]) => {
+  const handleItemsChange = useCallback((newItems: ItemSelectionItem[]) => {
     setItems(newItems);
     // Map ItemSelectionItem to ProformaInvoiceItem format
     const proformaItems = newItems.map(item => ({
@@ -127,15 +157,31 @@ const ProformaInvoiceCreate: React.FC = () => {
       category: item.category || '',
     }));
     updateFormData('items', proformaItems);
-  };
+    // Clear items error when items change
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.items;
+      return newErrors;
+    });
+  }, [updateFormData]);
 
   // Handle product search
-  const handleProductSearch = (search: string) => {
+  const handleProductSearch = useCallback((search: string) => {
     setProductSearch(search);
-  };
+  }, []);
+
+  const validateForm = useCallback((): boolean => {
+    const result = validateProformaForm(formData, items);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result);
+    setValidationErrors(formattedErrors);
+    
+    return result.isValid;
+  }, [formData, items]);
 
   // Cancel handler - confirm before discarding unsaved changes
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     if (!hasUnsavedChanges) {
       navigate('/sales/proforma');
       return;
@@ -152,12 +198,18 @@ const ProformaInvoiceCreate: React.FC = () => {
         navigate('/sales/proforma');
       }
     );
-  };
+  }, [hasUnsavedChanges, withConfirmation, navigate]);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return;
+    }
+    
     try {
-      const result = await handleSubmit(navigate);
+      const result = await handleSubmitHook(navigate);
       if (result) {
         success('Proforma invoice created successfully.');
         navigate('/sales/proforma');
@@ -167,25 +219,10 @@ const ProformaInvoiceCreate: React.FC = () => {
     } catch (err) {
       showError('Failed to create proforma invoice. Please try again.');
     }
-  };
+  }, [validateForm, showError, handleSubmitHook, navigate, success]);
 
-  // Custom columns configuration for Proforma Invoice
-  const proformaColumns = {
-    item: true,
-    purity: true,
-    description: true,
-    grossWt: false,
-    stoneWt: false,
-    netWt: false,
-    qty: true,
-    unit: true,
-    rate: true,
-    making: false,
-    discount: true,
-    tax: true,
-    amount: true,
-    action: true,
-  };
+  // Check if there are any errors
+  const hasErrors = Object.keys(validationErrors).length > 0 || Object.keys(hookErrors).length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -223,10 +260,7 @@ const ProformaInvoiceCreate: React.FC = () => {
               className="px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               {saving ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  Saving...
-                </>
+                <LoadingSpinner size="sm" />
               ) : (
                 <>
                   <Save className="h-4 w-4" />
@@ -237,12 +271,23 @@ const ProformaInvoiceCreate: React.FC = () => {
           </div>
         </div>
 
-        {/* Error summary */}
-        {errors.submit && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <p className="text-sm text-red-700">{errors.submit}</p>
-          </div>
+        {/* Error summary - Submit errors */}
+        {(hookErrors.submit || validationErrors.submit) && (
+          <ErrorSummary
+            errors={{ submit: hookErrors.submit || validationErrors.submit || '' }}
+            title="Form Error:"
+            variant="error"
+          />
+        )}
+
+        {/* Validation Error Summary */}
+        {hasErrors && !hookErrors.submit && !validationErrors.submit && (
+          <ErrorSummary
+            errors={validationErrors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         <form onSubmit={onSubmit}>
@@ -265,8 +310,8 @@ const ProformaInvoiceCreate: React.FC = () => {
                   emptyStateText="No customers found"
                   resetSearchOnOpen={true}
                 />
-                {errors.customerId && (
-                  <p className="mt-1 text-xs text-red-500">{errors.customerId}</p>
+                {validationErrors.customerId && (
+                  <p className="mt-1 text-xs text-red-500">{validationErrors.customerId}</p>
                 )}
                 {formData.customerName && (
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
@@ -310,7 +355,7 @@ const ProformaInvoiceCreate: React.FC = () => {
                   Invoice Date <span className="text-red-500">*</span>
                 </label>
                 <div className={`flex items-center border rounded-lg px-3 py-2.5 focus-within:border-amber-400 transition-all ${
-                  errors.invoiceDate ? 'border-red-400' : 'border-gray-300'
+                  validationErrors.invoiceDate ? 'border-red-400' : 'border-gray-300'
                 }`}>
                   <Calendar className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
                   <input
@@ -320,8 +365,8 @@ const ProformaInvoiceCreate: React.FC = () => {
                     className="flex-1 outline-none text-sm bg-transparent text-gray-900"
                   />
                 </div>
-                {errors.invoiceDate && (
-                  <p className="mt-1 text-xs text-red-500">{errors.invoiceDate}</p>
+                {validationErrors.invoiceDate && (
+                  <p className="mt-1 text-xs text-red-500">{validationErrors.invoiceDate}</p>
                 )}
               </div>
 
@@ -331,7 +376,7 @@ const ProformaInvoiceCreate: React.FC = () => {
                   Expiry Date <span className="text-red-500">*</span>
                 </label>
                 <div className={`flex items-center border rounded-lg px-3 py-2.5 focus-within:border-amber-400 transition-all ${
-                  errors.validUntil ? 'border-red-400' : 'border-gray-300'
+                  validationErrors.validUntil ? 'border-red-400' : 'border-gray-300'
                 }`}>
                   <Clock className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
                   <input
@@ -341,8 +386,8 @@ const ProformaInvoiceCreate: React.FC = () => {
                     className="flex-1 outline-none text-sm bg-transparent text-gray-900"
                   />
                 </div>
-                {errors.validUntil && (
-                  <p className="mt-1 text-xs text-red-500">{errors.validUntil}</p>
+                {validationErrors.validUntil && (
+                  <p className="mt-1 text-xs text-red-500">{validationErrors.validUntil}</p>
                 )}
               </div>
             </div>
@@ -386,7 +431,7 @@ const ProformaInvoiceCreate: React.FC = () => {
             </div>
           </div>
 
-          {/* Item Selection Table */}
+          {/* Item Selection Table - Pass validation errors */}
           <ItemSelectionTable
             items={items}
             onItemsChange={handleItemsChange}
@@ -408,9 +453,13 @@ const ProformaInvoiceCreate: React.FC = () => {
             addButtonLabel="Add Item"
             title="Proforma Items"
             additionalCharges={[]}
-            autoAddDefaultRow={true}
+            autoAddDefaultRow={false}
             addButtonAtBottom={true}
+            errors={validationErrors}
           />
+          {validationErrors.items && (
+            <p className="mt-1 text-xs text-red-500">{validationErrors.items}</p>
+          )}
 
           {/* Customer Notes */}
           <div className="bg-white rounded-lg border border-gray-200 p-5 mt-4">
@@ -448,7 +497,13 @@ const ProformaInvoiceCreate: React.FC = () => {
         </form>
       </div>
 
-      {saving && <LoadingSpinner fullScreen text="Creating proforma invoice..." />}
+      {saving && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      )}
 
       {/* Reusable Confirmation Modal */}
       <ConfirmationModal

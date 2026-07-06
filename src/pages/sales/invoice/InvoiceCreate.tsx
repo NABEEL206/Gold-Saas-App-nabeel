@@ -1,5 +1,5 @@
 // src/pages/sales/invoice/InvoiceCreate.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -13,14 +13,29 @@ import {
   Clock,
   Receipt,
   Pencil,
+  RotateCcw,
 } from 'lucide-react';
 import { useInvoiceCreate } from '../../../hooks/Invoices/useInvoiceCreate';
 import { useInvoices } from '../../../hooks/Invoices/useInvoices';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown from '../../../components/common/Searchabledropdown';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
+import { OldGoldTable, type OldGoldItem } from '../../../components/common/OldGoldTable';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import {
+  calculateInvoiceTotals,
+  formatCurrency,
+  calculateItemTotals,
+} from '../../../utils/Invoice/calculations';
+import {
+  validateInvoiceForm,
+  formatValidationErrors,
+  type ValidationResult,
+  getErrorCount,
+  getValidationSummary,
+} from '../../../validations/invoice.validation';
+import ErrorSummary from '../../../components/common/ErrorSummary';
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
@@ -68,12 +83,21 @@ export const InvoiceCreate: React.FC = () => {
   const {
     formData,
     updateFormData,
-    errors,
-    validateForm,
+    errors: formErrors,
+    validateForm: validateFormHook,
+    validationResult: hookValidationResult,
   } = useInvoiceCreate();
   
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [showOldGold, setShowOldGold] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+    oldGoldErrors: [],
+  });
 
   const {
     success,
@@ -89,6 +113,31 @@ export const InvoiceCreate: React.FC = () => {
 
   const [productSearch, setProductSearch] = useState('');
   const [items, setItems] = useState<ItemSelectionItem[]>([]);
+  const [oldGoldItems, setOldGoldItems] = useState<OldGoldItem[]>([]);
+
+  // Calculate totals using the utility
+  const totals = useMemo(() => {
+    return calculateInvoiceTotals(
+      items,
+      oldGoldItems,
+      formData.additionalCharges || [],
+      formData.discount || 0,
+      formData.discountType || 'percentage'
+    );
+  }, [items, oldGoldItems, formData.additionalCharges, formData.discount, formData.discountType]);
+
+  // Calculate individual item details for display
+  const itemDetails = useMemo(() => {
+    return items.map((item) => ({
+      ...item,
+      calculation: calculateItemTotals(item),
+    }));
+  }, [items]);
+
+  // Get old gold total for display
+  const oldGoldTotal = useMemo(() => {
+    return oldGoldItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+  }, [oldGoldItems]);
 
   // Handle customer selection from dropdown
   const handleCustomerSelect = useCallback((selectedOption: DropdownOption) => {
@@ -117,6 +166,31 @@ export const InvoiceCreate: React.FC = () => {
     setProductSearch(search);
   }, []);
 
+  // Handle Old Gold items change
+  const handleOldGoldItemsChange = useCallback((newItems: OldGoldItem[]) => {
+    setOldGoldItems(newItems);
+    updateFormData('oldGoldItems', newItems);
+  }, [updateFormData]);
+
+  // Validate all items using the new validation
+  const validateAllItems = useCallback(() => {
+    const result = validateInvoiceForm(formData, items, oldGoldItems);
+    setValidationResult(result);
+    
+    // Format errors for display
+    const formattedErrors = formatValidationErrors(result);
+    setValidationErrors(formattedErrors);
+    
+    return result.isValid;
+  }, [formData, items, oldGoldItems]);
+
+  // Combined validation
+  const validateForm = useCallback(() => {
+    const isFormValid = validateFormHook();
+    const isItemsValid = validateAllItems();
+    return isFormValid && isItemsValid;
+  }, [validateFormHook, validateAllItems]);
+
   // Save invoice function
   const saveInvoice = useCallback(async () => {
     if (!validateForm()) {
@@ -126,34 +200,19 @@ export const InvoiceCreate: React.FC = () => {
 
     setSaving(true);
     try {
-      // Calculate totals from items
-      let subtotal = 0;
-      let taxAmount = 0;
-      let totalDiscount = 0;
-
-      items.forEach(item => {
-        const baseAmount = (item.quantity || 1) * (item.rate || 0);
-        let discountAmount = 0;
-        if (item.discountType === 'fixed') {
-          discountAmount = item.discount || 0;
-        } else {
-          discountAmount = baseAmount * ((item.discount || 0) / 100);
-        }
-        const taxableAmount = baseAmount - discountAmount;
-        const tax = taxableAmount * ((item.taxRate || 0) / 100);
-        
-        subtotal += baseAmount;
-        totalDiscount += discountAmount;
-        taxAmount += tax;
-      });
-
       const invoiceData = {
         ...formData,
         items,
-        subtotal,
-        taxAmount,
-        discount: formData.discount || totalDiscount,
-        total: subtotal - totalDiscount + taxAmount + (formData.shippingCharge || 0) + (formData.otherCharges || 0),
+        oldGoldItems,
+        // Use calculated totals from utility
+        subtotal: totals.subtotal,
+        totalDiscount: totals.totalDiscount,
+        taxAmount: totals.taxAmount,
+        oldGoldTotal: totals.oldGoldTotal,
+        grandTotal: totals.grandTotal,
+        total: totals.netTotal,
+        // Include item-level calculations
+        itemDetails,
         status: 'draft',
       };
 
@@ -168,7 +227,7 @@ export const InvoiceCreate: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  }, [formData, items, validateForm, showError, createInvoice, success, setSaving]);
+  }, [formData, items, oldGoldItems, totals, itemDetails, validateForm, showError, createInvoice, success]);
 
   // Submit handler with confirmation
   const onSubmit = useCallback(async (e: React.FormEvent) => {
@@ -212,23 +271,16 @@ export const InvoiceCreate: React.FC = () => {
     }
   }, [confirm, navigate]);
 
-  // Custom columns configuration for Invoice
-  const invoiceColumns = {
-    item: true,
-    purity: true,
-    description: true,
-    grossWt: false,
-    stoneWt: false,
-    netWt: false,
-    qty: true,
-    unit: true,
-    rate: true,
-    making: false,
-    discount: true,
-    tax: true,
-    amount: true,
-    action: true,
-  };
+  // Toggle Old Gold section
+  const toggleOldGold = useCallback(() => {
+    setShowOldGold(!showOldGold);
+  }, [showOldGold]);
+
+  // Get total item count
+  const totalItems = items.length;
+
+  // Check if there are any errors
+  const hasErrors = Object.keys(validationErrors).length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -280,12 +332,23 @@ export const InvoiceCreate: React.FC = () => {
           </div>
         </div>
 
-        {/* Error summary */}
-        {errors.submit && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <p className="text-sm text-red-700">{errors.submit}</p>
-          </div>
+        {/* Error summary - Form level errors */}
+        {(formErrors.submit || submitError) && (
+          <ErrorSummary
+            errors={{ submit: formErrors.submit || submitError || '' }}
+            title="Form Error:"
+            variant="error"
+          />
+        )}
+
+        {/* Validation Error Summary */}
+        {hasErrors && !formErrors.submit && (
+          <ErrorSummary
+            errors={validationErrors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         <form onSubmit={onSubmit}>
@@ -308,8 +371,8 @@ export const InvoiceCreate: React.FC = () => {
                   emptyStateText="No customers found"
                   resetSearchOnOpen={true}
                 />
-                {errors.customerId && (
-                  <p className="mt-1 text-xs text-red-500">{errors.customerId}</p>
+                {formErrors.customerId && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.customerId}</p>
                 )}
                 {formData.customerName && (
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
@@ -353,7 +416,7 @@ export const InvoiceCreate: React.FC = () => {
                   Invoice Date <span className="text-red-500">*</span>
                 </label>
                 <div className={`flex items-center border rounded-lg px-3 py-2.5 focus-within:border-amber-400 transition-all ${
-                  errors.date ? 'border-red-400' : 'border-gray-300'
+                  formErrors.date ? 'border-red-400' : 'border-gray-300'
                 }`}>
                   <Calendar className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
                   <input
@@ -363,8 +426,8 @@ export const InvoiceCreate: React.FC = () => {
                     className="flex-1 outline-none text-sm bg-transparent text-gray-900"
                   />
                 </div>
-                {errors.date && (
-                  <p className="mt-1 text-xs text-red-500">{errors.date}</p>
+                {formErrors.date && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.date}</p>
                 )}
               </div>
 
@@ -404,10 +467,29 @@ export const InvoiceCreate: React.FC = () => {
                   <option value="Due on Receipt">Due on Receipt</option>
                 </select>
               </div>
+              <div className="flex items-end justify-end">
+                <button
+                  type="button"
+                  onClick={toggleOldGold}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    showOldGold 
+                      ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' 
+                      : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-dashed border-amber-300'
+                  }`}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  {showOldGold ? 'Hide Old Gold Exchange' : 'Add Old Gold Exchange'}
+                  {oldGoldItems.length > 0 && !showOldGold && (
+                    <span className="ml-1 px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full text-xs">
+                      {oldGoldItems.length}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Item Selection Table */}
+          {/* Item Selection Table - Pass validation errors */}
           <ItemSelectionTable
             items={items}
             onItemsChange={handleItemsChange}
@@ -416,22 +498,55 @@ export const InvoiceCreate: React.FC = () => {
             onProductSearchChange={handleProductSearch}
             showJewelryFields={true}
             showDescription={true}
-            showUnit={true}
-            showDiscount={true}
+            showUnit={false}
+            showDiscount={false}
             showTax={true}
-            showMakingCharges={false}
-            showWeightFields={false}
+            showMakingCharges={true}
+            showWeightFields={true}
             showPurity={true}
-            columns={invoiceColumns}
+            showHSN={true}
             showSubtotalSection={true}
             showTotalSection={true}
             searchPlaceholder="Search jewelry items..."
             addButtonLabel="Add Item"
             title="Invoice Items"
-            additionalCharges={[]}
-            autoAddDefaultRow={true}
+            additionalCharges={formData.additionalCharges || []}
+            autoAddDefaultRow={false}
             addButtonAtBottom={true}
+            errors={validationErrors}
           />
+
+          {/* Old Gold Exchange Section - Pass validation errors */}
+          {showOldGold && (
+            <div className="mt-4">
+              <OldGoldTable
+                items={oldGoldItems}
+                onItemsChange={handleOldGoldItemsChange}
+                showHSN={true}
+                title="Old Gold Exchange"
+                errors={validationErrors}
+              />
+            </div>
+          )}
+
+          {/* Old Gold Total Summary (when collapsed) */}
+          {!showOldGold && oldGoldItems.length > 0 && (
+            <div className="mt-2 mb-4 flex justify-end">
+              <div className="inline-flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
+                <RotateCcw className="h-4 w-4 text-amber-600" />
+                <span className="text-sm text-amber-700">
+                  Old Gold Exchange: <span className="font-bold">{formatCurrency(oldGoldTotal)}</span>
+                </span>
+                <span className="text-xs text-amber-500">({oldGoldItems.length} items)</span>
+                <button
+                  onClick={toggleOldGold}
+                  className="text-xs text-amber-600 hover:text-amber-800 underline"
+                >
+                  Show
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Customer Notes */}
           <div className="bg-white rounded-lg border border-gray-200 p-5 mt-4">
@@ -466,6 +581,56 @@ export const InvoiceCreate: React.FC = () => {
               placeholder="Enter the terms and conditions..."
             />
           </div>
+
+          {/* Grand Total Display */}
+          {items.length > 0 && (
+            <div className="mt-4 bg-white rounded-lg border border-gray-200 p-5">
+              <div className="flex justify-end">
+                <div className="w-80 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Subtotal</span>
+                    <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
+                  </div>
+                  {totals.totalDiscount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Discount</span>
+                      <span className="font-medium text-green-600">-{formatCurrency(totals.totalDiscount)}</span>
+                    </div>
+                  )}
+                  {totals.taxAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Tax</span>
+                      <span className="font-medium">{formatCurrency(totals.taxAmount)}</span>
+                    </div>
+                  )}
+                  {totals.oldGoldTotal > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-amber-600">Old Gold Exchange</span>
+                      <span className="font-medium text-amber-600">-{formatCurrency(totals.oldGoldTotal)}</span>
+                    </div>
+                  )}
+                  {formData.additionalCharges && formData.additionalCharges.length > 0 && (
+                    formData.additionalCharges.map((charge: any, idx: number) => (
+                      <div key={idx} className="flex justify-between text-sm">
+                        <span className="text-gray-500">{charge.label}</span>
+                        <span className="font-medium">+{formatCurrency(charge.value || 0)}</span>
+                      </div>
+                    ))
+                  )}
+                  <div className="border-t border-gray-200 pt-2">
+                    <div className="flex justify-between text-base font-bold">
+                      <span className="text-gray-800">Grand Total</span>
+                      <span className="text-amber-600">{formatCurrency(totals.netTotal)}</span>
+                    </div>
+                  </div>
+                  {/* Item count */}
+                  <div className="text-xs text-gray-400 text-right">
+                    Total Items: {totalItems} | Old Gold Items: {oldGoldItems.length}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </form>
       </div>
 
