@@ -1,14 +1,19 @@
 // src/pages/purchases/Vendors/VendorCreate.tsx
-
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 import { useVendor } from '../../../hooks/vendor/useVendor';
 import { useVendorCreate } from '../../../hooks/vendor/useVendorCreate';
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ErrorSummary from '../../../components/common/ErrorSummary';
+import {
+  validateVendorForm,
+  formatValidationErrors,
+  type VendorValidationErrors,
+} from '../../../validations/vendor.validation';
 
 const STATUS_OPTIONS: DropdownOption[] = [
   { value: 'active', label: 'Active' },
@@ -20,10 +25,11 @@ const VendorCreate: React.FC = () => {
   const { createVendor } = useVendor();
   const {
     formData,
-    errors,
+    errors: hookErrors,
     isSubmitting,
     handleChange,
-    handleSubmit
+    handleSubmit,
+    resetForm,
   } = useVendorCreate();
 
   // Use the toast and confirm hook
@@ -43,6 +49,7 @@ const VendorCreate: React.FC = () => {
   // Snapshot for unsaved changes detection
   const initialSnapshotRef = useRef<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const currentState = JSON.stringify(formData);
@@ -52,14 +59,25 @@ const VendorCreate: React.FC = () => {
     setHasChanges(currentState !== initialSnapshotRef.current);
   }, [formData]);
 
+  const validateForm = (): boolean => {
+    const result = validateVendorForm(formData);
+    const formattedErrors = formatValidationErrors(result.errors);
+    setValidationErrors(formattedErrors);
+    return result.isValid;
+  };
+
   const onSubmit = async () => {
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return;
+    }
+
     await withLoading(
       async () => {
         const success = await handleSubmit(createVendor);
         if (!success) {
           throw new Error('Failed to create vendor');
         }
-        // Small delay to show success message before navigation
         await new Promise(resolve => setTimeout(resolve, 500));
         navigate('/purchases/vendors');
       },
@@ -101,13 +119,8 @@ const VendorCreate: React.FC = () => {
         variant: 'warning',
       },
       async () => {
-        // Reset form by reloading or clearing each field
-        const fields: Array<keyof typeof formData> = [
-          'name', 'company', 'email', 'phone', 'taxId', 'website',
-          'status', 'address', 'city', 'state', 'zipCode', 'country',
-          'contactPerson', 'contactEmail', 'contactPhone', 'notes'
-        ];
-        fields.forEach(field => handleChange(field, field === 'status' ? 'active' : ''));
+        resetForm();
+        setValidationErrors({});
         initialSnapshotRef.current = null;
         success('Form cleared successfully.');
       }
@@ -116,10 +129,13 @@ const VendorCreate: React.FC = () => {
 
   // Show error toast for submit errors
   useEffect(() => {
-    if (errors.submit) {
-      showError(errors.submit);
+    if (hookErrors.submit) {
+      showError(hookErrors.submit);
     }
-  }, [errors.submit, showError]);
+  }, [hookErrors.submit, showError]);
+
+  // Check if there are any errors
+  const hasErrors = Object.keys(validationErrors).length > 0 || Object.keys(hookErrors).length > 0;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -163,10 +179,7 @@ const VendorCreate: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  Saving...
-                </>
+                <LoadingSpinner size="sm" />
               ) : (
                 <>
                   <Save className="h-4 w-4" />
@@ -178,20 +191,13 @@ const VendorCreate: React.FC = () => {
         </div>
 
         {/* Error Summary */}
-        {Object.keys(errors).length > 0 && Object.keys(errors).some(key => key !== 'submit') && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.entries(errors)
-                  .filter(([key]) => key !== 'submit')
-                  .map(([key, value]) => (
-                    <li key={key}>{value}</li>
-                  ))}
-              </ul>
-            </div>
-          </div>
+        {hasErrors && (
+          <ErrorSummary
+            errors={validationErrors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         {/* Form */}
@@ -211,11 +217,11 @@ const VendorCreate: React.FC = () => {
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.name ? 'border-red-500' : 'border-gray-300'
+                  validationErrors.name ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter vendor name"
               />
-              {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+              {validationErrors.name && <p className="mt-1 text-xs text-red-500">{validationErrors.name}</p>}
             </div>
 
             <div>
@@ -240,11 +246,11 @@ const VendorCreate: React.FC = () => {
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
+                  validationErrors.email ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter email address"
               />
-              {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+              {validationErrors.email && <p className="mt-1 text-xs text-red-500">{validationErrors.email}</p>}
             </div>
 
             <div>
@@ -256,11 +262,11 @@ const VendorCreate: React.FC = () => {
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.phone ? 'border-red-500' : 'border-gray-300'
+                  validationErrors.phone ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter phone number"
               />
-              {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
+              {validationErrors.phone && <p className="mt-1 text-xs text-red-500">{validationErrors.phone}</p>}
             </div>
 
             <div>
@@ -272,11 +278,11 @@ const VendorCreate: React.FC = () => {
                 value={formData.taxId}
                 onChange={(e) => handleChange('taxId', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.taxId ? 'border-red-500' : 'border-gray-300'
+                  validationErrors.taxId ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter tax ID"
               />
-              {errors.taxId && <p className="mt-1 text-sm text-red-500">{errors.taxId}</p>}
+              {validationErrors.taxId && <p className="mt-1 text-xs text-red-500">{validationErrors.taxId}</p>}
             </div>
 
             <div>
@@ -401,9 +407,12 @@ const VendorCreate: React.FC = () => {
                 type="email"
                 value={formData.contactEmail}
                 onChange={(e) => handleChange('contactEmail', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
+                  validationErrors.contactEmail ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter contact email"
               />
+              {validationErrors.contactEmail && <p className="mt-1 text-xs text-red-500">{validationErrors.contactEmail}</p>}
             </div>
 
             <div>
@@ -414,9 +423,12 @@ const VendorCreate: React.FC = () => {
                 type="tel"
                 value={formData.contactPhone}
                 onChange={(e) => handleChange('contactPhone', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
+                  validationErrors.contactPhone ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter contact phone"
               />
+              {validationErrors.contactPhone && <p className="mt-1 text-xs text-red-500">{validationErrors.contactPhone}</p>}
             </div>
 
             <div className="md:col-span-2">

@@ -1,7 +1,11 @@
 // src/hooks/vendor/useVendorCreate.ts
-
-import { useState } from 'react';
-import type{ VendorFormData } from '../../types/Vendor/VendorType';
+import { useState, useCallback } from 'react';
+import type { VendorFormData } from '../../types/Vendor/VendorType';
+import {
+  validateVendorForm,
+  formatValidationErrors,
+  type VendorValidationErrors,
+} from '../../validations/vendor.validation';
 
 export const useVendorCreate = () => {
   const [formData, setFormData] = useState<VendorFormData>({
@@ -25,46 +29,54 @@ export const useVendorCreate = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationResult, setValidationResult] = useState<{
+    isValid: boolean;
+    errors: VendorValidationErrors;
+  }>({
+    isValid: true,
+    errors: {},
+  });
 
-  const handleChange = (field: keyof VendorFormData, value: any) => {
+  const handleChange = useCallback((field: keyof VendorFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
     // Clear error for this field if it exists
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = useCallback((): boolean => {
+    const result = validateVendorForm(formData);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result.errors);
+    setErrors(formattedErrors);
+    
+    return result.isValid;
+  }, [formData]);
 
-    if (!formData.name?.trim()) {
-      newErrors.name = 'Vendor name is required';
-    }
+  const clearErrors = useCallback(() => {
+    setErrors({});
+    setValidationResult({
+      isValid: true,
+      errors: {},
+    });
+  }, []);
 
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
+  const clearFieldError = useCallback((field: string) => {
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
 
-    if (formData.phone && !/^[\d\s\-()+]+$/.test(formData.phone)) {
-      newErrors.phone = 'Please enter a valid phone number';
-    }
-
-    if (formData.taxId && formData.taxId.length < 5) {
-      newErrors.taxId = 'Tax ID must be at least 5 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
       name: '',
       email: '',
@@ -84,17 +96,21 @@ export const useVendorCreate = () => {
       contactPhone: ''
     });
     setErrors({});
+    setValidationResult({
+      isValid: true,
+      errors: {},
+    });
     setIsSubmitting(false);
-  };
+  }, []);
 
-  const handleSubmit = async (submitFn: (data: VendorFormData) => Promise<any>) => {
+  const handleSubmit = useCallback(async (submitFn: (data: VendorFormData) => Promise<any>) => {
     if (!validateForm()) {
       return false;
     }
 
     setIsSubmitting(true);
     try {
-      await submitFn(formData);
+      const result = await submitFn(formData);
       resetForm();
       return true;
     } catch (error) {
@@ -107,16 +123,28 @@ export const useVendorCreate = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [formData, validateForm, resetForm]);
+
+  const updateFormData = useCallback((field: keyof VendorFormData, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
 
   return {
     formData,
     errors,
     isSubmitting,
+    validationResult,
     handleChange,
     handleSubmit,
     resetForm,
     setFormData,
-    setErrors
+    setErrors,
+    validateForm,
+    clearErrors,
+    clearFieldError,
+    updateFormData,
   };
 };

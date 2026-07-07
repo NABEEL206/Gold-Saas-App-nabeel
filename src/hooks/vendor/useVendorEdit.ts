@@ -1,7 +1,11 @@
 // src/hooks/vendor/useVendorEdit.ts
-
-import { useState, useEffect } from 'react';
-import type{ Vendor, VendorFormData } from '../../types/Vendor/VendorType';
+import { useState, useEffect, useCallback } from 'react';
+import type { Vendor, VendorFormData } from '../../types/Vendor/VendorType';
+import {
+  validateVendorForm,
+  formatValidationErrors,
+  type VendorValidationErrors,
+} from '../../validations/vendor.validation';
 
 export const useVendorEdit = (vendor: Vendor | null) => {
   const [formData, setFormData] = useState<VendorFormData>({
@@ -25,6 +29,13 @@ export const useVendorEdit = (vendor: Vendor | null) => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationResult, setValidationResult] = useState<{
+    isValid: boolean;
+    errors: VendorValidationErrors;
+  }>({
+    isValid: true,
+    errors: {},
+  });
 
   // Load vendor data when vendor prop changes
   useEffect(() => {
@@ -50,45 +61,46 @@ export const useVendorEdit = (vendor: Vendor | null) => {
     }
   }, [vendor]);
 
-  const handleChange = (field: keyof VendorFormData, value: any) => {
+  const handleChange = useCallback((field: keyof VendorFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
     // Clear error for this field if it exists
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = useCallback((): boolean => {
+    const result = validateVendorForm(formData);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result.errors);
+    setErrors(formattedErrors);
+    
+    return result.isValid;
+  }, [formData]);
 
-    if (!formData.name?.trim()) {
-      newErrors.name = 'Vendor name is required';
-    }
+  const clearErrors = useCallback(() => {
+    setErrors({});
+    setValidationResult({
+      isValid: true,
+      errors: {},
+    });
+  }, []);
 
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
+  const clearFieldError = useCallback((field: string) => {
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
 
-    if (formData.phone && !/^[\d\s\-()+]+$/.test(formData.phone)) {
-      newErrors.phone = 'Please enter a valid phone number';
-    }
-
-    if (formData.taxId && formData.taxId.length < 5) {
-      newErrors.taxId = 'Tax ID must be at least 5 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     if (vendor) {
       setFormData({
         name: vendor.name || '',
@@ -110,10 +122,14 @@ export const useVendorEdit = (vendor: Vendor | null) => {
       });
     }
     setErrors({});
+    setValidationResult({
+      isValid: true,
+      errors: {},
+    });
     setIsSubmitting(false);
-  };
+  }, [vendor]);
 
-  const handleSubmit = async (submitFn: (id: string | number, data: VendorFormData) => Promise<any>) => {
+  const handleSubmit = useCallback(async (submitFn: (id: string | number, data: VendorFormData) => Promise<any>) => {
     if (!validateForm() || !vendor) {
       return false;
     }
@@ -121,6 +137,7 @@ export const useVendorEdit = (vendor: Vendor | null) => {
     setIsSubmitting(true);
     try {
       await submitFn(vendor.id, formData);
+      clearErrors();
       return true;
     } catch (error) {
       console.error('Error updating vendor:', error);
@@ -132,16 +149,28 @@ export const useVendorEdit = (vendor: Vendor | null) => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [formData, vendor, validateForm, clearErrors]);
+
+  const updateFormData = useCallback((field: keyof VendorFormData, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
 
   return {
     formData,
     errors,
     isSubmitting,
+    validationResult,
     handleChange,
     handleSubmit,
     resetForm,
     setFormData,
-    setErrors
+    setErrors,
+    validateForm,
+    clearErrors,
+    clearFieldError,
+    updateFormData,
   };
 };

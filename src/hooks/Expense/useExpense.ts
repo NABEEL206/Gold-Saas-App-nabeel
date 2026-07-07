@@ -4,10 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import type{ 
   Expense, 
   ExpenseFilters, 
-  ExpenseResponse, 
-  ExpenseStats,
-  EXPENSE_CATEGORIES 
+  ExpenseStats
 } from '../../types/Expense/ExpenseType';
+import { validateExpenseForm, formatValidationErrors } from '../../validations/expense.validation';
 
 // Dummy data with both vendor and non-vendor expenses
 const DUMMY_EXPENSES: Expense[] = [
@@ -23,15 +22,18 @@ const DUMMY_EXPENSES: Expense[] = [
     totalAmount: 529.99,
     date: '2024-01-15',
     dueDate: '2024-02-15',
-    description: 'Annual software license renewal',
+    description: 'Annual software license renewal for accounting software',
     paymentMethod: 'bank',
     paymentStatus: 'paid',
-    referenceNumber: 'REF-001',
-    receiptNumber: 'RCP-001',
-    notes: 'Paid via bank transfer',
+    referenceNumber: 'REF-001-2024',
+    receiptNumber: 'RCP-001-2024',
+    billNumber: 'BILL-001-2024',
+    notes: 'Paid via bank transfer. Approved by finance team.',
     isVendorExpense: true,
-    createdAt: '2024-01-15',
-    updatedAt: '2024-01-15'
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-01-15T10:30:00Z',
+    updatedAt: '2024-01-15T10:30:00Z'
   },
   {
     id: 2,
@@ -45,19 +47,24 @@ const DUMMY_EXPENSES: Expense[] = [
     totalAmount: 265.53,
     date: '2024-01-20',
     dueDate: '2024-02-20',
-    description: 'Office stationery and supplies',
+    description: 'Office stationery and supplies for Q1',
     paymentMethod: 'credit_card',
     paymentStatus: 'unpaid',
-    referenceNumber: 'REF-002',
-    receiptNumber: 'RCP-002',
-    notes: 'Waiting for approval',
+    referenceNumber: 'REF-002-2024',
+    receiptNumber: 'RCP-002-2024',
+    billNumber: 'BILL-002-2024',
+    notes: 'Waiting for approval from department head',
     isVendorExpense: true,
-    createdAt: '2024-01-20',
-    updatedAt: '2024-01-20'
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-01-20T14:15:00Z',
+    updatedAt: '2024-01-20T14:15:00Z'
   },
   {
     id: 3,
     expenseNumber: 'EXP-2024-003',
+    vendorId: undefined,
+    vendorName: undefined,
     category: 'Utilities',
     subCategory: 'Electricity',
     amount: 350.00,
@@ -65,15 +72,18 @@ const DUMMY_EXPENSES: Expense[] = [
     totalAmount: 371.00,
     date: '2024-02-01',
     dueDate: '2024-03-01',
-    description: 'Monthly electricity bill',
+    description: 'Monthly electricity bill for office premises',
     paymentMethod: 'cash',
     paymentStatus: 'overdue',
-    referenceNumber: 'REF-003',
-    receiptNumber: 'RCP-003',
-    notes: 'Payment overdue',
+    referenceNumber: 'REF-003-2024',
+    receiptNumber: 'RCP-003-2024',
+    billNumber: 'BILL-003-2024',
+    notes: 'Payment overdue. Please process urgently.',
     isVendorExpense: false,
-    createdAt: '2024-02-01',
-    updatedAt: '2024-02-01'
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-02-01T09:00:00Z',
+    updatedAt: '2024-02-01T09:00:00Z'
   },
   {
     id: 4,
@@ -87,34 +97,43 @@ const DUMMY_EXPENSES: Expense[] = [
     totalAmount: 159.00,
     date: '2024-02-05',
     dueDate: '2024-03-05',
-    description: 'Shipping charges for Q1',
+    description: 'Shipping charges for Q1 inventory delivery',
     paymentMethod: 'cheque',
     paymentStatus: 'paid',
-    referenceNumber: 'REF-004',
-    receiptNumber: 'RCP-004',
-    notes: 'Cheque issued',
+    referenceNumber: 'REF-004-2024',
+    receiptNumber: 'RCP-004-2024',
+    billNumber: 'BILL-004-2024',
+    notes: 'Cheque issued to Premier Logistics',
     isVendorExpense: true,
-    createdAt: '2024-02-05',
-    updatedAt: '2024-02-05'
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-02-05T11:45:00Z',
+    updatedAt: '2024-02-05T11:45:00Z'
   },
   {
     id: 5,
     expenseNumber: 'EXP-2024-005',
+    vendorId: undefined,
+    vendorName: undefined,
     category: 'Staff Welfare',
     subCategory: 'Team Lunch',
     amount: 120.00,
     taxAmount: 0,
     totalAmount: 120.00,
     date: '2024-02-10',
-    description: 'Team lunch for project completion',
+    dueDate: undefined,
+    description: 'Team lunch for project completion celebration',
     paymentMethod: 'cash',
     paymentStatus: 'paid',
-    referenceNumber: 'REF-005',
-    receiptNumber: 'RCP-005',
-    notes: 'Team celebration',
+    referenceNumber: 'REF-005-2024',
+    receiptNumber: 'RCP-005-2024',
+    billNumber: undefined,
+    notes: 'Team celebration - 15 members participated',
     isVendorExpense: false,
-    createdAt: '2024-02-10',
-    updatedAt: '2024-02-10'
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-02-10T12:30:00Z',
+    updatedAt: '2024-02-10T12:30:00Z'
   },
   {
     id: 6,
@@ -128,19 +147,24 @@ const DUMMY_EXPENSES: Expense[] = [
     totalAmount: 795.00,
     date: '2024-02-10',
     dueDate: '2024-03-10',
-    description: 'Machine repair and maintenance',
+    description: 'Machine repair and maintenance for production line',
     paymentMethod: 'bank',
     paymentStatus: 'partial',
-    referenceNumber: 'REF-006',
-    receiptNumber: 'RCP-006',
-    notes: 'Partial payment made',
+    referenceNumber: 'REF-006-2024',
+    receiptNumber: 'RCP-006-2024',
+    billNumber: 'BILL-006-2024',
+    notes: 'Partial payment made. Balance pending.',
     isVendorExpense: true,
-    createdAt: '2024-02-10',
-    updatedAt: '2024-02-10'
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-02-10T16:20:00Z',
+    updatedAt: '2024-02-10T16:20:00Z'
   },
   {
     id: 7,
     expenseNumber: 'EXP-2024-007',
+    vendorId: undefined,
+    vendorName: undefined,
     category: 'Travel & Entertainment',
     subCategory: 'Business Travel',
     amount: 450.00,
@@ -148,19 +172,24 @@ const DUMMY_EXPENSES: Expense[] = [
     totalAmount: 477.00,
     date: '2024-02-15',
     dueDate: '2024-03-15',
-    description: 'Flight tickets for client meeting',
+    description: 'Flight tickets for client meeting in Mumbai',
     paymentMethod: 'credit_card',
     paymentStatus: 'unpaid',
-    referenceNumber: 'REF-007',
-    receiptNumber: 'RCP-007',
-    notes: 'Client visit',
+    referenceNumber: 'REF-007-2024',
+    receiptNumber: 'RCP-007-2024',
+    billNumber: 'BILL-007-2024',
+    notes: 'Client visit for project review',
     isVendorExpense: false,
-    createdAt: '2024-02-15',
-    updatedAt: '2024-02-15'
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-02-15T08:00:00Z',
+    updatedAt: '2024-02-15T08:00:00Z'
   },
   {
     id: 8,
     expenseNumber: 'EXP-2024-008',
+    vendorId: undefined,
+    vendorName: undefined,
     category: 'Communication',
     subCategory: 'Internet',
     amount: 80.00,
@@ -168,15 +197,118 @@ const DUMMY_EXPENSES: Expense[] = [
     totalAmount: 84.80,
     date: '2024-02-20',
     dueDate: '2024-03-20',
-    description: 'Monthly internet bill',
+    description: 'Monthly internet bill for office',
     paymentMethod: 'bank',
     paymentStatus: 'paid',
-    referenceNumber: 'REF-008',
-    receiptNumber: 'RCP-008',
-    notes: 'Auto-debit',
+    referenceNumber: 'REF-008-2024',
+    receiptNumber: 'RCP-008-2024',
+    billNumber: undefined,
+    notes: 'Auto-debit from bank account',
     isVendorExpense: false,
-    createdAt: '2024-02-20',
-    updatedAt: '2024-02-20'
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-02-20T10:00:00Z',
+    updatedAt: '2024-02-20T10:00:00Z'
+  },
+  {
+    id: 9,
+    expenseNumber: 'EXP-2024-009',
+    vendorId: 3,
+    vendorName: 'Quality Products Co',
+    category: 'Office Supplies',
+    subCategory: 'Furniture',
+    amount: 1200.00,
+    taxAmount: 72.00,
+    totalAmount: 1272.00,
+    date: '2024-02-25',
+    dueDate: '2024-03-25',
+    description: 'New office chairs for employee workstations',
+    paymentMethod: 'bank',
+    paymentStatus: 'paid',
+    referenceNumber: 'REF-009-2024',
+    receiptNumber: 'RCP-009-2024',
+    billNumber: 'BILL-009-2024',
+    notes: 'Approved by facilities management',
+    isVendorExpense: true,
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-02-25T15:30:00Z',
+    updatedAt: '2024-02-25T15:30:00Z'
+  },
+  {
+    id: 10,
+    expenseNumber: 'EXP-2024-010',
+    vendorId: undefined,
+    vendorName: undefined,
+    category: 'Training & Development',
+    subCategory: 'Workshop',
+    amount: 500.00,
+    taxAmount: 30.00,
+    totalAmount: 530.00,
+    date: '2024-03-01',
+    dueDate: '2024-04-01',
+    description: 'Leadership workshop for team leads',
+    paymentMethod: 'credit_card',
+    paymentStatus: 'unpaid',
+    referenceNumber: 'REF-010-2024',
+    receiptNumber: 'RCP-010-2024',
+    billNumber: 'BILL-010-2024',
+    notes: 'Workshop for 5 team leads',
+    isVendorExpense: false,
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-03-01T09:30:00Z',
+    updatedAt: '2024-03-01T09:30:00Z'
+  },
+  {
+    id: 11,
+    expenseNumber: 'EXP-2024-011',
+    vendorId: 1,
+    vendorName: 'Tech Solutions Inc.',
+    category: 'Technology & Software',
+    subCategory: 'Hardware',
+    amount: 1800.00,
+    taxAmount: 108.00,
+    totalAmount: 1908.00,
+    date: '2024-03-05',
+    dueDate: '2024-04-05',
+    description: 'New laptops for development team',
+    paymentMethod: 'bank',
+    paymentStatus: 'paid',
+    referenceNumber: 'REF-011-2024',
+    receiptNumber: 'RCP-011-2024',
+    billNumber: 'BILL-011-2024',
+    notes: '3 laptops for new developers',
+    isVendorExpense: true,
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-03-05T14:00:00Z',
+    updatedAt: '2024-03-05T14:00:00Z'
+  },
+  {
+    id: 12,
+    expenseNumber: 'EXP-2024-012',
+    vendorId: undefined,
+    vendorName: undefined,
+    category: 'Marketing',
+    subCategory: 'Advertising',
+    amount: 2500.00,
+    taxAmount: 150.00,
+    totalAmount: 2650.00,
+    date: '2024-03-10',
+    dueDate: '2024-04-10',
+    description: 'Digital marketing campaign for Q2',
+    paymentMethod: 'credit_card',
+    paymentStatus: 'overdue',
+    referenceNumber: 'REF-012-2024',
+    receiptNumber: 'RCP-012-2024',
+    billNumber: 'BILL-012-2024',
+    notes: 'Facebook and Google ads campaign',
+    isVendorExpense: false,
+    currency: 'INR',
+    exchangeRate: 1,
+    createdAt: '2024-03-10T11:00:00Z',
+    updatedAt: '2024-03-10T11:00:00Z'
   }
 ];
 
@@ -184,6 +316,7 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [filters, setFilters] = useState<ExpenseFilters>(initialFilters || { page: 1, limit: 10 });
   const [pagination, setPagination] = useState({
     page: 1,
@@ -236,6 +369,7 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setValidationErrors({});
     
     await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -336,13 +470,27 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
   const getExpenseById = useCallback(async (id: string | number): Promise<Expense | null> => {
     await new Promise(resolve => setTimeout(resolve, 300));
     const expense = DUMMY_EXPENSES.find(exp => String(exp.id) === String(id));
+    
+    if (!expense) {
+      setError(`Expense with ID ${id} not found`);
+    }
+    
     return expense || null;
   }, []);
 
-  // Create new expense
+  // Create new expense with validation
   const createExpense = useCallback(async (expenseData: any) => {
+    const validationResult = validateExpenseForm(expenseData);
+
+    if (!validationResult.isValid) {
+      const formattedErrors = formatValidationErrors(validationResult.errors);
+      setValidationErrors(formattedErrors);
+      throw new Error('Validation failed. Please check the form for errors.');
+    }
+
     setLoading(true);
     setError(null);
+    setValidationErrors({});
     await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
@@ -358,17 +506,27 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
       setExpenses(prev => [newExpense, ...prev]);
       return newExpense;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create expense');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create expense';
+      setError(errorMessage);
       throw err;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Update expense
+  // Update expense with validation
   const updateExpense = useCallback(async (id: string | number, expenseData: any) => {
+    const validationResult = validateExpenseForm(expenseData);
+
+    if (!validationResult.isValid) {
+      const formattedErrors = formatValidationErrors(validationResult.errors);
+      setValidationErrors(formattedErrors);
+      throw new Error('Validation failed. Please check the form for errors.');
+    }
+
     setLoading(true);
     setError(null);
+    setValidationErrors({});
     await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
@@ -388,7 +546,8 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
       setExpenses(prev => prev.map(exp => String(exp.id) === String(id) ? updatedExpense : exp));
       return updatedExpense;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update expense');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update expense';
+      setError(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -399,6 +558,7 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
   const deleteExpense = useCallback(async (id: string | number) => {
     setLoading(true);
     setError(null);
+    setValidationErrors({});
     await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
@@ -410,7 +570,8 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
       setExpenses(prev => prev.filter(exp => String(exp.id) !== String(id)));
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete expense');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete expense';
+      setError(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -424,6 +585,8 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
       ...newFilters,
       page: 1
     }));
+    setError(null);
+    setValidationErrors({});
   }, []);
 
   // Change page
@@ -437,7 +600,15 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
   // Reset filters
   const resetFilters = useCallback(() => {
     setFilters(initialFilters || { page: 1, limit: 10 });
+    setError(null);
+    setValidationErrors({});
   }, [initialFilters]);
+
+  // Clear all errors
+  const clearErrors = useCallback(() => {
+    setError(null);
+    setValidationErrors({});
+  }, []);
 
   // Initial fetch
   useEffect(() => {
@@ -448,6 +619,7 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
     expenses,
     loading,
     error,
+    validationErrors,
     filters,
     pagination,
     stats,
@@ -459,6 +631,7 @@ export const useExpense = (initialFilters?: ExpenseFilters) => {
     updateFilters,
     changePage,
     resetFilters,
-    setFilters
+    setFilters,
+    clearErrors
   };
 };

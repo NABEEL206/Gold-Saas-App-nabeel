@@ -1,13 +1,10 @@
 // src/hooks/purchaseOrder/usePurchaseOrder.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import type{
+import type {
   PurchaseOrder,
   PurchaseOrderFilters,
-  PurchaseOrderResponse,
   PurchaseOrderStats,
-  PURCHASE_ORDER_STATUSES,
-  PURCHASE_ORDER_PRIORITIES
 } from '../../types/purchaseOrder/PurchaseOrderType';
 
 // Dummy data
@@ -223,7 +220,7 @@ export const usePurchaseOrder = (initialFilters?: PurchaseOrderFilters) => {
     const pendingCount = ordersData.filter(o => o.status === 'pending').length;
     const approvedCount = ordersData.filter(o => o.status === 'approved').length;
     const orderedCount = ordersData.filter(o => o.status === 'ordered').length;
-    const receivedCount = ordersData.filter(o => o.status === 'received').length;
+    const receivedCount = ordersData.filter(o => o.status === 'received' || o.status === 'partially_received').length;
     const cancelledCount = ordersData.filter(o => o.status === 'cancelled').length;
     const draftCount = ordersData.filter(o => o.status === 'draft').length;
 
@@ -290,6 +287,22 @@ export const usePurchaseOrder = (initialFilters?: PurchaseOrderFilters) => {
       }
       if (filters?.maxAmount) {
         filteredOrders = filteredOrders.filter(order => order.totalAmount <= filters.maxAmount!);
+      }
+
+      // Sort orders
+      if (filters?.sortBy) {
+        const sortOrder = filters.sortOrder || 'asc';
+        filteredOrders.sort((a: any, b: any) => {
+          const aVal = a[filters.sortBy!];
+          const bVal = b[filters.sortBy!];
+          if (sortOrder === 'asc') {
+            return aVal > bVal ? 1 : -1;
+          }
+          return aVal < bVal ? 1 : -1;
+        });
+      } else {
+        // Default sort by order date descending
+        filteredOrders.sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
       }
 
       // Calculate stats
@@ -404,7 +417,7 @@ export const usePurchaseOrder = (initialFilters?: PurchaseOrderFilters) => {
     setFilters(prev => ({
       ...prev,
       ...newFilters,
-      page: 1
+      page: 1 // Reset to first page when filters change
     }));
   }, []);
 

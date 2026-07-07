@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Building2, User, Mail, Phone, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Building2, User, Mail, Phone, Plus, X } from 'lucide-react';
 import { useExpense } from '../../../hooks/Expense/useExpense';
 import { useExpenseCreate } from '../../../hooks/Expense/useExpenseCreate';
 import { useVendor } from '../../../hooks/vendor/useVendor';
@@ -10,7 +10,14 @@ import { EXPENSE_CATEGORIES, PAYMENT_METHODS, PAYMENT_STATUSES } from '../../../
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { 
+  validateExpenseForm, 
+  formatValidationErrors,
+  hasValidationErrors,
+  getErrorCount
+} from '../../../validations/expense.validation';
 
 // ─── Static option lists ───────────────────────────────────────────────────────
 const EXPENSE_CATEGORY_OPTIONS: DropdownOption[] = EXPENSE_CATEGORIES.map(c => ({ value: c, label: c }));
@@ -23,16 +30,40 @@ const PAYMENT_STATUS_OPTIONS: DropdownOption[] = PAYMENT_STATUSES.map(s => ({
   label: s.charAt(0).toUpperCase() + s.slice(1),
 }));
 
+// ─── Expense Account Options ──────────────────────────────────────────────────
+const EXPENSE_ACCOUNT_OPTIONS: DropdownOption[] = [
+  { value: 'travel', label: 'Travel Expenses' },
+  { value: 'office_supplies', label: 'Office Supplies' },
+  { value: 'utilities', label: 'Utilities' },
+  { value: 'rent', label: 'Rent' },
+  { value: 'salaries', label: 'Salaries & Wages' },
+  { value: 'marketing', label: 'Marketing & Advertising' },
+  { value: 'software', label: 'Software & Subscriptions' },
+  { value: 'equipment', label: 'Equipment & Machinery' },
+  { value: 'maintenance', label: 'Maintenance & Repairs' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'legal', label: 'Legal & Professional' },
+  { value: 'consulting', label: 'Consulting Services' },
+  { value: 'training', label: 'Training & Development' },
+  { value: 'food', label: 'Food & Beverage' },
+  { value: 'transportation', label: 'Transportation' },
+  { value: 'communication', label: 'Communication' },
+  { value: 'other', label: 'Other Expenses' }
+];
+
 const ExpenseCreate: React.FC = () => {
   const navigate = useNavigate();
-  const { createExpense } = useExpense();
-  const { vendors, searchVendors } = useVendor();
+  const { createExpense, validationErrors: apiValidationErrors } = useExpense();
+  const { vendors } = useVendor();
   const {
     formData,
     errors,
     isSubmitting,
     handleChange,
     handleSubmit,
+    validateForm,
+    clearErrors,
+    setErrors,
   } = useExpenseCreate();
 
   // Use the toast and confirm hook
@@ -54,6 +85,9 @@ const ExpenseCreate: React.FC = () => {
   const [selectedVendorInfo, setSelectedVendorInfo] = useState<{
     email?: string; phone?: string; address?: string;
   } | null>(null);
+  const [showErrorSummary, setShowErrorSummary] = useState(false);
+  const [isManualCategory, setIsManualCategory] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
 
   // Snapshot for unsaved changes detection
   const initialSnapshotRef = useRef<string | null>(null);
@@ -84,6 +118,28 @@ const ExpenseCreate: React.FC = () => {
     }
   }, [errors.submit, showError]);
 
+  // Handle API validation errors
+  useEffect(() => {
+    if (Object.keys(apiValidationErrors).length > 0) {
+      // Format API validation errors
+      const formattedErrors: Record<string, string> = {};
+      Object.entries(apiValidationErrors).forEach(([key, value]) => {
+        if (value) {
+          formattedErrors[key] = value;
+        }
+      });
+      
+      // Merge with existing errors
+      setErrors(prev => ({
+        ...prev,
+        ...formattedErrors
+      }));
+      
+      setShowErrorSummary(true);
+      showError('Please check the form for errors.');
+    }
+  }, [apiValidationErrors, setErrors, showError]);
+
   // Handle vendor selection — auto-fill name, id, email, phone
   const handleVendorSelect = (option: DropdownOption) => {
     const vendor = vendors.find(v => String(v.id) === option.value);
@@ -101,14 +157,45 @@ const ExpenseCreate: React.FC = () => {
     setSelectedVendorInfo(null);
   };
 
+  // Handle category selection or manual entry
+  const handleCategorySelect = (option: DropdownOption) => {
+    handleChange('category', option.value);
+    setIsManualCategory(false);
+    setCustomCategory('');
+  };
+
+  const handleManualCategoryAdd = () => {
+    if (customCategory.trim()) {
+      handleChange('category', customCategory.trim());
+      setIsManualCategory(false);
+      setCustomCategory('');
+    }
+  };
+
+  const toggleManualCategory = () => {
+    setIsManualCategory(!isManualCategory);
+    if (!isManualCategory) {
+      handleChange('category', '');
+    }
+  };
+
   const onSubmit = async () => {
+    // Validate before submitting
+    const isValid = validateForm();
+    if (!isValid) {
+      setShowErrorSummary(true);
+      showError('Please fix the errors before submitting.');
+      return;
+    }
+
     await withLoading(
       async () => {
-        const success = await handleSubmit(createExpense);
-        if (!success) {
+        const result = await handleSubmit(createExpense);
+        if (!result) {
           throw new Error('Failed to create expense');
         }
         await new Promise(resolve => setTimeout(resolve, 500));
+        success('Expense created successfully.');
         navigate('/purchases/expenses');
       },
       'Creating expense...',
@@ -154,6 +241,35 @@ const ExpenseCreate: React.FC = () => {
         success('Form cleared successfully.');
       }
     );
+  };
+
+  // Get filter errors (exclude submit error)
+  const getFilteredErrors = () => {
+    const filtered: Record<string, string> = {};
+    Object.entries(errors).forEach(([key, value]) => {
+      if (key !== 'submit' && value) {
+        filtered[key] = value;
+      }
+    });
+    return filtered;
+  };
+
+  const filteredErrors = getFilteredErrors();
+  const hasErrors = Object.keys(filteredErrors).length > 0;
+
+  // Handle field blur for validation
+  const handleFieldBlur = (field: string) => {
+    // Validate the field on blur if it has a value
+    if (formData[field as keyof typeof formData]) {
+      const validationResult = validateExpenseForm(formData);
+      if (validationResult.errors[field]) {
+        setErrors(prev => ({
+          ...prev,
+          [field]: validationResult.errors[field] || ''
+        }));
+        setShowErrorSummary(true);
+      }
+    }
   };
 
   return (
@@ -212,21 +328,19 @@ const ExpenseCreate: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Summary */}
-        {Object.keys(errors).length > 0 && Object.keys(errors).some(key => key !== 'submit') && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.entries(errors)
-                  .filter(([key]) => key !== 'submit')
-                  .map(([key, value]) => (
-                    <li key={key}>{value}</li>
-                  ))}
-              </ul>
-            </div>
-          </div>
+        {/* Error Summary - No count displayed */}
+        {(showErrorSummary || hasErrors) && hasErrors && (
+          <ErrorSummary
+            errors={filteredErrors}
+            title="Please fix the following errors:"
+            variant="warning"
+            onClose={() => {
+              setShowErrorSummary(false);
+              clearErrors();
+            }}
+            showIcon={true}
+            showBadge={false}
+          />
         )}
 
         {/* ── Form ── */}
@@ -244,7 +358,12 @@ const ExpenseCreate: React.FC = () => {
               <div className="flex gap-4">
                 <button
                   type="button"
-                  onClick={() => { setIsVendorExpense(false); clearVendor(); }}
+                  onClick={() => { 
+                    setIsVendorExpense(false); 
+                    handleChange('isVendorExpense', false); 
+                    clearVendor(); 
+                    clearErrors();
+                  }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors ${
                     !isVendorExpense
                       ? 'border-amber-500 bg-amber-50 text-amber-700'
@@ -256,7 +375,11 @@ const ExpenseCreate: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsVendorExpense(true)}
+                  onClick={() => { 
+                    setIsVendorExpense(true); 
+                    handleChange('isVendorExpense', true); 
+                    clearErrors();
+                  }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors ${
                     isVendorExpense
                       ? 'border-amber-500 bg-amber-50 text-amber-700'
@@ -312,18 +435,69 @@ const ExpenseCreate: React.FC = () => {
               </div>
             )}
 
-            {/* Category */}
+            {/* Category with Manual Entry Option */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Category <span className="text-red-500">*</span>
               </label>
-              <SearchableDropdown
-                options={EXPENSE_CATEGORY_OPTIONS}
-                value={formData.category || null}
-                onChange={(opt) => handleChange('category', opt.value)}
-                triggerPlaceholder="Select Category"
-                placeholder="Search category..."
-              />
+              
+              {!isManualCategory ? (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <SearchableDropdown
+                      options={EXPENSE_CATEGORY_OPTIONS}
+                      value={formData.category || null}
+                      onChange={handleCategorySelect}
+                      triggerPlaceholder="Select Category"
+                      placeholder="Search category..."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleManualCategory}
+                    className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1 text-sm"
+                    title="Add custom category"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customCategory}
+                        onChange={(e) => setCustomCategory(e.target.value)}
+                        placeholder="Enter custom category..."
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleManualCategoryAdd();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleManualCategoryAdd}
+                        className="px-3 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleManualCategory}
+                    className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                    title="Cancel manual entry"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              
               {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
             </div>
 
@@ -334,9 +508,33 @@ const ExpenseCreate: React.FC = () => {
                 type="text"
                 value={formData.subCategory || ''}
                 onChange={(e) => handleChange('subCategory', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onBlur={() => handleFieldBlur('subCategory')}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.subCategory ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter sub category"
               />
+              {errors.subCategory && <p className="mt-1 text-sm text-red-500">{errors.subCategory}</p>}
+            </div>
+
+            {/* Expense Account */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Expense Account
+              </label>
+              <SearchableDropdown
+                options={EXPENSE_ACCOUNT_OPTIONS}
+                value={formData.expenseAccount || null}
+                onChange={(opt) => handleChange('expenseAccount', opt.value)}
+                triggerPlaceholder="Select expense account..."
+                placeholder="Search expense account..."
+                showEmptyState
+                emptyStateText="No accounts found"
+              />
+              {errors.expenseAccount && (
+                <p className="mt-1 text-sm text-red-500">{errors.expenseAccount}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">Select the account this expense should be recorded against</p>
             </div>
 
             {/* Amount */}
@@ -349,6 +547,7 @@ const ExpenseCreate: React.FC = () => {
                 step="0.01"
                 value={formData.amount || ''}
                 onChange={(e) => handleChange('amount', parseFloat(e.target.value) || 0)}
+                onBlur={() => handleFieldBlur('amount')}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                   errors.amount ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -365,9 +564,13 @@ const ExpenseCreate: React.FC = () => {
                 step="0.01"
                 value={formData.taxAmount || ''}
                 onChange={(e) => handleChange('taxAmount', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onBlur={() => handleFieldBlur('taxAmount')}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.taxAmount ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="0.00"
               />
+              {errors.taxAmount && <p className="mt-1 text-sm text-red-500">{errors.taxAmount}</p>}
             </div>
 
             {/* Total Amount */}
@@ -378,9 +581,13 @@ const ExpenseCreate: React.FC = () => {
                 step="0.01"
                 value={formData.totalAmount || ''}
                 onChange={(e) => handleChange('totalAmount', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onBlur={() => handleFieldBlur('totalAmount')}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.totalAmount ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="0.00"
               />
+              {errors.totalAmount && <p className="mt-1 text-sm text-red-500">{errors.totalAmount}</p>}
             </div>
 
             {/* Date */}
@@ -392,6 +599,7 @@ const ExpenseCreate: React.FC = () => {
                 type="date"
                 value={formData.date}
                 onChange={(e) => handleChange('date', e.target.value)}
+                onBlur={() => handleFieldBlur('date')}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                   errors.date ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -406,8 +614,12 @@ const ExpenseCreate: React.FC = () => {
                 type="date"
                 value={formData.dueDate || ''}
                 onChange={(e) => handleChange('dueDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onBlur={() => handleFieldBlur('dueDate')}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.dueDate ? 'border-red-500' : 'border-gray-300'
+                }`}
               />
+              {errors.dueDate && <p className="mt-1 text-sm text-red-500">{errors.dueDate}</p>}
             </div>
 
             {/* Description */}
@@ -416,10 +628,14 @@ const ExpenseCreate: React.FC = () => {
               <textarea
                 value={formData.description || ''}
                 onChange={(e) => handleChange('description', e.target.value)}
+                onBlur={() => handleFieldBlur('description')}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.description ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter description"
               />
+              {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
             </div>
 
             {/* ── Payment Information ── */}
@@ -464,9 +680,13 @@ const ExpenseCreate: React.FC = () => {
                 type="text"
                 value={formData.referenceNumber || ''}
                 onChange={(e) => handleChange('referenceNumber', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onBlur={() => handleFieldBlur('referenceNumber')}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.referenceNumber ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter reference number"
               />
+              {errors.referenceNumber && <p className="mt-1 text-sm text-red-500">{errors.referenceNumber}</p>}
             </div>
 
             {/* Receipt Number */}
@@ -476,9 +696,13 @@ const ExpenseCreate: React.FC = () => {
                 type="text"
                 value={formData.receiptNumber || ''}
                 onChange={(e) => handleChange('receiptNumber', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onBlur={() => handleFieldBlur('receiptNumber')}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.receiptNumber ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter receipt number"
               />
+              {errors.receiptNumber && <p className="mt-1 text-sm text-red-500">{errors.receiptNumber}</p>}
             </div>
 
             {/* Bill Number */}
@@ -488,9 +712,13 @@ const ExpenseCreate: React.FC = () => {
                 type="text"
                 value={formData.billNumber || ''}
                 onChange={(e) => handleChange('billNumber', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onBlur={() => handleFieldBlur('billNumber')}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.billNumber ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter bill number"
               />
+              {errors.billNumber && <p className="mt-1 text-sm text-red-500">{errors.billNumber}</p>}
             </div>
 
             {/* Notes */}
@@ -499,10 +727,14 @@ const ExpenseCreate: React.FC = () => {
               <textarea
                 value={formData.notes || ''}
                 onChange={(e) => handleChange('notes', e.target.value)}
+                onBlur={() => handleFieldBlur('notes')}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.notes ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter additional notes"
               />
+              {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes}</p>}
             </div>
 
           </div>

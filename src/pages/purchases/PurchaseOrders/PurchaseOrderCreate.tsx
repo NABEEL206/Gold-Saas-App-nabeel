@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Mail, Phone, MapPin, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Mail, Phone, MapPin } from 'lucide-react';
 import { usePurchaseOrder } from '../../../hooks/purchaseOrder/usePurchaseOrder';
 import { usePurchaseOrderCreate } from '../../../hooks/purchaseOrder/usePurchaseOrderCreate';
 import { useVendor } from '../../../hooks/vendor/useVendor';
@@ -16,6 +16,7 @@ import {
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 
 // ─── Static option lists ───────────────────────────────────────────────────────
@@ -28,14 +29,21 @@ const PO_PRIORITY_OPTIONS: DropdownOption[] = PURCHASE_ORDER_PRIORITIES.map(p =>
   label: PURCHASE_ORDER_PRIORITY_LABELS[p],
 }));
 
+const CURRENCY_OPTIONS: DropdownOption[] = [
+  { value: 'INR', label: 'INR (₹)' },
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'GBP', label: 'GBP (£)' },
+];
+
 // ─── Product suggestions (replace with real API later) ────────────────────────
 const PRODUCT_SUGGESTIONS = [
-  { id: '1', name: 'Gold Ring 22K',    code: 'GR-001',  price: 7500,  unit: 'Pcs' },
-  { id: '2', name: 'Gold Chain 22K',   code: 'GC-001',  price: 4500,  unit: 'Pcs' },
-  { id: '3', name: 'Diamond Ring 18K', code: 'DR-001',  price: 8500,  unit: 'Pcs' },
-  { id: '4', name: 'Gold Bracelet',    code: 'GB-001',  price: 3800,  unit: 'Pcs' },
-  { id: '5', name: 'Silver Necklace',  code: 'SN-001',  price: 2800,  unit: 'Pcs' },
-  { id: '6', name: 'Machine Parts',    code: 'MAC-001', price: 2000,  unit: 'Pcs' },
+  { id: '1', name: 'Gold Ring 22K',    code: 'GR-001',  price: 7500,  unit: 'Pcs', description: '22K Gold Ring' },
+  { id: '2', name: 'Gold Chain 22K',   code: 'GC-001',  price: 4500,  unit: 'Pcs', description: '22K Gold Chain' },
+  { id: '3', name: 'Diamond Ring 18K', code: 'DR-001',  price: 8500,  unit: 'Pcs', description: '18K Diamond Ring' },
+  { id: '4', name: 'Gold Bracelet',    code: 'GB-001',  price: 3800,  unit: 'Pcs', description: 'Gold Bracelet' },
+  { id: '5', name: 'Silver Necklace',  code: 'SN-001',  price: 2800,  unit: 'Pcs', description: 'Silver Necklace' },
+  { id: '6', name: 'Machine Parts',    code: 'MAC-001', price: 2000,  unit: 'Pcs', description: 'Industrial Parts' },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -46,6 +54,7 @@ const PurchaseOrderCreate: React.FC = () => {
   const {
     formData,
     errors,
+    warnings,
     isSubmitting,
     handleChange,
     handleItemsChange,
@@ -56,7 +65,7 @@ const PurchaseOrderCreate: React.FC = () => {
   const {
     success,
     error: showError,
-    warning,
+    warning: showWarning,
     withConfirmation,
     withLoading,
     isOpen: modalOpen,
@@ -71,6 +80,8 @@ const PurchaseOrderCreate: React.FC = () => {
   const [selectedVendorInfo, setSelectedVendorInfo] = useState<{
     email?: string; phone?: string; address?: string; city?: string; state?: string;
   } | null>(null);
+  const [showErrorSummary, setShowErrorSummary] = useState(true);
+  const [showWarningSummary, setShowWarningSummary] = useState(true);
 
   // Snapshot for unsaved changes detection
   const initialSnapshotRef = useRef<string | null>(null);
@@ -101,6 +112,40 @@ const PurchaseOrderCreate: React.FC = () => {
       showError(errors.submit);
     }
   }, [errors.submit, showError]);
+
+  // Auto-show error summary when new errors appear
+  useEffect(() => {
+    const formErrors = getFormErrors();
+    if (Object.keys(formErrors).length > 0) {
+      setShowErrorSummary(true);
+    }
+  }, [errors]);
+
+  // Show warnings as toasts
+  useEffect(() => {
+    if (warnings && warnings.length > 0) {
+      warnings.forEach(warning => showWarning(warning));
+    }
+  }, [warnings, showWarning]);
+
+  // Filter out submit error from form errors for display
+  const getFormErrors = () => {
+    return Object.entries(errors).reduce((acc, [key, value]) => {
+      if (key !== 'submit') {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, string>);
+  };
+
+  // Convert warnings array to errors object for ErrorSummary
+  const getWarningErrors = () => {
+    if (!warnings || warnings.length === 0) return {};
+    return warnings.reduce((acc, warning, index) => {
+      acc[`warning_${index}`] = warning;
+      return acc;
+    }, {} as Record<string, string>);
+  };
 
   // Handle vendor selection — auto-fill all vendor fields
   const handleVendorSelect = (option: DropdownOption) => {
@@ -161,23 +206,10 @@ const PurchaseOrderCreate: React.FC = () => {
     );
   };
 
-  // Clear form handler
-  const handleClearForm = async () => {
-    if (!hasChanges) return;
 
-    await withConfirmation(
-      {
-        title: 'Clear Form',
-        message: 'Are you sure you want to clear all entered data?',
-        confirmText: 'Clear',
-        variant: 'warning',
-      },
-      async () => {
-        window.location.reload();
-        success('Form cleared successfully.');
-      }
-    );
-  };
+
+  const formErrors = getFormErrors();
+  const warningErrors = getWarningErrors();
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -198,7 +230,7 @@ const PurchaseOrderCreate: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-       
+
             <button
               type="button"
               onClick={handleCancel}
@@ -226,21 +258,26 @@ const PurchaseOrderCreate: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Summary */}
-        {Object.keys(errors).length > 0 && Object.keys(errors).some(key => key !== 'submit') && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.entries(errors)
-                  .filter(([key]) => key !== 'submit')
-                  .map(([key, value]) => (
-                    <li key={key}>{value}</li>
-                  ))}
-              </ul>
-            </div>
-          </div>
+        {/* Error Summary - Using reusable component */}
+        {showErrorSummary && Object.keys(formErrors).length > 0 && (
+          <ErrorSummary
+            errors={formErrors}
+            variant="error"
+            title="Please fix the following errors:"
+            onClose={() => setShowErrorSummary(false)}
+            maxDisplay={10}
+          />
+        )}
+
+        {/* Warning Summary - Using reusable component */}
+        {showWarningSummary && Object.keys(warningErrors).length > 0 && (
+          <ErrorSummary
+            errors={warningErrors}
+            variant="warning"
+            title="Please review the following warnings:"
+            onClose={() => setShowWarningSummary(false)}
+            maxDisplay={5}
+          />
         )}
 
         {/* ── Form ── */}
@@ -321,8 +358,11 @@ const PurchaseOrderCreate: React.FC = () => {
                   type="date"
                   value={formData.expectedDeliveryDate || ''}
                   onChange={(e) => handleChange('expectedDeliveryDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.expectedDeliveryDate ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {errors.expectedDeliveryDate && <p className="mt-1 text-sm text-red-500">{errors.expectedDeliveryDate}</p>}
               </div>
 
               {/* Status */}
@@ -336,6 +376,7 @@ const PurchaseOrderCreate: React.FC = () => {
                   placeholder="Search status..."
                   resetSearchOnOpen
                 />
+                {errors.status && <p className="mt-1 text-sm text-red-500">{errors.status}</p>}
               </div>
 
               {/* Priority */}
@@ -349,6 +390,7 @@ const PurchaseOrderCreate: React.FC = () => {
                   placeholder="Search priority..."
                   resetSearchOnOpen
                 />
+                {errors.priority && <p className="mt-1 text-sm text-red-500">{errors.priority}</p>}
               </div>
 
               {/* Vendor Address (auto-filled, editable) */}
@@ -358,9 +400,41 @@ const PurchaseOrderCreate: React.FC = () => {
                   value={formData.vendorAddress || ''}
                   onChange={(e) => handleChange('vendorAddress', e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.vendorAddress ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Auto-filled from vendor selection, or enter manually"
                 />
+                {errors.vendorAddress && <p className="mt-1 text-sm text-red-500">{errors.vendorAddress}</p>}
+              </div>
+
+              {/* Currency */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                <SearchableDropdown
+                  options={CURRENCY_OPTIONS}
+                  value={formData.currency || 'INR'}
+                  onChange={(opt) => handleChange('currency', opt.value)}
+                  triggerPlaceholder="Select Currency"
+                  placeholder="Search currency..."
+                />
+                {errors.currency && <p className="mt-1 text-sm text-red-500">{errors.currency}</p>}
+              </div>
+
+              {/* Exchange Rate */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Rate</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={formData.exchangeRate || ''}
+                  onChange={(e) => handleChange('exchangeRate', parseFloat(e.target.value) || 1)}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.exchangeRate ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="1.0000"
+                />
+                {errors.exchangeRate && <p className="mt-1 text-sm text-red-500">{errors.exchangeRate}</p>}
               </div>
 
             </div>
@@ -368,7 +442,11 @@ const PurchaseOrderCreate: React.FC = () => {
 
           {/* ── Section: Order Items ── */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Order Items</h3>
+            {errors.items && typeof errors.items === 'string' && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{errors.items}</p>
+              </div>
+            )}
             <ItemSelectionTable
               items={formData.items}
               onItemsChange={handleItemsChange}
@@ -382,12 +460,12 @@ const PurchaseOrderCreate: React.FC = () => {
               simpleMode={false}
               searchPlaceholder="Search products..."
               addButtonLabel="Add Item"
-              title=""
+              title="Order Items"
               showSubtotalSection={true}
-              additionalCharges={additionalCharges}
+              // additionalCharges={additionalCharges}
               headerDiscount={0}
               showTotalSection={true}
-              autoAddDefaultRow={true}
+              autoAddDefaultRow={false}
               addButtonAtBottom={true}
               className="border-0 p-0"
             />
@@ -405,9 +483,12 @@ const PurchaseOrderCreate: React.FC = () => {
                   value={formData.notes || ''}
                   onChange={(e) => handleChange('notes', e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.notes ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Enter additional notes"
                 />
+                {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes}</p>}
               </div>
 
               {/* Terms & Conditions */}
@@ -419,9 +500,12 @@ const PurchaseOrderCreate: React.FC = () => {
                   value={formData.terms || ''}
                   onChange={(e) => handleChange('terms', e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.terms ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Enter terms and conditions"
                 />
+                {errors.terms && <p className="mt-1 text-sm text-red-500">{errors.terms}</p>}
               </div>
 
               {/* Payment Terms */}
@@ -431,9 +515,12 @@ const PurchaseOrderCreate: React.FC = () => {
                   type="text"
                   value={formData.paymentTerms || ''}
                   onChange={(e) => handleChange('paymentTerms', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.paymentTerms ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., Net 30 days"
                 />
+                {errors.paymentTerms && <p className="mt-1 text-sm text-red-500">{errors.paymentTerms}</p>}
               </div>
 
             </div>

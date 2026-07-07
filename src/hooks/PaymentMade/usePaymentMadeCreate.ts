@@ -1,99 +1,101 @@
 // src/hooks/PaymentMade/usePaymentMadeCreate.ts
 
-import { useState } from 'react';
-import type{ PaymentMadeFormData } from '../../types/PaymentMade/PaymentMadeType'
-
+import { useState, useCallback } from 'react';
+import type { PaymentMadeFormData } from '../../types/PaymentMade/PaymentMadeType';
+import { 
+  validatePaymentMade, 
+  validatePaymentMadeField,
+  validatePaymentMadeBusinessRules 
+} from '../../validations/paymentMadeValidation';
 
 export const usePaymentMadeCreate = () => {
   const [formData, setFormData] = useState<PaymentMadeFormData>({
     paymentDate: new Date().toISOString().split('T')[0],
-    billId: '',
-    billNumber: '',
-    vendorId: '',
-    vendorName: '',
-    vendorEmail: '',
+    billId: undefined,
+    billNumber: undefined,
+    vendorId: undefined,
+    vendorName: undefined,
+    vendorEmail: undefined,
     amount: 0,
     paymentMethod: 'bank',
-    referenceNumber: '',
-    chequeNumber: '',
-    bankName: '',
-    bankAccount: '',
-    notes: '',
+    referenceNumber: undefined,
+    chequeNumber: undefined,
+    bankName: undefined,
+    bankAccount: undefined,
+    notes: undefined,
     status: 'pending',
-    attachment: '',
+    attachment: undefined,
     currency: 'INR',
     exchangeRate: 1
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field: keyof PaymentMadeFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
+  const handleChange = useCallback((field: keyof PaymentMadeFormData, value: any) => {
+    setFormData(prev => {
+      const newFormData = {
+        ...prev,
+        [field]: value
+      };
+
+      // Real-time field validation
+      const fieldError = validatePaymentMadeField(field, value, newFormData);
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        if (fieldError) {
+          newErrors[field] = fieldError;
+        } else {
+          delete newErrors[field];
+        }
         return newErrors;
       });
+
+      return newFormData;
+    });
+  }, []);
+
+  const validateForm = useCallback((): boolean => {
+    const { isValid, errors: validationErrors } = validatePaymentMade(formData);
+    setErrors(validationErrors);
+    
+    if (isValid) {
+      const businessWarnings = validatePaymentMadeBusinessRules(formData);
+      setWarnings(businessWarnings);
+    } else {
+      setWarnings([]);
     }
-  };
+    
+    return isValid;
+  }, [formData]);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.vendorId && !formData.vendorName) {
-      newErrors.vendorId = 'Vendor is required';
-    }
-
-    if (!formData.paymentDate) {
-      newErrors.paymentDate = 'Payment date is required';
-    }
-
-    if (!formData.amount || formData.amount <= 0) {
-      newErrors.amount = 'Amount must be greater than 0';
-    }
-
-    if (!formData.paymentMethod) {
-      newErrors.paymentMethod = 'Payment method is required';
-    }
-
-    if (!formData.status) {
-      newErrors.status = 'Status is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
       paymentDate: new Date().toISOString().split('T')[0],
-      billId: '',
-      billNumber: '',
-      vendorId: '',
-      vendorName: '',
-      vendorEmail: '',
+      billId: undefined,
+      billNumber: undefined,
+      vendorId: undefined,
+      vendorName: undefined,
+      vendorEmail: undefined,
       amount: 0,
       paymentMethod: 'bank',
-      referenceNumber: '',
-      chequeNumber: '',
-      bankName: '',
-      bankAccount: '',
-      notes: '',
+      referenceNumber: undefined,
+      chequeNumber: undefined,
+      bankName: undefined,
+      bankAccount: undefined,
+      notes: undefined,
       status: 'pending',
-      attachment: '',
+      attachment: undefined,
       currency: 'INR',
       exchangeRate: 1
     });
     setErrors({});
+    setWarnings([]);
     setIsSubmitting(false);
-  };
+  }, []);
 
-  const handleSubmit = async (submitFn: (data: PaymentMadeFormData) => Promise<any>) => {
+  const handleSubmit = useCallback(async (submitFn: (data: PaymentMadeFormData) => Promise<any>) => {
     if (!validateForm()) {
       return false;
     }
@@ -113,16 +115,19 @@ export const usePaymentMadeCreate = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [formData, validateForm, resetForm]);
 
   return {
     formData,
     errors,
+    warnings,
     isSubmitting,
     handleChange,
     handleSubmit,
+    validateForm,
     resetForm,
     setFormData,
-    setErrors
+    setErrors,
+    setWarnings
   };
 };

@@ -1,5 +1,5 @@
 // src/pages/sales/CreditNotes/CreditNoteView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -25,20 +25,21 @@ import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { formatCurrency } from '../../../utils/Invoice/calculations';
 import type { CreditNote } from '../../../types/creditNote/CreditNoteTypes';
 
 // Status Badge
 const StatusBadge: React.FC<{ status: CreditNote['status'] }> = ({ status }) => {
-  const config = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: FileText, label: 'Draft' },
-    sent: { color: 'bg-blue-100 text-blue-700', icon: Send, label: 'Sent' },
-    approved: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Approved' },
-    rejected: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Rejected' },
+  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    draft: { color: 'bg-gray-100 text-gray-700', icon: <FileText className="h-3 w-3" />, label: 'Draft' },
+    sent: { color: 'bg-blue-100 text-blue-700', icon: <Send className="h-3 w-3" />, label: 'Sent' },
+    approved: { color: 'bg-green-100 text-green-700', icon: <CheckCircle className="h-3 w-3" />, label: 'Approved' },
+    rejected: { color: 'bg-red-100 text-red-700', icon: <XCircle className="h-3 w-3" />, label: 'Rejected' },
   };
-  const { color, icon: Icon, label } = config[status] || config.draft;
+  const { color, icon, label } = config[status] || config.draft;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+      {icon}
       {label}
     </span>
   );
@@ -228,6 +229,7 @@ const CreditNoteView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [creditNote, setCreditNote] = useState<CreditNote | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Use the toast and confirm hook
   const {
@@ -252,7 +254,7 @@ const CreditNoteView: React.FC = () => {
     }
   }, [id]);
 
-  const loadCreditNote = async (creditNoteId: string) => {
+  const loadCreditNote = useCallback(async (creditNoteId: string) => {
     setLoading(true);
     try {
       const data = await getCreditNote(creditNoteId) as CreditNote;
@@ -261,18 +263,19 @@ const CreditNoteView: React.FC = () => {
       } else {
         const dummyData = generateDummyCreditNote(creditNoteId);
         setCreditNote(dummyData);
+        warning('Loaded demo data. Some features may be limited.');
       }
     } catch (error) {
       console.error('Error loading credit note:', error);
-      showError('Failed to load credit note. Loading demo data.');
       const dummyData = generateDummyCreditNote(creditNoteId);
       setCreditNote(dummyData);
+      showError('Failed to load credit note. Loading demo data.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [getCreditNote, showError, warning]);
 
-  const handleStatusUpdate = async (status: CreditNote['status']) => {
+  const handleStatusUpdate = useCallback(async (status: CreditNote['status']) => {
     if (!id) return;
     
     const statusLabels: Record<string, string> = {
@@ -306,9 +309,9 @@ const CreditNoteView: React.FC = () => {
         }
       }
     );
-  };
+  }, [id, withConfirmation, updateStatus, loadCreditNote, success, showError]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!id) return;
     
     await withConfirmation(
@@ -320,36 +323,38 @@ const CreditNoteView: React.FC = () => {
         variant: 'danger',
       },
       async () => {
-        await withLoading(
-          async () => {
-            await deleteCreditNote(id);
-            navigate('/sales/credit-notes');
-          },
-          'Deleting credit note...',
-          'Credit note deleted successfully.',
-          'Failed to delete credit note. Please try again.'
-        );
+        setDeleteLoading(true);
+        try {
+          await deleteCreditNote(id);
+          success('Credit note deleted successfully.');
+          navigate('/sales/credit-notes');
+        } catch (error) {
+          console.error('Error deleting credit note:', error);
+          showError('Failed to delete credit note. Please try again.');
+        } finally {
+          setDeleteLoading(false);
+        }
       }
     );
-  };
+  }, [id, withConfirmation, deleteCreditNote, success, showError, navigate]);
 
-  const handleEdit = () => {
+  const handleEdit = useCallback(() => {
     console.log('Edit clicked - Credit Note ID:', id);
     if (id) {
       navigate(`/sales/credit-notes/${id}/edit`);
     } else {
       showError('Cannot edit: Invalid credit note ID');
     }
-  };
+  }, [id, navigate, showError]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     success('Preparing document for printing...');
     setTimeout(() => window.print(), 500);
-  };
+  }, [success]);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     warning('Download functionality will be implemented soon.');
-  };
+  }, [warning]);
 
   // Dropdown items for three-dot menu
   const dropdownItems = [
@@ -371,9 +376,10 @@ const CreditNoteView: React.FC = () => {
     },
     {
       label: 'Delete',
-      icon: <Trash2 className="h-4 w-4 text-red-500" />,
+      icon: deleteLoading ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4 text-red-500" />,
       onClick: handleDelete,
       show: creditNote?.status === 'draft',
+      disabled: deleteLoading,
     },
     {
       label: 'Send Credit Note',
@@ -401,7 +407,7 @@ const CreditNoteView: React.FC = () => {
   if (loading || hookLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading credit note..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -501,7 +507,7 @@ const CreditNoteView: React.FC = () => {
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">Amount</p>
-                <p className="text-3xl font-bold text-amber-600">₹{creditNote.total.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-amber-600">{formatCurrency(creditNote.total)}</p>
               </div>
             </div>
           </div>
@@ -559,7 +565,7 @@ const CreditNoteView: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {creditNote.items.map((item, index) => (
-                    <tr key={index}>
+                    <tr key={item.id || index}>
                       <td className="px-4 py-3">
                         <p className="font-medium text-gray-900">{item.itemName}</p>
                         {item.purity && (
@@ -571,31 +577,31 @@ const CreditNoteView: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">{item.description}</td>
                       <td className="px-4 py-3 text-right">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right">₹{item.rate.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right">{formatCurrency(item.rate)}</td>
                       <td className="px-4 py-3 text-right">{item.discount}%</td>
                       <td className="px-4 py-3 text-right">{item.taxRate}%</td>
-                      <td className="px-4 py-3 text-right font-medium">₹{item.total.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.total)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot className="bg-gray-50">
                   <tr>
                     <td colSpan={6} className="px-4 py-2 text-right font-medium">Subtotal</td>
-                    <td className="px-4 py-2 text-right font-medium">₹{creditNote.subtotal.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-right font-medium">{formatCurrency(creditNote.subtotal)}</td>
                   </tr>
                   <tr>
                     <td colSpan={6} className="px-4 py-2 text-right font-medium">Tax</td>
-                    <td className="px-4 py-2 text-right font-medium">₹{creditNote.taxAmount.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-right font-medium">{formatCurrency(creditNote.taxAmount)}</td>
                   </tr>
                   {creditNote.discount > 0 && (
                     <tr>
                       <td colSpan={6} className="px-4 py-2 text-right font-medium">Discount</td>
-                      <td className="px-4 py-2 text-right font-medium text-red-600">-₹{creditNote.discount.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right font-medium text-red-600">-{formatCurrency(creditNote.discount)}</td>
                     </tr>
                   )}
                   <tr className="border-t-2 border-gray-300">
                     <td colSpan={6} className="px-4 py-3 text-right font-bold text-lg">Total</td>
-                    <td className="px-4 py-3 text-right font-bold text-lg text-amber-600">₹{creditNote.total.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-lg text-amber-600">{formatCurrency(creditNote.total)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -616,6 +622,14 @@ const CreditNoteView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {deleteLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

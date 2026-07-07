@@ -16,12 +16,17 @@ import {
   Users,
   Printer,
   Download,
+  AlertCircle,
 } from 'lucide-react';
 import { useVendor } from '../../../hooks/vendor/useVendor';
+import { useVendorView } from '../../../hooks/vendor/useVendorView';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { validateVendorForm, formatValidationErrors } from '../../../validations/vendor.validation';
+import type { VendorFormData } from '../../../types/Vendor/VendorType';
 
 // Status Badge
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -69,6 +74,20 @@ const VendorView: React.FC = () => {
   const [vendor, setVendor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showValidationSummary, setShowValidationSummary] = useState(false);
+
+  // Use the vendor view hook
+  const {
+    getDisplayName,
+    getCompanyInfo,
+    getContactInfo,
+    getFullAddress,
+    getStatusColor,
+    getStatusLabel,
+    isComplete,
+    getSummary,
+  } = useVendorView(vendor);
 
   // Use the toast and confirm hook
   const {
@@ -88,9 +107,21 @@ const VendorView: React.FC = () => {
     const loadVendor = async () => {
       if (id) {
         setLoading(true);
+        setError(null);
+        setValidationErrors({});
+        setShowValidationSummary(false);
+        
         try {
           const data = await getVendorById(id);
           if (data) {
+            // Validate the loaded vendor data
+            const validationResult = validateVendorForm(data as VendorFormData);
+            if (!validationResult.isValid) {
+              const formattedErrors = formatValidationErrors(validationResult.errors);
+              setValidationErrors(formattedErrors);
+              setShowValidationSummary(true);
+              warning('Vendor data has validation issues. Please review the details below.');
+            }
             setVendor(data);
           } else {
             setVendor(DEMO_VENDOR);
@@ -99,6 +130,7 @@ const VendorView: React.FC = () => {
         } catch (err) {
           console.error('Error loading vendor:', err);
           setVendor(DEMO_VENDOR);
+          setError('Failed to load vendor details. Showing demo data.');
           showError('Failed to load vendor details. Showing demo data.');
         } finally {
           setLoading(false);
@@ -114,6 +146,14 @@ const VendorView: React.FC = () => {
   const handleDelete = async () => {
     if (!id) return;
     
+    // Validate before delete
+    if (!vendor) {
+      setValidationErrors({ delete: 'No vendor data available to delete.' });
+      setShowValidationSummary(true);
+      showError('No vendor data available to delete.');
+      return;
+    }
+
     await withConfirmation(
       {
         title: 'Delete Vendor',
@@ -126,6 +166,8 @@ const VendorView: React.FC = () => {
         await withLoading(
           async () => {
             await deleteVendor(id);
+            setValidationErrors({});
+            setShowValidationSummary(false);
             navigate('/purchases/vendors');
           },
           'Deleting vendor...',
@@ -136,22 +178,56 @@ const VendorView: React.FC = () => {
     );
   };
 
-  // Handle edit navigation with proper path
+  // Handle edit navigation with validation
   const handleEdit = () => {
     console.log('Edit clicked - Vendor ID:', id);
-    if (id) {
-      navigate(`/purchases/vendors/${id}/edit`);
-    } else {
+    
+    // Validate before navigating to edit
+    if (!id) {
+      setValidationErrors({ edit: 'Cannot edit: Invalid vendor ID' });
+      setShowValidationSummary(true);
       showError('Cannot edit: Invalid vendor ID');
+      return;
     }
+
+    if (!vendor) {
+      setValidationErrors({ edit: 'Cannot edit: Vendor data not loaded' });
+      setShowValidationSummary(true);
+      showError('Cannot edit: Vendor data not loaded');
+      return;
+    }
+
+    setValidationErrors({});
+    setShowValidationSummary(false);
+    navigate(`/purchases/vendors/${id}/edit`);
   };
 
   const handlePrint = () => {
+    // Validate before printing
+    if (!vendor) {
+      setValidationErrors({ print: 'Cannot print: No vendor data available' });
+      setShowValidationSummary(true);
+      showError('Cannot print: No vendor data available');
+      return;
+    }
+
+    setValidationErrors({});
+    setShowValidationSummary(false);
     success('Preparing document for printing...');
     setTimeout(() => window.print(), 500);
   };
 
   const handleDownload = () => {
+    // Validate before downloading
+    if (!vendor) {
+      setValidationErrors({ download: 'Cannot download: No vendor data available' });
+      setShowValidationSummary(true);
+      showError('Cannot download: No vendor data available');
+      return;
+    }
+
+    setValidationErrors({});
+    setShowValidationSummary(false);
     warning('Download functionality will be implemented soon.');
   };
 
@@ -217,7 +293,7 @@ const VendorView: React.FC = () => {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{vendor.name}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{getDisplayName}</h1>
             <p className="text-sm text-gray-500 mt-0.5">Vendor Details</p>
           </div>
         </div>
@@ -236,12 +312,32 @@ const VendorView: React.FC = () => {
         </div>
       </div>
 
+      {/* Error Summary - Shows validation errors */}
+      {showValidationSummary && Object.keys(validationErrors).length > 0 && (
+        <ErrorSummary
+          errors={validationErrors}
+          title="Validation Issues Found:"
+          variant="error"
+          onClose={() => {
+            setShowValidationSummary(false);
+            setValidationErrors({});
+          }}
+          showIcon={true}
+          showBadge={false}
+        />
+      )}
+
       {/* Status Badge */}
       <div className="mb-6">
         <StatusBadge status={vendor.status} />
-        {vendor.name && vendor.email && vendor.phone && vendor.address && (
+        {isComplete && (
           <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
             Complete Profile
+          </span>
+        )}
+        {!isComplete && (
+          <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800">
+            Incomplete Profile
           </span>
         )}
       </div>
@@ -258,7 +354,7 @@ const VendorView: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm text-gray-500">Company Name</label>
-                <p className="text-gray-900 font-medium">{vendor.company || 'N/A'}</p>
+                <p className="text-gray-900 font-medium">{getCompanyInfo || 'N/A'}</p>
               </div>
               <div>
                 <label className="text-sm text-gray-500">Tax ID</label>
@@ -389,8 +485,8 @@ const VendorView: React.FC = () => {
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-sm text-gray-500">Profile Status</span>
-                <span className={`text-sm font-medium ${vendor.name && vendor.email && vendor.phone && vendor.address ? 'text-green-600' : 'text-yellow-600'}`}>
-                  {vendor.name && vendor.email && vendor.phone && vendor.address ? 'Complete' : 'Incomplete'}
+                <span className={`text-sm font-medium ${isComplete ? 'text-green-600' : 'text-yellow-600'}`}>
+                  {isComplete ? 'Complete' : 'Incomplete'}
                 </span>
               </div>
             </div>
@@ -426,7 +522,7 @@ const VendorView: React.FC = () => {
         </div>
       </div>
 
-      {/* Confirmation Modal - Replaces the custom delete modal */}
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

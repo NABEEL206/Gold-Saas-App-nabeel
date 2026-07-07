@@ -1,19 +1,24 @@
 // src/hooks/Bill/useBillEdit.ts
 
-import { useState, useEffect } from 'react';
-import type{ Bill, BillFormData } from '../../types/Bill/BillTypes';
+import { useState, useEffect, useCallback } from 'react';
+import type { Bill, BillFormData } from '../../types/Bill/BillTypes';
+import { 
+  validateBill, 
+  validateBillField,
+  validateBillBusinessRules 
+} from '../../validations/billValidation';
 
 export const useBillEdit = (bill: Bill | null) => {
   const [formData, setFormData] = useState<BillFormData>({
     billDate: new Date().toISOString().split('T')[0],
-    dueDate: '',
-    vendorId: '',
-    vendorName: '',
-    vendorEmail: '',
-    vendorPhone: '',
-    vendorAddress: '',
-    vendorGST: '',
-    purchaseOrderNumber: '',
+    dueDate: undefined,
+    vendorId: undefined,
+    vendorName: undefined,
+    vendorEmail: undefined,
+    vendorPhone: undefined,
+    vendorAddress: undefined,
+    vendorGST: undefined,
+    purchaseOrderNumber: undefined,
     status: 'draft',
     items: [],
     subtotal: 0,
@@ -27,29 +32,30 @@ export const useBillEdit = (bill: Bill | null) => {
     balanceDue: 0,
     currency: 'INR',
     exchangeRate: 1,
-    notes: '',
-    terms: '',
-    attachment: '',
-    paymentTerms: '',
-    paymentDate: '',
+    notes: undefined,
+    terms: undefined,
+    attachment: undefined,
+    paymentTerms: undefined,
+    paymentDate: undefined,
     paymentMethod: 'bank'
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (bill) {
       setFormData({
         billDate: bill.billDate || new Date().toISOString().split('T')[0],
-        dueDate: bill.dueDate || '',
-        vendorId: bill.vendorId || '',
-        vendorName: bill.vendorName || '',
-        vendorEmail: bill.vendorEmail || '',
-        vendorPhone: bill.vendorPhone || '',
-        vendorAddress: bill.vendorAddress || '',
-        vendorGST: bill.vendorGST || '',
-        purchaseOrderNumber: bill.purchaseOrderNumber || '',
+        dueDate: bill.dueDate || undefined,
+        vendorId: bill.vendorId || undefined,
+        vendorName: bill.vendorName || undefined,
+        vendorEmail: bill.vendorEmail || undefined,
+        vendorPhone: bill.vendorPhone || undefined,
+        vendorAddress: bill.vendorAddress || undefined,
+        vendorGST: bill.vendorGST || undefined,
+        purchaseOrderNumber: bill.purchaseOrderNumber || undefined,
         status: bill.status || 'draft',
         items: bill.items || [],
         subtotal: bill.subtotal || 0,
@@ -63,43 +69,64 @@ export const useBillEdit = (bill: Bill | null) => {
         balanceDue: bill.balanceDue || 0,
         currency: bill.currency || 'INR',
         exchangeRate: bill.exchangeRate || 1,
-        notes: bill.notes || '',
-        terms: bill.terms || '',
-        attachment: bill.attachment || '',
-        paymentTerms: bill.paymentTerms || '',
-        paymentDate: bill.paymentDate || '',
+        notes: bill.notes || undefined,
+        terms: bill.terms || undefined,
+        attachment: bill.attachment || undefined,
+        paymentTerms: bill.paymentTerms || undefined,
+        paymentDate: bill.paymentDate || undefined,
         paymentMethod: bill.paymentMethod || 'bank'
       });
     }
   }, [bill]);
 
-  const handleChange = (field: keyof BillFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
+  const handleChange = useCallback((field: keyof BillFormData, value: any) => {
+    setFormData(prev => {
+      const newFormData = {
+        ...prev,
+        [field]: value
+      };
+
+      // Real-time field validation
+      const fieldError = validateBillField(field, value, newFormData);
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        if (fieldError) {
+          newErrors[field] = fieldError;
+        } else {
+          delete newErrors[field];
+        }
         return newErrors;
       });
-    }
-  };
 
-  const handleItemsChange = (items: any[]) => {
+      // Recalculate balance when paid amount changes
+      if (field === 'paidAmount') {
+        const balanceDue = newFormData.totalAmount - (value || 0);
+        return {
+          ...newFormData,
+          balanceDue
+        };
+      }
+
+      return newFormData;
+    });
+  }, []);
+
+  const handleItemsChange = useCallback((items: any[]) => {
     let subtotal = 0;
     let discountTotal = 0;
     let taxTotal = 0;
     
     items.forEach(item => {
-      subtotal += item.quantity * item.rate;
+      const itemTotal = (item.quantity || 0) * (item.rate || 0);
+      subtotal += itemTotal;
+      
       const discountAmount = item.discountType === 'fixed' 
-        ? item.discount 
-        : (item.quantity * item.rate) * (item.discount / 100);
+        ? (item.discount || 0)
+        : itemTotal * ((item.discount || 0) / 100);
       discountTotal += discountAmount;
-      const afterDiscount = (item.quantity * item.rate) - discountAmount;
-      const taxAmount = afterDiscount * (item.taxRate / 100);
+      
+      const afterDiscount = itemTotal - discountAmount;
+      const taxAmount = afterDiscount * ((item.taxRate || 0) / 100);
       taxTotal += taxAmount;
     });
 
@@ -119,51 +146,43 @@ export const useBillEdit = (bill: Bill | null) => {
       totalAmount,
       balanceDue
     }));
-  };
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.vendorId && !formData.vendorName) {
-      newErrors.vendorId = 'Vendor is required';
-    }
-
-    if (!formData.billDate) {
-      newErrors.billDate = 'Bill date is required';
-    }
-
-    if (!formData.items || formData.items.length === 0) {
-      newErrors.items = 'At least one item is required';
-    } else {
-      formData.items.forEach((item, index) => {
-        if (!item.productName) {
-          newErrors[`item_${index}_productName`] = 'Product name is required';
-        }
-        if (!item.quantity || item.quantity <= 0) {
-          newErrors[`item_${index}_quantity`] = 'Quantity must be greater than 0';
-        }
-        if (!item.rate || item.rate <= 0) {
-          newErrors[`item_${index}_rate`] = 'Rate must be greater than 0';
-        }
+    // Clear items error if items exist
+    if (items.length > 0) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.items;
+        return newErrors;
       });
     }
+  }, [formData.shippingCharges, formData.handlingCharges, formData.otherCharges, formData.paidAmount]);
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const validateForm = useCallback((): boolean => {
+    const { isValid, errors: validationErrors } = validateBill(formData);
+    setErrors(validationErrors);
+    
+    if (isValid) {
+      const businessWarnings = validateBillBusinessRules(formData);
+      setWarnings(businessWarnings);
+    } else {
+      setWarnings([]);
+    }
+    
+    return isValid;
+  }, [formData]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     if (bill) {
       setFormData({
         billDate: bill.billDate || new Date().toISOString().split('T')[0],
-        dueDate: bill.dueDate || '',
-        vendorId: bill.vendorId || '',
-        vendorName: bill.vendorName || '',
-        vendorEmail: bill.vendorEmail || '',
-        vendorPhone: bill.vendorPhone || '',
-        vendorAddress: bill.vendorAddress || '',
-        vendorGST: bill.vendorGST || '',
-        purchaseOrderNumber: bill.purchaseOrderNumber || '',
+        dueDate: bill.dueDate || undefined,
+        vendorId: bill.vendorId || undefined,
+        vendorName: bill.vendorName || undefined,
+        vendorEmail: bill.vendorEmail || undefined,
+        vendorPhone: bill.vendorPhone || undefined,
+        vendorAddress: bill.vendorAddress || undefined,
+        vendorGST: bill.vendorGST || undefined,
+        purchaseOrderNumber: bill.purchaseOrderNumber || undefined,
         status: bill.status || 'draft',
         items: bill.items || [],
         subtotal: bill.subtotal || 0,
@@ -177,19 +196,22 @@ export const useBillEdit = (bill: Bill | null) => {
         balanceDue: bill.balanceDue || 0,
         currency: bill.currency || 'INR',
         exchangeRate: bill.exchangeRate || 1,
-        notes: bill.notes || '',
-        terms: bill.terms || '',
-        attachment: bill.attachment || '',
-        paymentTerms: bill.paymentTerms || '',
-        paymentDate: bill.paymentDate || '',
+        notes: bill.notes || undefined,
+        terms: bill.terms || undefined,
+        attachment: bill.attachment || undefined,
+        paymentTerms: bill.paymentTerms || undefined,
+        paymentDate: bill.paymentDate || undefined,
         paymentMethod: bill.paymentMethod || 'bank'
       });
     }
     setErrors({});
+    setWarnings([]);
     setIsSubmitting(false);
-  };
+  }, [bill]);
 
-  const handleSubmit = async (submitFn: (id: string | number, data: BillFormData) => Promise<any>) => {
+  const handleSubmit = useCallback(async (
+    submitFn: (id: string | number, data: BillFormData) => Promise<any>
+  ) => {
     if (!validateForm() || !bill) {
       return false;
     }
@@ -208,17 +230,20 @@ export const useBillEdit = (bill: Bill | null) => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [formData, validateForm, bill]);
 
   return {
     formData,
     errors,
+    warnings,
     isSubmitting,
     handleChange,
     handleItemsChange,
     handleSubmit,
+    validateForm,
     resetForm,
     setFormData,
-    setErrors
+    setErrors,
+    setWarnings
   };
 };

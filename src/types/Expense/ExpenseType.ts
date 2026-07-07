@@ -7,6 +7,7 @@ export interface Expense {
   vendorName?: string;
   category: string;
   subCategory?: string;
+  expenseAccount?: string; // Added expense account field
   amount: number;
   taxAmount?: number;
   totalAmount: number;
@@ -35,6 +36,7 @@ export interface ExpenseFormData {
   vendorName?: string;
   category: string;
   subCategory?: string;
+  expenseAccount?: string; // Added expense account field
   amount: number;
   taxAmount?: number;
   totalAmount: number;
@@ -56,6 +58,7 @@ export interface ExpenseFormData {
 export interface ExpenseFilters {
   search?: string;
   category?: string;
+  expenseAccount?: string; // Added expense account filter
   paymentStatus?: string;
   paymentMethod?: string;
   vendorId?: string | number;
@@ -91,11 +94,26 @@ export interface ExpenseStats {
 
 export interface ExpenseValidationErrors {
   vendorId?: string;
+  vendorName?: string;
   category?: string;
+  subCategory?: string;
+  expenseAccount?: string; // Added expense account validation
   amount?: string;
+  taxAmount?: string;
+  totalAmount?: string;
   date?: string;
+  dueDate?: string;
+  description?: string;
   paymentMethod?: string;
   paymentStatus?: string;
+  referenceNumber?: string;
+  attachment?: string;
+  notes?: string;
+  receiptNumber?: string;
+  billNumber?: string;
+  currency?: string;
+  exchangeRate?: string;
+  isVendorExpense?: string;
   [key: string]: string | undefined;
 }
 
@@ -124,6 +142,26 @@ export const EXPENSE_CATEGORIES = [
   'Vehicle Expenses',
   'Medical Expenses',
   'Charity & Donations'
+];
+
+export const EXPENSE_ACCOUNTS = [
+  'Travel Expenses',
+  'Office Supplies',
+  'Utilities',
+  'Rent',
+  'Salaries & Wages',
+  'Marketing & Advertising',
+  'Software & Subscriptions',
+  'Equipment & Machinery',
+  'Maintenance & Repairs',
+  'Insurance',
+  'Legal & Professional',
+  'Consulting Services',
+  'Training & Development',
+  'Food & Beverage',
+  'Transportation',
+  'Communication',
+  'Other Expenses'
 ];
 
 export const PAYMENT_METHODS = [

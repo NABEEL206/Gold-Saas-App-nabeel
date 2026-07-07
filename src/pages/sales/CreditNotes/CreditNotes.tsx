@@ -24,6 +24,7 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { formatCurrency } from '../../../utils/Invoice/calculations';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { CreditNote } from '../../../types/creditNote/CreditNoteTypes';
 
@@ -37,16 +38,16 @@ const STATUS_FILTER_OPTIONS: DropdownOption[] = [
 
 // Status Badge
 const StatusBadge: React.FC<{ status: CreditNote['status'] }> = ({ status }) => {
-  const config = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: FileText, label: 'Draft' },
-    sent: { color: 'bg-blue-100 text-blue-700', icon: Send, label: 'Sent' },
-    approved: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Approved' },
-    rejected: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Rejected' },
+  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    draft: { color: 'bg-gray-100 text-gray-700', icon: <FileText className="h-3 w-3" />, label: 'Draft' },
+    sent: { color: 'bg-blue-100 text-blue-700', icon: <Send className="h-3 w-3" />, label: 'Sent' },
+    approved: { color: 'bg-green-100 text-green-700', icon: <CheckCircle className="h-3 w-3" />, label: 'Approved' },
+    rejected: { color: 'bg-red-100 text-red-700', icon: <XCircle className="h-3 w-3" />, label: 'Rejected' },
   };
-  const { color, icon: Icon, label } = config[status] || config.draft;
+  const { color, icon, label } = config[status] || config.draft;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+      {icon}
       {label}
     </span>
   );
@@ -100,8 +101,8 @@ const CreditNotes: React.FC = () => {
     navigate(`/sales/credit-notes/${creditNote.id}/view`);
   }, [navigate]);
 
-  const handleEdit = useCallback((creditNote: CreditNote) => {
-    navigate(`/sales/credit-notes/${creditNote.id}/edit`);
+  const handleCreateNew = useCallback(() => {
+    navigate('/sales/credit-notes/create');
   }, [navigate]);
 
   // Single delete handler using confirmation modal
@@ -244,6 +245,22 @@ const CreditNotes: React.FC = () => {
     }
   }, [handleImport, success, showError]);
 
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters({ ...filters, search: e.target.value });
+  }, [filters, setFilters]);
+
+  const handleStatusFilterChange = useCallback((option: DropdownOption) => {
+    setFilters({ ...filters, status: option.value });
+  }, [filters, setFilters]);
+
+  const handleDateFromChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters({ ...filters, dateFrom: e.target.value });
+  }, [filters, setFilters]);
+
+  const handleDateToChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters({ ...filters, dateTo: e.target.value });
+  }, [filters, setFilters]);
+
   // Columns
   const columns: TableColumn<CreditNote>[] = [
     {
@@ -281,7 +298,7 @@ const CreditNotes: React.FC = () => {
       key: 'total',
       header: 'Amount',
       render: (item) => (
-        <span className="text-sm font-semibold text-amber-600">₹{item.total.toLocaleString()}</span>
+        <span className="text-sm font-semibold text-amber-600">{formatCurrency(item.total)}</span>
       ),
     },
     {
@@ -328,7 +345,7 @@ const CreditNotes: React.FC = () => {
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading credit notes..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -342,23 +359,26 @@ const CreditNotes: React.FC = () => {
             <Receipt className="h-6 w-6 text-amber-500" />
             Credit Notes
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage customer credit notes</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {totalItems > 0 ? `${totalItems} total credit notes` : 'Manage customer credit notes'}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleRefreshWithLoading}
             disabled={refreshLoading}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh credit notes list"
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
           <button
-            onClick={() => navigate('/sales/credit-notes/create')}
+            onClick={handleCreateNew}
             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
           >
             <Plus className="h-4 w-4" />
@@ -406,7 +426,7 @@ const CreditNotes: React.FC = () => {
                 type="text"
                 placeholder="Search by credit note #, customer or invoice..."
                 value={filters.search || ''}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                onChange={handleSearchChange}
                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -416,7 +436,7 @@ const CreditNotes: React.FC = () => {
             <SearchableDropdown
               options={STATUS_FILTER_OPTIONS}
               value={filters.status || ''}
-              onChange={(option) => setFilters({ ...filters, status: option.value })}
+              onChange={handleStatusFilterChange}
               triggerPlaceholder="All Status"
               placeholder="Search status..."
               className="w-40"
@@ -427,7 +447,7 @@ const CreditNotes: React.FC = () => {
             <input
               type="date"
               value={filters.dateFrom || ''}
-              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+              onChange={handleDateFromChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="Start Date"
             />
@@ -435,7 +455,7 @@ const CreditNotes: React.FC = () => {
             <input
               type="date"
               value={filters.dateTo || ''}
-              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+              onChange={handleDateToChange}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="End Date"
             />

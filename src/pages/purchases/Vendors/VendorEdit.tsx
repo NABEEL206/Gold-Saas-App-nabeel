@@ -1,6 +1,5 @@
 // src/pages/purchases/Vendors/VendorEdit.tsx
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, AlertCircle, RefreshCw } from 'lucide-react';
 import { useVendor } from '../../../hooks/vendor/useVendor';
@@ -9,6 +8,7 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ErrorSummary from '../../../components/common/ErrorSummary';
 
 const STATUS_OPTIONS: DropdownOption[] = [
   { value: 'active', label: 'Active' },
@@ -37,22 +37,22 @@ const VendorEdit: React.FC = () => {
     handleCancel: onModalCancel,
   } = useToastAndConfirm();
 
-  // Debug: Log the ID from params
-  console.log('VendorEdit - ID from params:', id);
-
   const {
     formData,
-    errors,
+    errors: hookErrors,
     isSubmitting,
     handleChange,
     handleSubmit,
     setFormData,
-    resetForm
+    resetForm,
+    validateForm,
+    validationResult,
   } = useVendorEdit(vendor);
 
   // Snapshot for unsaved changes detection
   const initialSnapshotRef = useRef<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!loadingVendor && vendor && initialSnapshotRef.current === null) {
@@ -67,15 +67,12 @@ const VendorEdit: React.FC = () => {
   useEffect(() => {
     const loadVendor = async () => {
       if (id) {
-        console.log('Loading vendor with ID:', id);
         setLoadingVendor(true);
         setLoadError(null);
         try {
           const data = await getVendorById(id);
-          console.log('Vendor data loaded:', data);
           if (data) {
             setVendor(data);
-            // Populate form data with vendor data
             setFormData({
               name: data.name || '',
               email: data.email || '',
@@ -107,7 +104,6 @@ const VendorEdit: React.FC = () => {
           setLoadingVendor(false);
         }
       } else {
-        console.log('No ID provided in params');
         setLoadingVendor(false);
         setLoadError('No vendor ID provided');
         showError('Invalid vendor ID. Redirecting back...');
@@ -119,19 +115,26 @@ const VendorEdit: React.FC = () => {
 
   // Show error toast for submit errors
   useEffect(() => {
-    if (errors.submit) {
-      showError(errors.submit);
+    if (hookErrors.submit) {
+      showError(hookErrors.submit);
     }
-  }, [errors.submit, showError]);
+  }, [hookErrors.submit, showError]);
 
-  const onSubmit = async () => {
+  // Check if there are any errors
+  const hasErrors = Object.keys(validationErrors).length > 0 || Object.keys(hookErrors).length > 0;
+
+  const onSubmit = useCallback(async () => {
+    if (!validateForm()) {
+      showError('Please fix the validation errors before saving.');
+      return;
+    }
+
     await withLoading(
       async () => {
         const success = await handleSubmit(updateVendor);
         if (!success) {
           throw new Error('Failed to update vendor');
         }
-        // Small delay to show success message before navigation
         await new Promise(resolve => setTimeout(resolve, 500));
         navigate('/purchases/vendors');
       },
@@ -139,10 +142,10 @@ const VendorEdit: React.FC = () => {
       `Vendor "${formData.name}" updated successfully.`,
       'Failed to update vendor. Please try again.'
     );
-  };
+  }, [formData, validateForm, showError, withLoading, handleSubmit, updateVendor, navigate]);
 
   // Cancel handler with unsaved changes confirmation
-  const handleCancel = async () => {
+  const handleCancel = useCallback(async () => {
     if (!hasChanges) {
       navigate('/purchases/vendors');
       return;
@@ -159,10 +162,10 @@ const VendorEdit: React.FC = () => {
         navigate('/purchases/vendors');
       }
     );
-  };
+  }, [hasChanges, withConfirmation, navigate]);
 
   // Reset form handler
-  const handleResetForm = async () => {
+  const handleResetForm = useCallback(async () => {
     if (!hasChanges) return;
 
     await withConfirmation(
@@ -178,10 +181,10 @@ const VendorEdit: React.FC = () => {
         success('Form reset to original values.');
       }
     );
-  };
+  }, [hasChanges, withConfirmation, resetForm, formData, success]);
 
   // Refresh vendor data
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     if (hasChanges) {
       await withConfirmation(
         {
@@ -252,12 +255,12 @@ const VendorEdit: React.FC = () => {
         }
       }
     }
-  };
+  }, [hasChanges, id, getVendorById, setFormData, withConfirmation, success, showError]);
 
   if (loadingVendor) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading vendor details..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -333,10 +336,7 @@ const VendorEdit: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  Saving...
-                </>
+                <LoadingSpinner size="sm" />
               ) : (
                 <>
                   <Save className="h-4 w-4" />
@@ -348,20 +348,13 @@ const VendorEdit: React.FC = () => {
         </div>
 
         {/* Error Summary */}
-        {Object.keys(errors).length > 0 && Object.keys(errors).some(key => key !== 'submit') && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.entries(errors)
-                  .filter(([key]) => key !== 'submit')
-                  .map(([key, value]) => (
-                    <li key={key}>{value}</li>
-                  ))}
-              </ul>
-            </div>
-          </div>
+        {hasErrors && (
+          <ErrorSummary
+            errors={validationErrors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         {/* Form */}
@@ -381,11 +374,11 @@ const VendorEdit: React.FC = () => {
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.name ? 'border-red-500' : 'border-gray-300'
+                  validationErrors.name ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter vendor name"
               />
-              {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+              {validationErrors.name && <p className="mt-1 text-xs text-red-500">{validationErrors.name}</p>}
             </div>
 
             <div>
@@ -410,11 +403,11 @@ const VendorEdit: React.FC = () => {
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
+                  validationErrors.email ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter email address"
               />
-              {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+              {validationErrors.email && <p className="mt-1 text-xs text-red-500">{validationErrors.email}</p>}
             </div>
 
             <div>
@@ -426,11 +419,11 @@ const VendorEdit: React.FC = () => {
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.phone ? 'border-red-500' : 'border-gray-300'
+                  validationErrors.phone ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter phone number"
               />
-              {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
+              {validationErrors.phone && <p className="mt-1 text-xs text-red-500">{validationErrors.phone}</p>}
             </div>
 
             <div>
@@ -442,11 +435,11 @@ const VendorEdit: React.FC = () => {
                 value={formData.taxId}
                 onChange={(e) => handleChange('taxId', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.taxId ? 'border-red-500' : 'border-gray-300'
+                  validationErrors.taxId ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter tax ID"
               />
-              {errors.taxId && <p className="mt-1 text-sm text-red-500">{errors.taxId}</p>}
+              {validationErrors.taxId && <p className="mt-1 text-xs text-red-500">{validationErrors.taxId}</p>}
             </div>
 
             <div>
@@ -571,9 +564,12 @@ const VendorEdit: React.FC = () => {
                 type="email"
                 value={formData.contactEmail}
                 onChange={(e) => handleChange('contactEmail', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
+                  validationErrors.contactEmail ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter contact email"
               />
+              {validationErrors.contactEmail && <p className="mt-1 text-xs text-red-500">{validationErrors.contactEmail}</p>}
             </div>
 
             <div>
@@ -584,9 +580,12 @@ const VendorEdit: React.FC = () => {
                 type="tel"
                 value={formData.contactPhone}
                 onChange={(e) => handleChange('contactPhone', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
+                  validationErrors.contactPhone ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter contact phone"
               />
+              {validationErrors.contactPhone && <p className="mt-1 text-xs text-red-500">{validationErrors.contactPhone}</p>}
             </div>
 
             <div className="md:col-span-2">

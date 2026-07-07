@@ -1,6 +1,6 @@
 // src/pages/purchases/Expenses/Expenses.tsx
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -22,9 +22,16 @@ import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import { EXPENSE_CATEGORIES } from '../../../types/Expense/ExpenseType';
+import { 
+  validateExpenseForm,
+  formatValidationErrors,
+  hasValidationErrors,
+  getErrorCount
+} from '../../../validations/expense.validation';
 
 // Status Badge
 const StatusBadge: React.FC<{ status: Expense['paymentStatus'] }> = ({ status }) => {
@@ -50,12 +57,14 @@ const Expenses: React.FC = () => {
     expenses,
     loading,
     error,
+    validationErrors: apiValidationErrors,
     filters,
     pagination,
     deleteExpense,
     updateFilters,
     changePage,
     fetchExpenses,
+    clearErrors,
   } = useExpense({ page: 1, limit: 10 });
 
   // Use the toast and confirm hook
@@ -78,6 +87,8 @@ const Expenses: React.FC = () => {
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [showErrorSummary, setShowErrorSummary] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const handleView = useCallback((expense: Expense) => {
     navigate(`/purchases/expenses/${expense.id}`);
@@ -87,14 +98,48 @@ const Expenses: React.FC = () => {
     navigate(`/purchases/expenses/${expense.id}/edit`);
   }, [navigate]);
 
-  // Single delete handler using confirmation modal
+  // Single delete handler
+  const handleDeleteClick = useCallback(async (expense: Expense) => {
+    const expenseId = String(expense.id);
 
-  // Bulk delete handler using confirmation modal
+    await withConfirmation(
+      {
+        title: 'Delete Expense',
+        message: `Are you sure you want to delete "${expense.expenseNumber}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(expenseId);
+        try {
+          await deleteExpense(expense.id);
+          setSelectedItems(prev => prev.filter(item => item !== expenseId));
+          success(`Expense "${expense.expenseNumber}" deleted successfully.`);
+          setValidationErrors({});
+          setShowErrorSummary(false);
+        } catch (error) {
+          console.error('Error deleting expense:', error);
+          showError('Failed to delete expense. Please try again.');
+        } finally {
+          setDeleteLoading(null);
+        }
+      }
+    );
+  }, [withConfirmation, deleteExpense, success, showError]);
+
+  // Bulk delete handler
   const handleBulkDeleteAction = useCallback(async () => {
     if (selectedItems.length === 0) {
+      setValidationErrors({
+        selection: 'Please select at least one expense to delete.'
+      });
+      setShowErrorSummary(true);
       showError('Please select at least one expense to delete.');
       return;
     }
+
+    setValidationErrors({});
+    setShowErrorSummary(false);
 
     await withConfirmation(
       {
@@ -122,6 +167,18 @@ const Expenses: React.FC = () => {
   }, [selectedItems, withConfirmation, deleteExpense, success, showError]);
 
   const handleExportAction = useCallback(async (format: 'excel' | 'pdf') => {
+    if (expenses.length === 0) {
+      setValidationErrors({
+        export: `No expenses available to export as ${format.toUpperCase()}.`
+      });
+      setShowErrorSummary(true);
+      showError(`No expenses available to export as ${format.toUpperCase()}.`);
+      return;
+    }
+
+    setValidationErrors({});
+    setShowErrorSummary(false);
+
     setExportLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -131,11 +188,28 @@ const Expenses: React.FC = () => {
     } finally {
       setExportLoading(false);
     }
-  }, [success, showError]);
+  }, [expenses.length, success, showError]);
 
   const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
+      const file = files[0];
+      const validExtensions = ['.csv', '.xlsx', '.xls'];
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      
+      if (!validExtensions.includes(fileExtension)) {
+        setValidationErrors({
+          import: 'Please upload a valid file (CSV, XLSX, or XLS format).'
+        });
+        setShowErrorSummary(true);
+        showError('Invalid file format. Please upload CSV, XLSX, or XLS file.');
+        event.target.value = '';
+        return;
+      }
+
+      setValidationErrors({});
+      setShowErrorSummary(false);
+
       setImportLoading(true);
       try {
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -155,6 +229,8 @@ const Expenses: React.FC = () => {
     try {
       await fetchExpenses();
       success('Expense list refreshed successfully.');
+      setValidationErrors({});
+      setShowErrorSummary(false);
     } catch (error) {
       showError('Failed to refresh expense list. Please try again.');
     } finally {
@@ -174,14 +250,42 @@ const Expenses: React.FC = () => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  }, []);
+    if (validationErrors.selection) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.selection;
+        return newErrors;
+      });
+      if (Object.keys(validationErrors).length === 1) {
+        setShowErrorSummary(false);
+      }
+    }
+  }, [validationErrors]);
 
   // Show error toast when error changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (error) {
       showError(error);
     }
   }, [error, showError]);
+
+  // Handle API validation errors
+  useEffect(() => {
+    if (Object.keys(apiValidationErrors).length > 0) {
+      const formattedErrors: Record<string, string> = {};
+      Object.entries(apiValidationErrors).forEach(([key, value]) => {
+        if (value) {
+          formattedErrors[key] = value;
+        }
+      });
+      setValidationErrors(prev => ({
+        ...prev,
+        ...formattedErrors
+      }));
+      setShowErrorSummary(true);
+      showError('Please check the form for errors.');
+    }
+  }, [apiValidationErrors, showError]);
 
   // Format currency in Rupees
   const formatCurrency = (amount: number): string => {
@@ -281,6 +385,31 @@ const Expenses: React.FC = () => {
     },
   ];
 
+  // Row dropdown items
+  const getRowDropdownItems = (expense: Expense) => [
+    {
+      label: 'View Details',
+      icon: <DollarSign className="h-4 w-4 text-blue-500" />,
+      onClick: () => handleView(expense),
+    },
+    {
+      label: 'Edit Expense',
+      icon: <File className="h-4 w-4 text-green-500" />,
+      onClick: () => handleEdit(expense),
+    },
+    {
+      label: deleteLoading === String(expense.id) ? 'Deleting...' : 'Delete',
+      icon: deleteLoading === String(expense.id) ? (
+        <LoadingSpinner size="sm" />
+      ) : (
+        <Trash className="h-4 w-4 text-red-500" />
+      ),
+      onClick: () => handleDeleteClick(expense),
+      danger: true,
+      disabled: deleteLoading === String(expense.id),
+    },
+  ];
+
   // Show main loading spinner
   if (loading && expenses.length === 0) {
     return (
@@ -289,6 +418,20 @@ const Expenses: React.FC = () => {
       </div>
     );
   }
+
+  // Get filter errors (exclude submit error)
+  const getFilteredErrors = () => {
+    const filtered: Record<string, string> = {};
+    Object.entries(validationErrors).forEach(([key, value]) => {
+      if (key !== 'submit' && value) {
+        filtered[key] = value;
+      }
+    });
+    return filtered;
+  };
+
+  const filteredErrors = getFilteredErrors();
+  const hasErrors = Object.keys(filteredErrors).length > 0;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -350,6 +493,22 @@ const Expenses: React.FC = () => {
         </div>
       </div>
 
+      {/* Error Summary */}
+      {(showErrorSummary || hasErrors) && hasErrors && (
+        <ErrorSummary
+          errors={filteredErrors}
+          title="Please fix the following errors:"
+          variant="warning"
+          onClose={() => {
+            setShowErrorSummary(false);
+            setValidationErrors({});
+            clearErrors();
+          }}
+          showIcon={true}
+          showBadge={false}
+        />
+      )}
+
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
@@ -395,14 +554,7 @@ const Expenses: React.FC = () => {
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-
-      {/* Table - NO actions column */}
+      {/* Table */}
       <ReusableTable
         data={expenses}
         columns={columns}
@@ -423,7 +575,7 @@ const Expenses: React.FC = () => {
         }}
       />
 
-      {/* Confirmation Modal - Replaces the custom delete modal */}
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

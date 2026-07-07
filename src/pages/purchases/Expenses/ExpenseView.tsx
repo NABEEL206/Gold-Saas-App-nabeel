@@ -15,17 +15,19 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Mail,
-  Phone,
   Printer,
   Download,
+  BookOpen,
 } from 'lucide-react';
 import { useExpense } from '../../../hooks/Expense/useExpense';
 import { useExpenseView } from '../../../hooks/Expense/useExpenseView';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { validateExpenseForm, formatValidationErrors } from '../../../validations/expense.validation';
+import type { ExpenseFormData } from '../../../types/Expense/ExpenseType';
 
 // Status Badge
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -52,6 +54,8 @@ const ExpenseView: React.FC = () => {
   const [expense, setExpense] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showValidationSummary, setShowValidationSummary] = useState(false);
 
   // Use the toast and confirm hook
   const {
@@ -67,7 +71,13 @@ const ExpenseView: React.FC = () => {
     handleCancel: onModalCancel,
   } = useToastAndConfirm();
 
-  const { getStatusLabel, getPaymentMethodLabel } = useExpenseView(expense);
+  const { 
+    getPaymentMethodLabel, 
+    getExpenseAccount,
+    isComplete,
+    clearValidationErrors,
+    getValidationSummary 
+  } = useExpenseView(expense);
 
   // Format currency in Rupees
   const formatCurrency = (amount: number): string => {
@@ -78,9 +88,19 @@ const ExpenseView: React.FC = () => {
     const loadExpense = async () => {
       if (id) {
         setLoading(true);
+        setError(null);
+        setValidationErrors({});
+        setShowValidationSummary(false);
         try {
           const data = await getExpenseById(id);
           if (data) {
+            const validationResult = validateExpenseForm(data as ExpenseFormData);
+            if (!validationResult.isValid) {
+              const formattedErrors = formatValidationErrors(validationResult.errors);
+              setValidationErrors(formattedErrors);
+              setShowValidationSummary(true);
+              warning('Expense data has validation issues. Please review the details below.');
+            }
             setExpense(data);
           } else {
             setError('Expense not found');
@@ -99,10 +119,17 @@ const ExpenseView: React.FC = () => {
       }
     };
     loadExpense();
-  }, [id, getExpenseById, navigate, showError]);
+  }, [id, getExpenseById, navigate, showError, warning]);
 
   const handleDelete = async () => {
     if (!id) return;
+
+    if (!expense) {
+      setValidationErrors({ delete: 'No expense data available to delete.' });
+      setShowValidationSummary(true);
+      showError('No expense data available to delete.');
+      return;
+    }
     
     await withConfirmation(
       {
@@ -116,6 +143,8 @@ const ExpenseView: React.FC = () => {
         await withLoading(
           async () => {
             await deleteExpense(id);
+            setValidationErrors({});
+            setShowValidationSummary(false);
             navigate('/purchases/expenses');
           },
           'Deleting expense...',
@@ -128,19 +157,49 @@ const ExpenseView: React.FC = () => {
 
   const handleEdit = () => {
     console.log('Edit clicked - Expense ID:', id);
-    if (id) {
-      navigate(`/purchases/expenses/${id}/edit`);
-    } else {
+    if (!id) {
+      setValidationErrors({ edit: 'Cannot edit: Invalid expense ID' });
+      setShowValidationSummary(true);
       showError('Cannot edit: Invalid expense ID');
+      return;
     }
+
+    if (!expense) {
+      setValidationErrors({ edit: 'Cannot edit: Expense data not loaded' });
+      setShowValidationSummary(true);
+      showError('Cannot edit: Expense data not loaded');
+      return;
+    }
+
+    setValidationErrors({});
+    setShowValidationSummary(false);
+    navigate(`/purchases/expenses/${id}/edit`);
   };
 
   const handlePrint = () => {
+    if (!expense) {
+      setValidationErrors({ print: 'Cannot print: No expense data available' });
+      setShowValidationSummary(true);
+      showError('Cannot print: No expense data available');
+      return;
+    }
+
+    setValidationErrors({});
+    setShowValidationSummary(false);
     success('Preparing document for printing...');
     setTimeout(() => window.print(), 500);
   };
 
   const handleDownload = () => {
+    if (!expense) {
+      setValidationErrors({ download: 'Cannot download: No expense data available' });
+      setShowValidationSummary(true);
+      showError('Cannot download: No expense data available');
+      return;
+    }
+
+    setValidationErrors({});
+    setShowValidationSummary(false);
     warning('Download functionality will be implemented soon.');
   };
 
@@ -168,6 +227,20 @@ const ExpenseView: React.FC = () => {
       danger: true,
     },
   ];
+
+  // Get filtered errors
+  const getFilteredErrors = () => {
+    const filtered: Record<string, string> = {};
+    Object.entries(validationErrors).forEach(([key, value]) => {
+      if (key !== 'submit' && value) {
+        filtered[key] = value;
+      }
+    });
+    return filtered;
+  };
+
+  const filteredErrors = getFilteredErrors();
+  const hasErrors = Object.keys(filteredErrors).length > 0;
 
   if (loading) {
     return (
@@ -226,6 +299,22 @@ const ExpenseView: React.FC = () => {
           </div>
         </div>
 
+        {/* Error Summary - Warning variant like other pages */}
+        {(showValidationSummary || hasErrors) && hasErrors && (
+          <ErrorSummary
+            errors={filteredErrors}
+            title="Validation Issues Found:"
+            variant="warning"
+            onClose={() => {
+              setShowValidationSummary(false);
+              setValidationErrors({});
+              clearValidationErrors();
+            }}
+            showIcon={true}
+            showBadge={false}
+          />
+        )}
+
         {/* Status Badge */}
         <div className="mb-6">
           <StatusBadge status={expense.paymentStatus} />
@@ -235,6 +324,15 @@ const ExpenseView: React.FC = () => {
           {expense.receiptNumber && (
             <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-800">
               Receipt: {expense.receiptNumber}
+            </span>
+          )}
+          {isComplete ? (
+            <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+              Complete Record
+            </span>
+          ) : (
+            <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800">
+              Incomplete Record
             </span>
           )}
         </div>
@@ -265,6 +363,13 @@ const ExpenseView: React.FC = () => {
                   <p className="text-gray-900">{expense.subCategory || 'N/A'}</p>
                 </div>
                 <div>
+                  <label className="text-sm text-gray-500">Expense Account</label>
+                  <p className="text-gray-900 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-gray-400" />
+                    {getExpenseAccount()}
+                  </p>
+                </div>
+                <div className="md:col-span-2">
                   <label className="text-sm text-gray-500">Description</label>
                   <p className="text-gray-900">{expense.description || 'N/A'}</p>
                 </div>
@@ -366,6 +471,10 @@ const ExpenseView: React.FC = () => {
                   <span className="text-sm font-bold text-amber-600">{formatCurrency(expense.totalAmount)}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-sm text-gray-500">Expense Account</span>
+                  <span className="text-sm font-medium text-gray-900">{getExpenseAccount()}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-sm text-gray-500">Status</span>
                   <span className="text-sm font-medium">
                     <StatusBadge status={expense.paymentStatus} />
@@ -411,7 +520,7 @@ const ExpenseView: React.FC = () => {
         </div>
       </div>
 
-      {/* Confirmation Modal - Replaces the custom delete modal */}
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

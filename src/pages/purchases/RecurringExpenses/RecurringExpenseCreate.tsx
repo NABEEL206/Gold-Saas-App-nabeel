@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Building2, User, Mail, Phone, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Building2, User, Mail, Phone } from 'lucide-react';
 import { useRecurringExpense } from '../../../hooks/RecurringExpense/useRecurringExpense';
 import { useRecurringExpenseCreate } from '../../../hooks/RecurringExpense/useRecurringExpenseCreate';
 import { useVendor } from '../../../hooks/vendor/useVendor';
@@ -12,6 +12,7 @@ import {
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 
 // ─── Static option lists ───────────────────────────────────────────────────────
@@ -24,6 +25,14 @@ const FREQUENCY_OPTIONS: DropdownOption[] = [
   { value: 'quarterly',   label: 'Quarterly' },
   { value: 'half_yearly', label: 'Half Yearly' },
   { value: 'yearly',      label: 'Yearly' },
+  { value: 'custom',      label: 'Custom' },
+];
+
+const FREQUENCY_UNIT_OPTIONS: DropdownOption[] = [
+  { value: 'days',   label: 'Days' },
+  { value: 'weeks',  label: 'Weeks' },
+  { value: 'months', label: 'Months' },
+  { value: 'years',  label: 'Years' },
 ];
 
 const PAYMENT_METHOD_OPTIONS: DropdownOption[] = [
@@ -41,6 +50,13 @@ const RECURRING_STATUS_OPTIONS: DropdownOption[] = [
   { value: 'completed', label: 'Completed' },
 ];
 
+const CURRENCY_OPTIONS: DropdownOption[] = [
+  { value: 'INR', label: 'INR (₹)' },
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'GBP', label: 'GBP (£)' },
+];
+
 const RecurringExpenseCreate: React.FC = () => {
   const navigate = useNavigate();
   const { createExpense } = useRecurringExpense();
@@ -48,6 +64,7 @@ const RecurringExpenseCreate: React.FC = () => {
   const {
     formData,
     errors,
+    warnings,
     isSubmitting,
     handleChange,
     handleSubmit,
@@ -57,7 +74,7 @@ const RecurringExpenseCreate: React.FC = () => {
   const {
     success,
     error: showError,
-    warning,
+    warning: showWarning,
     withConfirmation,
     withLoading,
     isOpen: modalOpen,
@@ -72,6 +89,8 @@ const RecurringExpenseCreate: React.FC = () => {
   const [selectedVendorInfo, setSelectedVendorInfo] = useState<{
     email?: string; phone?: string; address?: string;
   } | null>(null);
+  const [showErrorSummary, setShowErrorSummary] = useState(true);
+  const [showWarningSummary, setShowWarningSummary] = useState(true);
 
   // Snapshot for unsaved changes detection
   const initialSnapshotRef = useRef<string | null>(null);
@@ -102,6 +121,40 @@ const RecurringExpenseCreate: React.FC = () => {
     }
   }, [errors.submit, showError]);
 
+  // Auto-show error summary when new errors appear
+  useEffect(() => {
+    const formErrors = getFormErrors();
+    if (Object.keys(formErrors).length > 0) {
+      setShowErrorSummary(true);
+    }
+  }, [errors]);
+
+  // Show warnings as toasts
+  useEffect(() => {
+    if (warnings && warnings.length > 0) {
+      warnings.forEach(warning => showWarning(warning));
+    }
+  }, [warnings, showWarning]);
+
+  // Filter out submit error from form errors for display
+  const getFormErrors = () => {
+    return Object.entries(errors).reduce((acc, [key, value]) => {
+      if (key !== 'submit') {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, string>);
+  };
+
+  // Convert warnings array to errors object for ErrorSummary
+  const getWarningErrors = () => {
+    if (!warnings || warnings.length === 0) return {};
+    return warnings.reduce((acc, warning, index) => {
+      acc[`warning_${index}`] = warning;
+      return acc;
+    }, {} as Record<string, string>);
+  };
+
   const handleVendorSelect = (option: DropdownOption) => {
     const vendor = vendors.find(v => String(v.id) === option.value);
     handleChange('vendorId', option.value);
@@ -121,7 +174,7 @@ const RecurringExpenseCreate: React.FC = () => {
   const onSubmit = async () => {
     await withLoading(
       async () => {
-        const success = await handleSubmit(createExpense);
+        const success = await handleSubmit(createExpense, isVendorExpense);
         if (!success) {
           throw new Error('Failed to create recurring expense');
         }
@@ -171,6 +224,9 @@ const RecurringExpenseCreate: React.FC = () => {
       }
     );
   };
+
+  const formErrors = getFormErrors();
+  const warningErrors = getWarningErrors();
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -228,21 +284,26 @@ const RecurringExpenseCreate: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Summary */}
-        {Object.keys(errors).length > 0 && Object.keys(errors).some(key => key !== 'submit') && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.entries(errors)
-                  .filter(([key]) => key !== 'submit')
-                  .map(([key, value]) => (
-                    <li key={key}>{value}</li>
-                  ))}
-              </ul>
-            </div>
-          </div>
+        {/* Error Summary - Using reusable component */}
+        {showErrorSummary && Object.keys(formErrors).length > 0 && (
+          <ErrorSummary
+            errors={formErrors}
+            variant="error"
+            title="Please fix the following errors:"
+            onClose={() => setShowErrorSummary(false)}
+            maxDisplay={10}
+          />
+        )}
+
+        {/* Warning Summary - Using reusable component */}
+        {showWarningSummary && Object.keys(warningErrors).length > 0 && (
+          <ErrorSummary
+            errors={warningErrors}
+            variant="warning"
+            title="Please review the following warnings:"
+            onClose={() => setShowWarningSummary(false)}
+            maxDisplay={5}
+          />
         )}
 
         {/* ── Form ── */}
@@ -378,9 +439,12 @@ const RecurringExpenseCreate: React.FC = () => {
                 step="0.01"
                 value={formData.taxAmount || ''}
                 onChange={(e) => handleChange('taxAmount', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.taxAmount ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="0.00"
               />
+              {errors.taxAmount && <p className="mt-1 text-sm text-red-500">{errors.taxAmount}</p>}
             </div>
 
             {/* Total Amount */}
@@ -391,9 +455,41 @@ const RecurringExpenseCreate: React.FC = () => {
                 step="0.01"
                 value={formData.totalAmount || ''}
                 onChange={(e) => handleChange('totalAmount', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.totalAmount ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="0.00"
               />
+              {errors.totalAmount && <p className="mt-1 text-sm text-red-500">{errors.totalAmount}</p>}
+            </div>
+
+            {/* Currency */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+              <SearchableDropdown
+                options={CURRENCY_OPTIONS}
+                value={formData.currency || 'INR'}
+                onChange={(opt) => handleChange('currency', opt.value)}
+                triggerPlaceholder="Select Currency"
+                placeholder="Search currency..."
+              />
+              {errors.currency && <p className="mt-1 text-sm text-red-500">{errors.currency}</p>}
+            </div>
+
+            {/* Exchange Rate */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Rate</label>
+              <input
+                type="number"
+                step="0.0001"
+                value={formData.exchangeRate || ''}
+                onChange={(e) => handleChange('exchangeRate', parseFloat(e.target.value) || 1)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.exchangeRate ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="1.0000"
+              />
+              {errors.exchangeRate && <p className="mt-1 text-sm text-red-500">{errors.exchangeRate}</p>}
             </div>
 
             {/* Frequency */}
@@ -411,6 +507,45 @@ const RecurringExpenseCreate: React.FC = () => {
               {errors.frequency && <p className="mt-1 text-sm text-red-500">{errors.frequency}</p>}
             </div>
 
+            {/* Custom Frequency Fields */}
+            {formData.frequency === 'custom' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Interval <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.frequencyInterval || ''}
+                    onChange={(e) => handleChange('frequencyInterval', parseInt(e.target.value) || 1)}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                      errors.frequencyInterval ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Every"
+                    min="1"
+                  />
+                  {errors.frequencyInterval && (
+                    <p className="mt-1 text-sm text-red-500">{errors.frequencyInterval}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unit <span className="text-red-500">*</span>
+                  </label>
+                  <SearchableDropdown
+                    options={FREQUENCY_UNIT_OPTIONS}
+                    value={formData.frequencyUnit || 'months'}
+                    onChange={(opt) => handleChange('frequencyUnit', opt.value)}
+                    triggerPlaceholder="Select Unit"
+                    placeholder="Search unit..."
+                  />
+                  {errors.frequencyUnit && (
+                    <p className="mt-1 text-sm text-red-500">{errors.frequencyUnit}</p>
+                  )}
+                </div>
+              </>
+            )}
+
             {/* Total Occurrences */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Total Occurrences</label>
@@ -418,9 +553,13 @@ const RecurringExpenseCreate: React.FC = () => {
                 type="number"
                 value={formData.totalOccurrences || ''}
                 onChange={(e) => handleChange('totalOccurrences', parseInt(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.totalOccurrences ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Number of occurrences (optional)"
+                min="1"
               />
+              {errors.totalOccurrences && <p className="mt-1 text-sm text-red-500">{errors.totalOccurrences}</p>}
             </div>
 
             {/* Start Date */}
@@ -446,8 +585,11 @@ const RecurringExpenseCreate: React.FC = () => {
                 type="date"
                 value={formData.endDate || ''}
                 onChange={(e) => handleChange('endDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.endDate ? 'border-red-500' : 'border-gray-300'
+                }`}
               />
+              {errors.endDate && <p className="mt-1 text-sm text-red-500">{errors.endDate}</p>}
             </div>
 
             {/* Description */}
@@ -457,9 +599,12 @@ const RecurringExpenseCreate: React.FC = () => {
                 value={formData.description || ''}
                 onChange={(e) => handleChange('description', e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.description ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter description"
               />
+              {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
             </div>
 
             {/* ── Payment Information ── */}
@@ -494,6 +639,7 @@ const RecurringExpenseCreate: React.FC = () => {
                 triggerPlaceholder="Select Status"
                 placeholder="Search status..."
               />
+              {errors.paymentStatus && <p className="mt-1 text-sm text-red-500">{errors.paymentStatus}</p>}
             </div>
 
             {/* Reference Number */}
@@ -503,9 +649,12 @@ const RecurringExpenseCreate: React.FC = () => {
                 type="text"
                 value={formData.referenceNumber || ''}
                 onChange={(e) => handleChange('referenceNumber', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.referenceNumber ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter reference number"
               />
+              {errors.referenceNumber && <p className="mt-1 text-sm text-red-500">{errors.referenceNumber}</p>}
             </div>
 
             {/* Notes */}
@@ -515,9 +664,12 @@ const RecurringExpenseCreate: React.FC = () => {
                 value={formData.notes || ''}
                 onChange={(e) => handleChange('notes', e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  errors.notes ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter additional notes"
               />
+              {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes}</p>}
             </div>
 
           </div>

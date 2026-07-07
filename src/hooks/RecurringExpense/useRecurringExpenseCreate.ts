@@ -1,109 +1,116 @@
 // src/hooks/RecurringExpense/useRecurringExpenseCreate.ts
 
-import { useState } from 'react';
-import type{ RecurringExpenseFormData } from '../../types/RecurringExpense/RecurringExpenseType';
+import { useState, useCallback } from 'react';
+import type { RecurringExpenseFormData } from '../../types/RecurringExpense/RecurringExpenseType';
+import { 
+  validateRecurringExpense, 
+  validateRecurringExpenseField,
+  validateRecurringExpenseBusinessRules 
+} from '../../validations/recurringExpenseValidation';
 
 export const useRecurringExpenseCreate = () => {
   const [formData, setFormData] = useState<RecurringExpenseFormData>({
-    vendorId: '',
-    vendorName: '',
+    vendorId: undefined,
+    vendorName: undefined,
     category: '',
-    subCategory: '',
+    subCategory: undefined,
     amount: 0,
     taxAmount: 0,
     totalAmount: 0,
     startDate: new Date().toISOString().split('T')[0],
-    endDate: '',
-    description: '',
+    endDate: undefined,
+    description: undefined,
     frequency: 'monthly',
     frequencyInterval: 1,
     frequencyUnit: 'months',
     paymentMethod: 'bank',
     paymentStatus: 'active',
-    referenceNumber: '',
-    notes: '',
+    referenceNumber: undefined,
+    notes: undefined,
     isVendorExpense: false,
-    attachment: '',
+    attachment: undefined,
     currency: 'INR',
     exchangeRate: 1,
     totalOccurrences: 12
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field: keyof RecurringExpenseFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
+  const handleChange = useCallback((field: keyof RecurringExpenseFormData, value: any) => {
+    setFormData(prev => {
+      const newFormData = {
+        ...prev,
+        [field]: value
+      };
+
+      // Real-time field validation
+      const fieldError = validateRecurringExpenseField(field, value, newFormData);
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        if (fieldError) {
+          newErrors[field] = fieldError;
+        } else {
+          delete newErrors[field];
+        }
         return newErrors;
       });
+
+      return newFormData;
+    });
+  }, []);
+
+  const validateForm = useCallback((isVendorExpense: boolean = false): boolean => {
+    const { isValid, errors: validationErrors } = validateRecurringExpense(formData, isVendorExpense);
+    setErrors(validationErrors);
+    
+    // Check business rules
+    if (isValid) {
+      const businessWarnings = validateRecurringExpenseBusinessRules(formData);
+      setWarnings(businessWarnings);
+    } else {
+      setWarnings([]);
     }
-  };
+    
+    return isValid;
+  }, [formData]);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
-    }
-
-    if (!formData.amount || formData.amount <= 0) {
-      newErrors.amount = 'Amount must be greater than 0';
-    }
-
-    if (!formData.startDate) {
-      newErrors.startDate = 'Start date is required';
-    }
-
-    if (!formData.frequency) {
-      newErrors.frequency = 'Frequency is required';
-    }
-
-    if (!formData.paymentMethod) {
-      newErrors.paymentMethod = 'Payment method is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
-      vendorId: '',
-      vendorName: '',
+      vendorId: undefined,
+      vendorName: undefined,
       category: '',
-      subCategory: '',
+      subCategory: undefined,
       amount: 0,
       taxAmount: 0,
       totalAmount: 0,
       startDate: new Date().toISOString().split('T')[0],
-      endDate: '',
-      description: '',
+      endDate: undefined,
+      description: undefined,
       frequency: 'monthly',
       frequencyInterval: 1,
       frequencyUnit: 'months',
       paymentMethod: 'bank',
       paymentStatus: 'active',
-      referenceNumber: '',
-      notes: '',
+      referenceNumber: undefined,
+      notes: undefined,
       isVendorExpense: false,
-      attachment: '',
+      attachment: undefined,
       currency: 'INR',
       exchangeRate: 1,
       totalOccurrences: 12
     });
     setErrors({});
+    setWarnings([]);
     setIsSubmitting(false);
-  };
+  }, []);
 
-  const handleSubmit = async (submitFn: (data: RecurringExpenseFormData) => Promise<any>) => {
-    if (!validateForm()) {
+  const handleSubmit = useCallback(async (
+    submitFn: (data: RecurringExpenseFormData) => Promise<any>,
+    isVendorExpense: boolean = false
+  ) => {
+    if (!validateForm(isVendorExpense)) {
       return false;
     }
 
@@ -122,16 +129,19 @@ export const useRecurringExpenseCreate = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [formData, validateForm, resetForm]);
 
   return {
     formData,
     errors,
+    warnings,
     isSubmitting,
     handleChange,
     handleSubmit,
+    validateForm,
     resetForm,
     setFormData,
-    setErrors
+    setErrors,
+    setWarnings
   };
 };

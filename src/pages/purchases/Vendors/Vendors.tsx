@@ -1,6 +1,6 @@
 // src/pages/purchases/Vendors/Vendors.tsx
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -22,10 +22,17 @@ import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
+import { 
+  validateVendorForm, 
+  formatValidationErrors,
+  hasValidationErrors,
+  getErrorCount 
+} from '../../../validations/vendor.validation';
 
-// Status Badge
+// Status Badge Component
 const StatusBadge: React.FC<{ status: Vendor['status'] }> = ({ status }) => {
   const config = {
     active: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Active' },
@@ -75,6 +82,10 @@ const Vendors: React.FC = () => {
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  
+  // Validation state for bulk operations
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showValidationSummary, setShowValidationSummary] = useState(false);
 
   const handleView = useCallback((vendor: Vendor) => {
     navigate(`/purchases/vendors/${vendor.id}`);
@@ -101,6 +112,9 @@ const Vendors: React.FC = () => {
           await deleteVendor(vendor.id);
           setSelectedItems(prev => prev.filter(item => item !== vendorId));
           success(`Vendor "${vendor.name}" deleted successfully.`);
+          // Clear validation errors on success
+          setValidationErrors({});
+          setShowValidationSummary(false);
         } catch (error) {
           console.error('Error deleting vendor:', error);
           showError('Failed to delete vendor. Please try again.');
@@ -111,12 +125,21 @@ const Vendors: React.FC = () => {
     );
   }, [withConfirmation, deleteVendor, success, showError]);
 
-  // Bulk delete handler using confirmation modal
+  // Bulk delete handler with validation
   const handleBulkDeleteAction = useCallback(async () => {
     if (selectedItems.length === 0) {
+      // Set validation error
+      setValidationErrors({
+        selection: 'Please select at least one vendor to delete.'
+      });
+      setShowValidationSummary(true);
       showError('Please select at least one vendor to delete.');
       return;
     }
+
+    // Clear validation errors
+    setValidationErrors({});
+    setShowValidationSummary(false);
 
     await withConfirmation(
       {
@@ -143,7 +166,22 @@ const Vendors: React.FC = () => {
     );
   }, [selectedItems, withConfirmation, deleteVendor, success, showError]);
 
+  // Export handler with validation
   const handleExportAction = useCallback(async (format: 'excel' | 'pdf') => {
+    // Validate if there are vendors to export
+    if (vendors.length === 0) {
+      setValidationErrors({
+        export: `No vendors available to export as ${format.toUpperCase()}.`
+      });
+      setShowValidationSummary(true);
+      showError(`No vendors available to export as ${format.toUpperCase()}.`);
+      return;
+    }
+
+    // Clear validation errors
+    setValidationErrors({});
+    setShowValidationSummary(false);
+
     setExportLoading(true);
     try {
       // Replace with actual export logic
@@ -154,11 +192,31 @@ const Vendors: React.FC = () => {
     } finally {
       setExportLoading(false);
     }
-  }, [success, showError]);
+  }, [vendors.length, success, showError]);
 
+  // Import handler with validation
   const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
+      // Validate file type
+      const file = files[0];
+      const validExtensions = ['.csv', '.xlsx', '.xls'];
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      
+      if (!validExtensions.includes(fileExtension)) {
+        setValidationErrors({
+          import: 'Please upload a valid file (CSV, XLSX, or XLS format).'
+        });
+        setShowValidationSummary(true);
+        showError('Invalid file format. Please upload CSV, XLSX, or XLS file.');
+        event.target.value = '';
+        return;
+      }
+
+      // Clear validation errors
+      setValidationErrors({});
+      setShowValidationSummary(false);
+
       setImportLoading(true);
       try {
         // Replace with actual import logic
@@ -179,6 +237,9 @@ const Vendors: React.FC = () => {
     try {
       await fetchVendors();
       success('Vendor list refreshed successfully.');
+      // Clear validation errors on refresh
+      setValidationErrors({});
+      setShowValidationSummary(false);
     } catch (error) {
       showError('Failed to refresh vendor list. Please try again.');
     } finally {
@@ -198,10 +259,21 @@ const Vendors: React.FC = () => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  }, []);
+    // Clear selection validation errors when user selects items
+    if (validationErrors.selection) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.selection;
+        return newErrors;
+      });
+      if (Object.keys(validationErrors).length === 1) {
+        setShowValidationSummary(false);
+      }
+    }
+  }, [validationErrors]);
 
   // Show error toast when error changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (error) {
       showError(error);
     }
@@ -374,6 +446,21 @@ const Vendors: React.FC = () => {
         </div>
       </div>
 
+      {/* Error Summary Component - Shows validation errors */}
+      {showValidationSummary && Object.keys(validationErrors).length > 0 && (
+        <ErrorSummary
+          errors={validationErrors}
+          title="Validation Errors:"
+          variant="error"
+          onClose={() => {
+            setShowValidationSummary(false);
+            setValidationErrors({});
+          }}
+          showIcon={true}
+          showBadge={false}
+        />
+      )}
+
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
@@ -404,13 +491,6 @@ const Vendors: React.FC = () => {
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-
       {/* Table */}
       <ReusableTable
         data={vendors}
@@ -432,7 +512,7 @@ const Vendors: React.FC = () => {
         }}
       />
 
-      {/* Confirmation Modal - Replaces the custom delete modal */}
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

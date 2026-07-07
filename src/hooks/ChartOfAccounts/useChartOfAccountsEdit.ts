@@ -1,7 +1,12 @@
 // src/hooks/ChartOfAccounts/useChartOfAccountsEdit.ts
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { ChartOfAccount, ChartOfAccountFormData } from '../../types/ChartOfAccounts/ChartOfAccountsType';
+import { 
+  validateChartOfAccount, 
+  validateChartOfAccountField,
+  validateChartOfAccountBusinessRules 
+} from '../../validations/chartOfAccountsValidation';
 
 export const useChartOfAccountsEdit = (account: ChartOfAccount | null) => {
   const [formData, setFormData] = useState<ChartOfAccountFormData>({
@@ -11,8 +16,8 @@ export const useChartOfAccountsEdit = (account: ChartOfAccount | null) => {
     category: '',
     subCategory: '',
     description: '',
-    parentAccountId: '',
-    parentAccountName: '',
+    parentAccountId: undefined,
+    parentAccountName: undefined,
     isActive: true,
     isSystemAccount: false,
     openingBalance: 0,
@@ -20,6 +25,7 @@ export const useChartOfAccountsEdit = (account: ChartOfAccount | null) => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -31,8 +37,8 @@ export const useChartOfAccountsEdit = (account: ChartOfAccount | null) => {
         category: account.category || '',
         subCategory: account.subCategory || '',
         description: account.description || '',
-        parentAccountId: account.parentAccountId || '',
-        parentAccountName: account.parentAccountName || '',
+        parentAccountId: account.parentAccountId || undefined,
+        parentAccountName: account.parentAccountName || undefined,
         isActive: account.isActive !== undefined ? account.isActive : true,
         isSystemAccount: account.isSystemAccount || false,
         openingBalance: account.openingBalance || 0,
@@ -41,44 +47,29 @@ export const useChartOfAccountsEdit = (account: ChartOfAccount | null) => {
     }
   }, [account]);
 
-  const handleChange = (field: keyof ChartOfAccountFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
+  const handleChange = useCallback((field: keyof ChartOfAccountFormData, value: any) => {
+    setFormData(prev => {
+      const newFormData = { ...prev, [field]: value };
+      const fieldError = validateChartOfAccountField(field, value, newFormData);
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        if (fieldError) newErrors[field] = fieldError;
+        else delete newErrors[field];
         return newErrors;
       });
-    }
-  };
+      return newFormData;
+    });
+  }, []);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = useCallback((): boolean => {
+    const { isValid, errors: validationErrors } = validateChartOfAccount(formData);
+    setErrors(validationErrors);
+    if (isValid) setWarnings(validateChartOfAccountBusinessRules(formData));
+    else setWarnings([]);
+    return isValid;
+  }, [formData]);
 
-    if (!formData.code.trim()) {
-      newErrors.code = 'Account code is required';
-    }
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Account name is required';
-    }
-
-    if (!formData.type) {
-      newErrors.type = 'Account type is required';
-    }
-
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     if (account) {
       setFormData({
         code: account.code || '',
@@ -87,47 +78,28 @@ export const useChartOfAccountsEdit = (account: ChartOfAccount | null) => {
         category: account.category || '',
         subCategory: account.subCategory || '',
         description: account.description || '',
-        parentAccountId: account.parentAccountId || '',
-        parentAccountName: account.parentAccountName || '',
+        parentAccountId: account.parentAccountId || undefined,
+        parentAccountName: account.parentAccountName || undefined,
         isActive: account.isActive !== undefined ? account.isActive : true,
         isSystemAccount: account.isSystemAccount || false,
         openingBalance: account.openingBalance || 0,
         currentBalance: account.currentBalance || 0
       });
     }
-    setErrors({});
-    setIsSubmitting(false);
-  };
+    setErrors({}); setWarnings([]); setIsSubmitting(false);
+  }, [account]);
 
-  const handleSubmit = async (submitFn: (id: string | number, data: ChartOfAccountFormData) => Promise<any>) => {
-    if (!validateForm() || !account) {
-      return false;
-    }
-
+  const handleSubmit = useCallback(async (
+    submitFn: (id: string | number, data: ChartOfAccountFormData) => Promise<any>
+  ) => {
+    if (!validateForm() || !account) return false;
     setIsSubmitting(true);
-    try {
-      await submitFn(account.id, formData);
-      return true;
-    } catch (error) {
-      console.error('Error updating account:', error);
-      setErrors(prev => ({
-        ...prev,
-        submit: error instanceof Error ? error.message : 'Failed to update account'
-      }));
+    try { await submitFn(account.id, formData); return true; }
+    catch (error) {
+      setErrors(prev => ({ ...prev, submit: error instanceof Error ? error.message : 'Failed to update account' }));
       return false;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    } finally { setIsSubmitting(false); }
+  }, [formData, validateForm, account]);
 
-  return {
-    formData,
-    errors,
-    isSubmitting,
-    handleChange,
-    handleSubmit,
-    resetForm,
-    setFormData,
-    setErrors
-  };
+  return { formData, errors, warnings, isSubmitting, handleChange, handleSubmit, validateForm, resetForm, setFormData, setErrors, setWarnings };
 };

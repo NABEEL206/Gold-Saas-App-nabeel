@@ -1,5 +1,5 @@
 // src/pages/sales/CreditNotes/CreditNoteCreate.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   FileText,
   AlertCircle,
   Send,
+  Plus,
 } from 'lucide-react';
 import { useCreditNote } from '../../../hooks/CreditNote/useCreditNote';
 import ItemSelectionTable from '../../../components/common/ItemSelectionTable';
@@ -17,6 +18,12 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ErrorSummary from '../../../components/common/ErrorSummary';
+import {
+  validateCreditNoteForm,
+  formatValidationErrors,
+  type ValidationResult,
+} from '../../../validations/creditNote.validation';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
@@ -57,15 +64,6 @@ const INVOICE_OPTIONS: DropdownOption[] = DEMO_INVOICES.map(inv => ({
   group: 'Invoices',
 }));
 
-const REASON_OPTIONS: DropdownOption[] = [
-  { value: 'Product damaged during shipping',       label: 'Product damaged during shipping' },
-  { value: 'Quality issue - incorrect purity',      label: 'Quality issue — incorrect purity' },
-  { value: 'Customer requested cancellation',       label: 'Customer requested cancellation' },
-  { value: 'Wrong item delivered',                  label: 'Wrong item delivered' },
-  { value: 'Price mismatch',                        label: 'Price mismatch' },
-  { value: 'Other',                                 label: 'Other' },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const CreditNoteCreate: React.FC = () => {
@@ -73,6 +71,11 @@ const CreditNoteCreate: React.FC = () => {
   const { createCreditNote, loading } = useCreditNote();
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+  });
 
   // Use the toast and confirm hook
   const {
@@ -105,6 +108,8 @@ const CreditNoteCreate: React.FC = () => {
   const [items, setItems]                   = useState<ItemSelectionItem[]>([]);
   const [productSearch, setProductSearch]   = useState('');
   const [productSuggestions]                = useState(DEMO_ITEMS);
+  const [isCustomReason, setIsCustomReason] = useState(false);
+  const [customReason, setCustomReason]     = useState('');
 
   // Snapshot for unsaved changes detection
   const initialSnapshotRef = useRef<string | null>(null);
@@ -120,7 +125,7 @@ const CreditNoteCreate: React.FC = () => {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
-  const handleCustomerSelect = (option: DropdownOption) => {
+  const handleCustomerSelect = useCallback((option: DropdownOption) => {
     const customer = DEMO_CUSTOMERS.find(c => c.id === option.value);
     if (customer) {
       setFormData(prev => ({
@@ -134,9 +139,9 @@ const CreditNoteCreate: React.FC = () => {
       // clear error
       setErrors(prev => { const e = { ...prev }; delete e.customerId; return e; });
     }
-  };
+  }, []);
 
-  const handleInvoiceSelect = (option: DropdownOption) => {
+  const handleInvoiceSelect = useCallback((option: DropdownOption) => {
     const invoice = DEMO_INVOICES.find(inv => inv.id === option.value);
     if (invoice) {
       setFormData(prev => ({
@@ -145,16 +150,43 @@ const CreditNoteCreate: React.FC = () => {
         invoiceNumber: invoice.number,
       }));
     }
-  };
+  }, []);
 
-  const handleReasonSelect = (option: DropdownOption) => {
+  // ── Reason Handlers ────────────────────────────────────────────────────────
+
+  const handleReasonSelect = useCallback((option: DropdownOption) => {
+    setIsCustomReason(false);
+    setCustomReason('');
     setFormData(prev => ({ ...prev, reason: option.value }));
     setErrors(prev => { const e = { ...prev }; delete e.reason; return e; });
-  };
+  }, []);
 
-  const handleItemsChange = (newItems: ItemSelectionItem[]) => setItems(newItems);
+  const handleCustomReasonToggle = useCallback(() => {
+    setIsCustomReason(true);
+    setFormData(prev => ({ ...prev, reason: '' }));
+    setErrors(prev => { const e = { ...prev }; delete e.reason; return e; });
+  }, []);
 
-  const handleAddCustomItem = () => {
+  const handleCustomReasonChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCustomReason(value);
+    setFormData(prev => ({ ...prev, reason: value }));
+    if (value.trim()) {
+      setErrors(prev => { const e = { ...prev }; delete e.reason; return e; });
+    }
+  }, []);
+
+  const handleInputChange = useCallback((field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => { const e = { ...prev }; delete e[field]; return e; });
+  }, []);
+
+  const handleItemsChange = useCallback((newItems: ItemSelectionItem[]) => {
+    setItems(newItems);
+    setErrors(prev => { const e = { ...prev }; delete e.items; return e; });
+  }, []);
+
+  const handleAddCustomItem = useCallback(() => {
     setItems(prev => [
       ...prev,
       {
@@ -172,11 +204,12 @@ const CreditNoteCreate: React.FC = () => {
         purity:       '22K',
       },
     ]);
-  };
+    setErrors(prev => { const e = { ...prev }; delete e.items; return e; });
+  }, []);
 
   // ── Totals ───────────────────────────────────────────────────────────────────
 
-  const calculateTotals = () => {
+  const calculateTotals = useCallback(() => {
     let subtotal = 0, taxAmount = 0, totalDiscount = 0;
     items.forEach(item => {
       const base = (item.quantity || 1) * (item.rate || 0);
@@ -188,22 +221,23 @@ const CreditNoteCreate: React.FC = () => {
       taxAmount += (base - disc) * ((item.taxRate || 18) / 100);
     });
     return { subtotal, totalDiscount, taxAmount, total: subtotal - totalDiscount + taxAmount };
-  };
+  }, [items]);
 
   const totals = calculateTotals();
 
   // ── Submit ───────────────────────────────────────────────────────────────────
 
-  const validateForm = (): boolean => {
-    const e: Record<string, string> = {};
-    if (!formData.customerId) e.customerId = 'Customer is required';
-    if (!formData.reason)     e.reason     = 'Reason is required';
-    if (items.length === 0)   e.items      = 'At least one item is required';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
+  const validateForm = useCallback((): boolean => {
+    const result = validateCreditNoteForm(formData, items);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result);
+    setErrors(formattedErrors);
+    
+    return result.isValid;
+  }, [formData, items]);
 
-  const handleSubmit = async (status: 'draft' | 'sent') => {
+  const handleSubmit = useCallback(async (status: 'draft' | 'sent') => {
     if (!validateForm()) {
       showError('Please fix the validation errors before submitting.');
       return;
@@ -225,7 +259,6 @@ const CreditNoteCreate: React.FC = () => {
           total:      totals.total,
           status,
         });
-        // Small delay to show success before navigation
         await new Promise(resolve => setTimeout(resolve, 500));
         navigate('/sales/credit-notes');
       },
@@ -235,10 +268,10 @@ const CreditNoteCreate: React.FC = () => {
         : 'Credit note created and sent successfully.',
       'Failed to create credit note. Please try again.'
     );
-  };
+  }, [formData, items, totals, validateForm, showError, withLoading, createCreditNote, navigate]);
 
   // Cancel handler with unsaved changes confirmation
-  const handleCancel = async () => {
+  const handleCancel = useCallback(async () => {
     if (!hasChanges) {
       navigate('/sales/credit-notes');
       return;
@@ -255,10 +288,10 @@ const CreditNoteCreate: React.FC = () => {
         navigate('/sales/credit-notes');
       }
     );
-  };
+  }, [hasChanges, withConfirmation, navigate]);
 
   // Clear form handler
-  const handleClearForm = async () => {
+  const handleClearForm = useCallback(async () => {
     if (!hasChanges) return;
 
     await withConfirmation(
@@ -284,26 +317,54 @@ const CreditNoteCreate: React.FC = () => {
         });
         setItems([]);
         setErrors({});
+        setValidationResult({
+          isValid: true,
+          errors: {},
+          itemErrors: [],
+        });
         initialSnapshotRef.current = null;
+        setIsCustomReason(false);
+        setCustomReason('');
         success('Form cleared successfully.');
       }
     );
-  };
+  }, [hasChanges, withConfirmation, success]);
 
   // ── Columns config ───────────────────────────────────────────────────────────
 
-  const creditNoteColumns = {
-    item: true, purity: true, description: true,
-    qty: true, unit: true, rate: true,
-    discount: true, tax: true, amount: true, action: true,
-  };
+  const creditNoteColumns = [
+    { key: 'item', label: 'Item' },
+    { key: 'purity', label: 'Purity' },
+    { key: 'description', label: 'Description' },
+    { key: 'qty', label: 'Qty' },
+    { key: 'unit', label: 'Unit' },
+    { key: 'rate', label: 'Rate' },
+    { key: 'discount', label: 'Discount' },
+    { key: 'tax', label: 'Tax' },
+    { key: 'amount', label: 'Amount' },
+    { key: 'action', label: 'Action' },
+  ];
+
+  // Check if there are any errors
+  const hasErrors = Object.keys(errors).length > 0;
+
+  // ── Predefined reason options ──────────────────────────────────────────────
+
+  const REASON_OPTIONS: DropdownOption[] = [
+    { value: 'Product damaged during shipping',       label: 'Product damaged during shipping' },
+    { value: 'Quality issue - incorrect purity',      label: 'Quality issue — incorrect purity' },
+    { value: 'Customer requested cancellation',       label: 'Customer requested cancellation' },
+    { value: 'Wrong item delivered',                  label: 'Wrong item delivered' },
+    { value: 'Price mismatch',                        label: 'Price mismatch' },
+    { value: 'Other',                                 label: 'Other' },
+  ];
 
   // ── Loading guard ─────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -312,7 +373,7 @@ const CreditNoteCreate: React.FC = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between mb-6">
@@ -333,7 +394,15 @@ const CreditNoteCreate: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-
+            {hasChanges && (
+              <button
+                type="button"
+                onClick={handleClearForm}
+                className="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Clear
+              </button>
+            )}
             <button
               type="button"
               onClick={() => handleSubmit('draft')}
@@ -354,10 +423,7 @@ const CreditNoteCreate: React.FC = () => {
               className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {saving ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  Saving...
-                </>
+                <LoadingSpinner size="sm" />
               ) : (
                 <>
                   <Send className="h-4 w-4" />
@@ -369,18 +435,13 @@ const CreditNoteCreate: React.FC = () => {
         </div>
 
         {/* Error Summary */}
-        {Object.keys(errors).length > 0 && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.values(errors).map((error, index) => (
-                  <li key={index}>{error}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        {hasErrors && (
+          <ErrorSummary
+            errors={errors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         <form className="space-y-6">
@@ -410,9 +471,7 @@ const CreditNoteCreate: React.FC = () => {
                   resetSearchOnOpen
                 />
                 {errors.customerId && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.customerId}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.customerId}</p>
                 )}
               </div>
 
@@ -441,30 +500,79 @@ const CreditNoteCreate: React.FC = () => {
                 <input
                   type="date"
                   value={formData.creditNoteDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, creditNoteDate: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  onChange={(e) => handleInputChange('creditNoteDate', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.creditNoteDate ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {errors.creditNoteDate && (
+                  <p className="mt-1 text-xs text-red-500">{errors.creditNoteDate}</p>
+                )}
               </div>
 
-              {/* Reason */}
+              {/* Reason - With Manual Entry Option */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Reason <span className="text-red-500">*</span>
                 </label>
-                <SearchableDropdown
-                  options={REASON_OPTIONS}
-                  value={formData.reason || null}
-                  onChange={handleReasonSelect}
-                  placeholder="Search reason..."
-                  triggerPlaceholder="Select reason..."
-                  showEmptyState
-                  emptyStateText="No matching reasons"
-                  resetSearchOnOpen
-                />
+                
+                {/* Toggle between dropdown and manual entry */}
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomReason(false);
+                      setFormData(prev => ({ ...prev, reason: '' }));
+                      setErrors(prev => { const e = { ...prev }; delete e.reason; return e; });
+                    }}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                      !isCustomReason 
+                        ? 'bg-amber-500 text-white' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Select from list
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCustomReasonToggle}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
+                      isCustomReason 
+                        ? 'bg-amber-500 text-white' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Plus className="h-3 w-3" />
+                    Custom reason
+                  </button>
+                </div>
+
+                {/* Dropdown or Manual Input */}
+                {!isCustomReason ? (
+                  <SearchableDropdown
+                    options={REASON_OPTIONS}
+                    value={formData.reason || null}
+                    onChange={handleReasonSelect}
+                    placeholder="Search reason..."
+                    triggerPlaceholder="Select reason..."
+                    showEmptyState
+                    emptyStateText="No matching reasons"
+                    resetSearchOnOpen
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={customReason}
+                    onChange={handleCustomReasonChange}
+                    placeholder="Enter custom reason..."
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                      errors.reason ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  />
+                )}
+                
                 {errors.reason && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.reason}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.reason}</p>
                 )}
               </div>
             </div>
@@ -484,35 +592,34 @@ const CreditNoteCreate: React.FC = () => {
           </div>
 
           {/* ── Items ── */}
-          <ItemSelectionTable
-            items={items}
-            onItemsChange={handleItemsChange}
-            productSuggestions={productSuggestions}
-            productSearch={productSearch}
-            onProductSearchChange={setProductSearch}
-            onAddCustomItem={handleAddCustomItem}
-            errors={errors}
-            columns={creditNoteColumns}
-            showPurity
-            showDescription
-            showUnit
-            showDiscount
-            showTax
-            showSubtotalSection
-            showTotalSection
-            searchPlaceholder="Search items..."
-            addButtonLabel="Add Item"
-            title="Items"
-            additionalCharges={[]}
-            autoAddDefaultRow
-            addButtonAtBottom
-          />
-
-          {errors.items && (
-            <p className="text-sm text-red-500 flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" /> {errors.items}
-            </p>
-          )}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <ItemSelectionTable
+              items={items}
+              onItemsChange={handleItemsChange}
+              productSuggestions={productSuggestions}
+              productSearch={productSearch}
+              onProductSearchChange={setProductSearch}
+              onAddCustomItem={handleAddCustomItem}
+              errors={errors}
+              columns={creditNoteColumns}
+              showPurity
+              showDescription
+              showUnit
+              showDiscount
+              showTax
+              showSubtotalSection
+              showTotalSection
+              searchPlaceholder="Search items..."
+              addButtonLabel="Add Item"
+              title="Items"
+              additionalCharges={[]}
+              autoAddDefaultRow={false}
+              addButtonAtBottom
+            />
+            {errors.items && (
+              <p className="mt-1 text-xs text-red-500">{errors.items}</p>
+            )}
+          </div>
 
           {/* ── Notes ── */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -522,7 +629,7 @@ const CreditNoteCreate: React.FC = () => {
             </h2>
             <textarea
               value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
               placeholder="Enter any additional notes..."
@@ -531,6 +638,15 @@ const CreditNoteCreate: React.FC = () => {
 
         </form>
       </div>
+
+      {/* Saving Overlay */}
+      {saving && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

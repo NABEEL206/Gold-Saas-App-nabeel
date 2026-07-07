@@ -1,26 +1,30 @@
 // src/pages/banking/Banks/BankEdit.tsx
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
-import { useBank } from '../../hooks/Bank/useBank';
-import { useBankEdit } from '../../hooks/Bank/useBankEdit';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { 
-  BANK_ACCOUNT_TYPES, 
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Save, AlertCircle } from "lucide-react";
+import countryList from "react-select-country-list";
+import { useBank } from "../../hooks/Bank/useBank";
+import { useBankEdit } from "../../hooks/Bank/useBankEdit";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import {
+  BANK_ACCOUNT_TYPES,
   BANK_ACCOUNT_TYPE_LABELS,
   BANK_STATUSES,
-  BANK_STATUS_LABELS
-} from '../../types/Bank/BankTypes';
-import SearchableDropdown, { type DropdownOption } from '../../components/common/Searchabledropdown';
-import ConfirmationModal from '../../components/common/ConfirmationModal';
-import { useToastAndConfirm } from '../../hooks/ToastConfirmModal/useToastAndConfirm';
+  BANK_STATUS_LABELS,
+} from "../../types/Bank/BankTypes";
+import SearchableDropdown, {
+  type DropdownOption,
+} from "../../components/common/Searchabledropdown";
+import ConfirmationModal from "../../components/common/ConfirmationModal";
+import ErrorSummary from "../../components/common/ErrorSummary";
+import { useToastAndConfirm } from "../../hooks/ToastConfirmModal/useToastAndConfirm";
 
-const ACCOUNT_TYPE_OPTIONS: DropdownOption[] = BANK_ACCOUNT_TYPES.map(t => ({
+const ACCOUNT_TYPE_OPTIONS: DropdownOption[] = BANK_ACCOUNT_TYPES.map((t) => ({
   value: t,
   label: BANK_ACCOUNT_TYPE_LABELS[t],
 }));
-const BANK_STATUS_OPTIONS: DropdownOption[] = BANK_STATUSES.map(s => ({
+const BANK_STATUS_OPTIONS: DropdownOption[] = BANK_STATUSES.map((s) => ({
   value: s,
   label: BANK_STATUS_LABELS[s],
 }));
@@ -33,11 +37,10 @@ const BankEdit: React.FC = () => {
   const [loadingBank, setLoadingBank] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Use the toast and confirm hook
   const {
     success,
     error: showError,
-    warning,
+    warning: showWarning,
     withConfirmation,
     withLoading,
     isOpen: modalOpen,
@@ -47,81 +50,109 @@ const BankEdit: React.FC = () => {
     handleCancel: onModalCancel,
   } = useToastAndConfirm();
 
+  const countryOptions: DropdownOption[] = useMemo(() => {
+    return countryList()
+      .getData()
+      .map((c) => ({ value: c.value, label: c.label }));
+  }, []);
+
   const {
     formData,
     errors,
+    warnings,
     isSubmitting,
     handleChange,
     handleSubmit,
     setFormData,
-    resetForm
+    resetForm,
   } = useBankEdit(bank);
 
-  // Snapshot for unsaved changes detection
   const initialSnapshotRef = useRef<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showErrorSummary, setShowErrorSummary] = useState(true);
+  const [showWarningSummary, setShowWarningSummary] = useState(true);
 
   useEffect(() => {
-    if (!loadingBank && bank && initialSnapshotRef.current === null) {
+    if (!loadingBank && bank && initialSnapshotRef.current === null)
       initialSnapshotRef.current = JSON.stringify(formData);
-    }
-    if (initialSnapshotRef.current !== null) {
+    if (initialSnapshotRef.current !== null)
       setHasChanges(JSON.stringify(formData) !== initialSnapshotRef.current);
-    }
   }, [formData, loadingBank, bank]);
 
-  // Show error toast for submit errors
   useEffect(() => {
-    if (errors.submit) {
-      showError(errors.submit);
-    }
+    if (errors.submit) showError(errors.submit);
   }, [errors.submit, showError]);
+  useEffect(() => {
+    const fe = getFormErrors();
+    if (Object.keys(fe).length > 0) setShowErrorSummary(true);
+  }, [errors]);
+  useEffect(() => {
+    if (warnings?.length) warnings.forEach((w) => showWarning(w));
+  }, [warnings, showWarning]);
+
+  const getFormErrors = () =>
+    Object.entries(errors).reduce(
+      (acc, [k, v]) => {
+        if (k !== "submit") acc[k] = v;
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+  const getWarningErrors = () => {
+    if (!warnings?.length) return {};
+    return warnings.reduce(
+      (acc, w, i) => {
+        acc[`warning_${i}`] = w;
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+  };
 
   useEffect(() => {
     const loadBank = async () => {
-      if (id) {
-        setLoadingBank(true);
-        setLoadError(null);
-        try {
-          const data = await getBankById(id);
-          if (data) {
-            setBank(data);
-            setFormData({
-              bankName: data.bankName || '',
-              accountName: data.accountName || '',
-              accountNumber: data.accountNumber || '',
-              accountType: data.accountType || 'savings',
-              ifscCode: data.ifscCode || '',
-              branchName: data.branchName || '',
-              branchAddress: data.branchAddress || '',
-              city: data.city || '',
-              state: data.state || '',
-              country: data.country || 'India',
-              pincode: data.pincode || '',
-              contactPerson: data.contactPerson || '',
-              contactPhone: data.contactPhone || '',
-              contactEmail: data.contactEmail || '',
-              openingBalance: data.openingBalance || 0,
-              currentBalance: data.currentBalance || 0,
-              currency: data.currency || 'INR',
-              status: data.status || 'active',
-              notes: data.notes || ''
-            });
-          } else {
-            setLoadError('Bank not found');
-            showError('Bank not found. Redirecting back...');
-            setTimeout(() => navigate('/banking/banks'), 2000);
-          }
-        } catch (error) {
-          console.error('Error loading bank:', error);
-          setLoadError('Error loading bank data');
-          showError('Failed to load bank data. Please try again.');
-        } finally {
-          setLoadingBank(false);
+      if (!id) {
+        showError("Invalid bank ID");
+        navigate("/banking/banks");
+        return;
+      }
+      setLoadingBank(true);
+      setLoadError(null);
+      try {
+        const data = await getBankById(id);
+        if (data) {
+          setBank(data);
+          setFormData({
+            bankName: data.bankName || "",
+            accountName: data.accountName || "",
+            accountNumber: data.accountNumber || "",
+            accountType: data.accountType || "savings",
+            ifscCode: data.ifscCode || "",
+            branchName: data.branchName || "",
+            branchAddress: data.branchAddress || "",
+            city: data.city || "",
+            state: data.state || "",
+            country: data.country || "IN",
+            pincode: data.pincode || "",
+            contactPerson: data.contactPerson || "",
+            contactPhone: data.contactPhone || "",
+            contactEmail: data.contactEmail || "",
+            openingBalance: data.openingBalance || 0,
+            currentBalance: data.currentBalance || 0,
+            currency: data.currency || "INR",
+            status: data.status || "active",
+            notes: data.notes || "",
+          });
+        } else {
+          setLoadError("Bank not found");
+          showError("Bank not found.");
+          setTimeout(() => navigate("/banking/banks"), 2000);
         }
-      } else {
-        showError('Invalid bank ID');
-        navigate('/banking/banks');
+      } catch {
+        setLoadError("Error loading bank data");
+        showError("Failed to load bank data.");
+      } finally {
+        setLoadingBank(false);
       }
     };
     loadBank();
@@ -131,94 +162,66 @@ const BankEdit: React.FC = () => {
     await withLoading(
       async () => {
         const success = await handleSubmit(updateBank);
-        if (!success) {
-          throw new Error('Failed to update bank');
-        }
-        await new Promise(resolve => setTimeout(resolve, 500));
-        navigate('/banking/banks');
+        if (!success) throw new Error("Failed to update bank");
+        await new Promise((r) => setTimeout(r, 500));
+        navigate("/banking/banks");
       },
-      'Updating bank...',
+      "Updating bank...",
       `Bank "${formData.bankName}" updated successfully.`,
-      'Failed to update bank. Please try again.'
+      "Failed to update bank.",
     );
   };
 
-  // Cancel handler with unsaved changes confirmation
   const handleCancel = async () => {
     if (!hasChanges) {
-      navigate('/banking/banks');
+      navigate("/banking/banks");
       return;
     }
-
     await withConfirmation(
       {
-        title: 'Discard Changes',
-        message: 'You have unsaved changes. Are you sure you want to discard them?',
-        confirmText: 'Discard',
-        variant: 'danger',
+        title: "Discard Changes",
+        message: "You have unsaved changes. Discard them?",
+        confirmText: "Discard",
+        variant: "danger",
       },
-      async () => {
-        navigate('/banking/banks');
-      }
+      async () => navigate("/banking/banks"),
     );
   };
 
-  // Reset form handler
-  const handleResetForm = async () => {
-    if (!hasChanges) return;
 
-    await withConfirmation(
-      {
-        title: 'Reset Form',
-        message: 'Are you sure you want to reset all changes to the original values?',
-        confirmText: 'Reset',
-        variant: 'warning',
-      },
-      async () => {
-        if (resetForm) {
-          resetForm();
-        }
-        initialSnapshotRef.current = null;
-        success('Form reset to original values.');
-      }
-    );
-  };
+  const formErrors = getFormErrors();
+  const warningErrors = getWarningErrors();
 
-  if (loadingBank) {
+  if (loadingBank)
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <LoadingSpinner size="lg" text="Loading bank details..." />
       </div>
     );
-  }
-
-  if (loadError || !bank) {
+  if (loadError || !bank)
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-yellow-300 mx-auto mb-3" />
-          <p className="text-gray-500">{loadError || 'Bank not found'}</p>
+          <p className="text-gray-500">{loadError || "Bank not found"}</p>
           <button
-            onClick={() => navigate('/banking/banks')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            onClick={() => navigate("/banking/banks")}
+            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
           >
             Back to Banks
           </button>
         </div>
       </div>
     );
-  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-5xl mx-auto">
-        {/* Header */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Go back"
+              className="p-2 hover:bg-gray-100 rounded-lg"
             >
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
@@ -228,27 +231,18 @@ const BankEdit: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {hasChanges && (
-              <button
-                type="button"
-                onClick={handleResetForm}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Reset changes"
-              >
-                Reset
-              </button>
-            )}
+
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
             >
               Cancel
             </button>
             <button
               onClick={onSubmit}
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -265,29 +259,31 @@ const BankEdit: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Summary */}
-        {Object.keys(errors).length > 0 && Object.keys(errors).some(key => key !== 'submit') && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.entries(errors)
-                  .filter(([key]) => key !== 'submit')
-                  .map(([key, value]) => (
-                    <li key={key}>{value}</li>
-                  ))}
-              </ul>
-            </div>
-          </div>
+        {showErrorSummary && Object.keys(formErrors).length > 0 && (
+          <ErrorSummary
+            errors={formErrors}
+            variant="error"
+            title="Please fix the following errors:"
+            onClose={() => setShowErrorSummary(false)}
+            maxDisplay={10}
+          />
+        )}
+        {showWarningSummary && Object.keys(warningErrors).length > 0 && (
+          <ErrorSummary
+            errors={warningErrors}
+            variant="warning"
+            title="Please review the following warnings:"
+            onClose={() => setShowWarningSummary(false)}
+            maxDisplay={5}
+          />
         )}
 
-        {/* Form - Same as Create with pre-populated data */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Same fields as Create page with values from formData */}
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Details</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Bank Details
+              </h3>
             </div>
 
             <div>
@@ -297,15 +293,14 @@ const BankEdit: React.FC = () => {
               <input
                 type="text"
                 value={formData.bankName}
-                onChange={(e) => handleChange('bankName', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.bankName ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => handleChange("bankName", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.bankName ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter bank name"
               />
-              {errors.bankName && <p className="mt-1 text-sm text-red-500">{errors.bankName}</p>}
+              {errors.bankName && (
+                <p className="mt-1 text-sm text-red-500">{errors.bankName}</p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Account Name <span className="text-red-500">*</span>
@@ -313,15 +308,16 @@ const BankEdit: React.FC = () => {
               <input
                 type="text"
                 value={formData.accountName}
-                onChange={(e) => handleChange('accountName', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.accountName ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => handleChange("accountName", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.accountName ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter account holder name"
               />
-              {errors.accountName && <p className="mt-1 text-sm text-red-500">{errors.accountName}</p>}
+              {errors.accountName && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.accountName}
+                </p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Account Number <span className="text-red-500">*</span>
@@ -329,32 +325,34 @@ const BankEdit: React.FC = () => {
               <input
                 type="text"
                 value={formData.accountNumber}
-                onChange={(e) => handleChange('accountNumber', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.accountNumber ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => handleChange("accountNumber", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.accountNumber ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter account number"
               />
-              {errors.accountNumber && <p className="mt-1 text-sm text-red-500">{errors.accountNumber}</p>}
+              {errors.accountNumber && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.accountNumber}
+                </p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Account Type
               </label>
-              <select
-                value={formData.accountType}
-                onChange={(e) => handleChange('accountType', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-              >
-                {BANK_ACCOUNT_TYPES.map(type => (
-                  <option key={type} value={type}>
-                    {BANK_ACCOUNT_TYPE_LABELS[type]}
-                  </option>
-                ))}
-              </select>
+              <SearchableDropdown
+                options={ACCOUNT_TYPE_OPTIONS}
+                value={formData.accountType || null}
+                onChange={(opt) => handleChange("accountType", opt.value)}
+                triggerPlaceholder="Select account type"
+                placeholder="Search type..."
+                resetSearchOnOpen
+              />
+              {errors.accountType && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.accountType}
+                </p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 IFSC Code <span className="text-red-500">*</span>
@@ -362,15 +360,16 @@ const BankEdit: React.FC = () => {
               <input
                 type="text"
                 value={formData.ifscCode}
-                onChange={(e) => handleChange('ifscCode', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.ifscCode ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) =>
+                  handleChange("ifscCode", e.target.value.toUpperCase())
+                }
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.ifscCode ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter IFSC code"
               />
-              {errors.ifscCode && <p className="mt-1 text-sm text-red-500">{errors.ifscCode}</p>}
+              {errors.ifscCode && (
+                <p className="mt-1 text-sm text-red-500">{errors.ifscCode}</p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Branch Name <span className="text-red-500">*</span>
@@ -378,85 +377,100 @@ const BankEdit: React.FC = () => {
               <input
                 type="text"
                 value={formData.branchName}
-                onChange={(e) => handleChange('branchName', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  errors.branchName ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => handleChange("branchName", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.branchName ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter branch name"
               />
-              {errors.branchName && <p className="mt-1 text-sm text-red-500">{errors.branchName}</p>}
+              {errors.branchName && (
+                <p className="mt-1 text-sm text-red-500">{errors.branchName}</p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Branch Address
               </label>
               <input
                 type="text"
-                value={formData.branchAddress || ''}
-                onChange={(e) => handleChange('branchAddress', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                value={formData.branchAddress || ""}
+                onChange={(e) => handleChange("branchAddress", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.branchAddress ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter branch address"
               />
+              {errors.branchAddress && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.branchAddress}
+                </p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 City
               </label>
               <input
                 type="text"
-                value={formData.city || ''}
-                onChange={(e) => handleChange('city', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                value={formData.city || ""}
+                onChange={(e) => handleChange("city", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.city ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter city"
               />
+              {errors.city && (
+                <p className="mt-1 text-sm text-red-500">{errors.city}</p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 State
               </label>
               <input
                 type="text"
-                value={formData.state || ''}
-                onChange={(e) => handleChange('state', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                value={formData.state || ""}
+                onChange={(e) => handleChange("state", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.state ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter state"
               />
+              {errors.state && (
+                <p className="mt-1 text-sm text-red-500">{errors.state}</p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Pincode
               </label>
               <input
                 type="text"
-                value={formData.pincode || ''}
-                onChange={(e) => handleChange('pincode', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                value={formData.pincode || ""}
+                onChange={(e) => handleChange("pincode", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.pincode ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter pincode"
               />
+              {errors.pincode && (
+                <p className="mt-1 text-sm text-red-500">{errors.pincode}</p>
+              )}
             </div>
 
+            {/* Country - Searchable Dropdown */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Country
               </label>
-              <input
-                type="text"
-                value={formData.country || 'India'}
-                onChange={(e) => handleChange('country', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                placeholder="Enter country"
+              <SearchableDropdown
+                options={countryOptions}
+                value={formData.country || "IN"}
+                onChange={(opt) => handleChange("country", opt.value)}
+                triggerPlaceholder="Select country"
+                placeholder="Search country..."
+                resetSearchOnOpen
               />
+              {errors.country && (
+                <p className="mt-1 text-sm text-red-500">{errors.country}</p>
+              )}
             </div>
 
-            {/* Financial Details */}
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 mt-4">Financial Details</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4 mt-4">
+                Financial Details
+              </h3>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Opening Balance
@@ -464,13 +478,22 @@ const BankEdit: React.FC = () => {
               <input
                 type="number"
                 step="0.01"
-                value={formData.openingBalance || ''}
-                onChange={(e) => handleChange('openingBalance', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                value={formData.openingBalance || ""}
+                onChange={(e) =>
+                  handleChange(
+                    "openingBalance",
+                    parseFloat(e.target.value) || 0,
+                  )
+                }
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.openingBalance ? "border-red-500" : "border-gray-300"}`}
                 placeholder="0.00"
               />
+              {errors.openingBalance && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.openingBalance}
+                </p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Current Balance
@@ -478,110 +501,134 @@ const BankEdit: React.FC = () => {
               <input
                 type="number"
                 step="0.01"
-                value={formData.currentBalance || ''}
-                onChange={(e) => handleChange('currentBalance', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                value={formData.currentBalance || ""}
+                onChange={(e) =>
+                  handleChange(
+                    "currentBalance",
+                    parseFloat(e.target.value) || 0,
+                  )
+                }
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.currentBalance ? "border-red-500" : "border-gray-300"}`}
                 placeholder="0.00"
               />
+              {errors.currentBalance && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.currentBalance}
+                </p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Currency
               </label>
               <input
                 type="text"
-                value={formData.currency || 'INR'}
-                onChange={(e) => handleChange('currency', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                value={formData.currency || "INR"}
+                onChange={(e) => handleChange("currency", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.currency ? "border-red-500" : "border-gray-300"}`}
                 placeholder="INR"
               />
+              {errors.currency && (
+                <p className="mt-1 text-sm text-red-500">{errors.currency}</p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Status
               </label>
-              <select
-                value={formData.status}
-                onChange={(e) => handleChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-              >
-                {BANK_STATUSES.map(status => (
-                  <option key={status} value={status}>
-                    {BANK_STATUS_LABELS[status]}
-                  </option>
-                ))}
-              </select>
+              <SearchableDropdown
+                options={BANK_STATUS_OPTIONS}
+                value={formData.status || null}
+                onChange={(opt) => handleChange("status", opt.value)}
+                triggerPlaceholder="Select status"
+                placeholder="Search status..."
+                resetSearchOnOpen
+              />
+              {errors.status && (
+                <p className="mt-1 text-sm text-red-500">{errors.status}</p>
+              )}
             </div>
 
-            {/* Contact Details */}
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 mt-4">Contact Details</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4 mt-4">
+                Contact Details
+              </h3>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Contact Person
               </label>
               <input
                 type="text"
-                value={formData.contactPerson || ''}
-                onChange={(e) => handleChange('contactPerson', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                value={formData.contactPerson || ""}
+                onChange={(e) => handleChange("contactPerson", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.contactPerson ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter contact person name"
               />
+              {errors.contactPerson && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.contactPerson}
+                </p>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Contact Phone
               </label>
               <input
                 type="text"
-                value={formData.contactPhone || ''}
-                onChange={(e) => handleChange('contactPhone', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                value={formData.contactPhone || ""}
+                onChange={(e) => handleChange("contactPhone", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.contactPhone ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter contact phone"
               />
+              {errors.contactPhone && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.contactPhone}
+                </p>
+              )}
             </div>
-
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Contact Email
               </label>
               <input
                 type="email"
-                value={formData.contactEmail || ''}
-                onChange={(e) => handleChange('contactEmail', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                value={formData.contactEmail || ""}
+                onChange={(e) => handleChange("contactEmail", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.contactEmail ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter contact email"
               />
+              {errors.contactEmail && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.contactEmail}
+                </p>
+              )}
             </div>
-
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Notes
               </label>
               <textarea
-                value={formData.notes || ''}
-                onChange={(e) => handleChange('notes', e.target.value)}
+                value={formData.notes || ""}
+                onChange={(e) => handleChange("notes", e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.notes ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter additional notes"
               />
+              {errors.notes && (
+                <p className="mt-1 text-sm text-red-500">{errors.notes}</p>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}
         onConfirm={onModalConfirm}
         title={modalOptions?.title}
-        message={modalOptions?.message ?? ''}
+        message={modalOptions?.message ?? ""}
         confirmText={modalOptions?.confirmText}
         cancelText={modalOptions?.cancelText}
         variant={modalOptions?.variant}

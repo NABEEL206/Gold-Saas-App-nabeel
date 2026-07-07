@@ -1,7 +1,12 @@
 // src/hooks/Bank/useBankCreate.ts
 
-import { useState } from 'react';
-import type{ BankFormData } from '../../types/Bank/BankTypes';
+import { useState, useCallback } from 'react';
+import type { BankFormData } from '../../types/Bank/BankTypes';
+import { 
+  validateBank, 
+  validateBankField,
+  validateBankBusinessRules 
+} from '../../validations/bankValidation';
 
 export const useBankCreate = () => {
   const [formData, setFormData] = useState<BankFormData>({
@@ -27,105 +32,51 @@ export const useBankCreate = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field: keyof BankFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
+  const handleChange = useCallback((field: keyof BankFormData, value: any) => {
+    setFormData(prev => {
+      const newFormData = { ...prev, [field]: value };
+      const fieldError = validateBankField(field, value, newFormData);
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        if (fieldError) newErrors[field] = fieldError;
+        else delete newErrors[field];
         return newErrors;
       });
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.bankName.trim()) {
-      newErrors.bankName = 'Bank name is required';
-    }
-
-    if (!formData.accountName.trim()) {
-      newErrors.accountName = 'Account name is required';
-    }
-
-    if (!formData.accountNumber.trim()) {
-      newErrors.accountNumber = 'Account number is required';
-    }
-
-    if (!formData.ifscCode.trim()) {
-      newErrors.ifscCode = 'IFSC code is required';
-    }
-
-    if (!formData.branchName.trim()) {
-      newErrors.branchName = 'Branch name is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const resetForm = () => {
-    setFormData({
-      bankName: '',
-      accountName: '',
-      accountNumber: '',
-      accountType: 'savings',
-      ifscCode: '',
-      branchName: '',
-      branchAddress: '',
-      city: '',
-      state: '',
-      country: 'India',
-      pincode: '',
-      contactPerson: '',
-      contactPhone: '',
-      contactEmail: '',
-      openingBalance: 0,
-      currentBalance: 0,
-      currency: 'INR',
-      status: 'active',
-      notes: ''
+      return newFormData;
     });
-    setErrors({});
-    setIsSubmitting(false);
-  };
+  }, []);
 
-  const handleSubmit = async (submitFn: (data: BankFormData) => Promise<any>) => {
-    if (!validateForm()) {
-      return false;
-    }
+  const validateForm = useCallback((): boolean => {
+    const { isValid, errors: validationErrors } = validateBank(formData);
+    setErrors(validationErrors);
+    if (isValid) setWarnings(validateBankBusinessRules(formData));
+    else setWarnings([]);
+    return isValid;
+  }, [formData]);
 
+  const resetForm = useCallback(() => {
+    setFormData({
+      bankName: '', accountName: '', accountNumber: '', accountType: 'savings',
+      ifscCode: '', branchName: '', branchAddress: '', city: '', state: '',
+      country: 'India', pincode: '', contactPerson: '', contactPhone: '',
+      contactEmail: '', openingBalance: 0, currentBalance: 0,
+      currency: 'INR', status: 'active', notes: ''
+    });
+    setErrors({}); setWarnings([]); setIsSubmitting(false);
+  }, []);
+
+  const handleSubmit = useCallback(async (submitFn: (data: BankFormData) => Promise<any>) => {
+    if (!validateForm()) return false;
     setIsSubmitting(true);
-    try {
-      await submitFn(formData);
-      resetForm();
-      return true;
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      setErrors(prev => ({
-        ...prev,
-        submit: error instanceof Error ? error.message : 'Failed to create bank'
-      }));
+    try { await submitFn(formData); resetForm(); return true; }
+    catch (error) {
+      setErrors(prev => ({ ...prev, submit: error instanceof Error ? error.message : 'Failed to create bank' }));
       return false;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    } finally { setIsSubmitting(false); }
+  }, [formData, validateForm, resetForm]);
 
-  return {
-    formData,
-    errors,
-    isSubmitting,
-    handleChange,
-    handleSubmit,
-    resetForm,
-    setFormData,
-    setErrors
-  };
+  return { formData, errors, warnings, isSubmitting, handleChange, handleSubmit, validateForm, resetForm, setFormData, setErrors, setWarnings };
 };

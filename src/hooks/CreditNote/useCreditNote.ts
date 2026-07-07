@@ -1,4 +1,4 @@
-// src/hooks/sales/useCreditNote.ts
+// src/hooks/CreditNote/useCreditNote.ts
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { 
   CreditNote, 
@@ -6,6 +6,13 @@ import type {
   CreditNoteStats,
   CreditNoteItem 
 } from '../../types/creditNote/CreditNoteTypes';
+import {
+  validateCreditNoteForm,
+  formatValidationErrors,
+  type ValidationResult,
+} from '../../validations/creditNote.validation';
+import type { ItemSelectionItem } from '../../components/common/ItemSelectionTable';
+
 // Mock data
 const MOCK_CREDIT_NOTES: CreditNote[] = [
   {
@@ -180,6 +187,24 @@ const MOCK_CREDIT_NOTES: CreditNote[] = [
 
 let creditNoteCounter = 5;
 
+// Helper to convert CreditNote items to ItemSelectionItem format
+const convertToItemSelectionItems = (items: CreditNoteItem[]): ItemSelectionItem[] => {
+  return items.map(item => ({
+    productId: item.id || `item_${Date.now()}`,
+    productName: item.itemName || '',
+    description: item.description || '',
+    quantity: item.quantity || 1,
+    unit: item.unit || 'Pcs',
+    rate: item.rate || 0,
+    discount: item.discount || 0,
+    discountType: 'percentage' as const,
+    taxRate: item.taxRate || 0,
+    taxAmount: item.taxAmount || 0,
+    total: item.total || 0,
+    purity: item.purity || '22K',
+  }));
+};
+
 export const useCreditNote = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -192,7 +217,13 @@ export const useCreditNote = () => {
     customerId: '',
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+  });
 
   // Load credit notes
   const loadCreditNotes = useCallback(() => {
@@ -237,30 +268,75 @@ export const useCreditNote = () => {
       );
     }
 
+    if (filters.customerId) {
+      filtered = filtered.filter((cn) => cn.customerId === filters.customerId);
+    }
+
     return filtered;
   }, [creditNotes, filters]);
 
   const totalItems = filteredCreditNotes.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const currentItems = filteredCreditNotes.slice(startIndex, endIndex);
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(startIndex + itemsPerPage - 1, totalItems);
+  const currentItems = filteredCreditNotes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   // Stats
   const stats = useMemo<CreditNoteStats>(() => {
     const totalAmount = creditNotes.reduce((sum, cn) => sum + cn.total, 0);
     const approvedCount = creditNotes.filter((cn) => cn.status === 'approved').length;
     const pendingCount = creditNotes.filter((cn) => cn.status === 'sent' || cn.status === 'draft').length;
+    const rejectedCount = creditNotes.filter((cn) => cn.status === 'rejected').length;
 
     return {
       totalCreditNotes: creditNotes.length,
       totalAmount,
       approvedCount,
       pendingCount,
+      rejectedCount,
     };
   }, [creditNotes]);
 
-  // CRUD operations
+  // ─── Validation ───
+
+  /**
+   * Validate credit note form data
+   */
+  const validateCreditNote = useCallback((formData: any, items: ItemSelectionItem[]): boolean => {
+    const result = validateCreditNoteForm(formData, items);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result);
+    setErrors(formattedErrors);
+    
+    return result.isValid;
+  }, []);
+
+  /**
+   * Clear all errors
+   */
+  const clearErrors = useCallback(() => {
+    setErrors({});
+    setValidationResult({
+      isValid: true,
+      errors: {},
+      itemErrors: [],
+    });
+  }, []);
+
+  /**
+   * Clear error for a specific field
+   */
+  const clearFieldError = useCallback((field: string) => {
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
+
+  // ─── CRUD Operations ───
+
   const createCreditNote = useCallback(async (data: any) => {
     setSaving(true);
     return new Promise((resolve) => {
@@ -274,8 +350,8 @@ export const useCreditNote = () => {
           customerEmail: data.customerEmail,
           customerPhone: data.customerPhone,
           customerGst: data.customerGst || '',
-          invoiceId: data.invoiceId,
-          invoiceNumber: data.invoiceNumber,
+          invoiceId: data.invoiceId || '',
+          invoiceNumber: data.invoiceNumber || '',
           items: data.items || [],
           subtotal: data.subtotal || 0,
           taxRate: data.taxRate || 18,
@@ -291,11 +367,12 @@ export const useCreditNote = () => {
           updatedAt: new Date().toISOString(),
         };
         setCreditNotes(prev => [newCreditNote, ...prev]);
+        clearErrors();
         setSaving(false);
         resolve(newCreditNote);
       }, 500);
     });
-  }, []);
+  }, [clearErrors]);
 
   const updateCreditNote = useCallback(async (id: string, data: any) => {
     setSaving(true);
@@ -311,6 +388,7 @@ export const useCreditNote = () => {
           const newCreditNotes = [...creditNotes];
           newCreditNotes[index] = updated;
           setCreditNotes(newCreditNotes);
+          clearErrors();
           setSaving(false);
           resolve(updated);
         } else {
@@ -319,7 +397,7 @@ export const useCreditNote = () => {
         }
       }, 500);
     });
-  }, [creditNotes]);
+  }, [creditNotes, clearErrors]);
 
   const deleteCreditNote = useCallback(async (id: string) => {
     return new Promise((resolve, reject) => {
@@ -339,9 +417,24 @@ export const useCreditNote = () => {
   const getCreditNote = useCallback(async (id: string) => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
+        // Check state first
         const creditNote = creditNotes.find((cn) => cn.id === id);
         if (creditNote) {
           resolve({ ...creditNote });
+          return;
+        }
+
+        // Check mock data directly
+        const mockCreditNote = MOCK_CREDIT_NOTES.find((cn) => cn.id === id);
+        if (mockCreditNote) {
+          setCreditNotes(prev => {
+            const exists = prev.some(cn => cn.id === id);
+            if (!exists) {
+              return [...prev, { ...mockCreditNote }];
+            }
+            return prev;
+          });
+          resolve({ ...mockCreditNote });
         } else {
           reject(new Error('Credit note not found'));
         }
@@ -391,7 +484,22 @@ export const useCreditNote = () => {
     });
   }, []);
 
+  const setPage = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  const handleSetItemsPerPage = useCallback((newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  }, []);
+
+  const handleSetFilters = useCallback((newFilters: CreditNoteFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  }, []);
+
   return {
+    // State
     loading,
     saving,
     creditNotes,
@@ -404,8 +512,13 @@ export const useCreditNote = () => {
     startIndex,
     endIndex,
     totalPages,
-    setFilters,
-    setCurrentPage,
+    errors,
+    validationResult,
+    
+    // Actions
+    setFilters: handleSetFilters,
+    setCurrentPage: setPage,
+    setItemsPerPage: handleSetItemsPerPage,
     createCreditNote,
     updateCreditNote,
     deleteCreditNote,
@@ -414,5 +527,10 @@ export const useCreditNote = () => {
     handleExport,
     handleImport,
     handleRefresh,
+    loadCreditNotes,
+    validateCreditNote,
+    clearErrors,
+    clearFieldError,
+    convertToItemSelectionItems,
   };
 };

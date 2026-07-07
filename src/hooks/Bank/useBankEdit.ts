@@ -1,7 +1,12 @@
 // src/hooks/Bank/useBankEdit.ts
 
-import { useState, useEffect } from 'react';
-import type{ Bank, BankFormData } from '../../types/Bank/BankTypes';
+import { useState, useEffect, useCallback } from 'react';
+import type { Bank, BankFormData } from '../../types/Bank/BankTypes';
+import { 
+  validateBank, 
+  validateBankField,
+  validateBankBusinessRules 
+} from '../../validations/bankValidation';
 
 export const useBankEdit = (bank: Bank | null) => {
   const [formData, setFormData] = useState<BankFormData>({
@@ -14,7 +19,7 @@ export const useBankEdit = (bank: Bank | null) => {
     branchAddress: '',
     city: '',
     state: '',
-    country: 'India',
+    country: 'IN',
     pincode: '',
     contactPerson: '',
     contactPhone: '',
@@ -27,6 +32,7 @@ export const useBankEdit = (bank: Bank | null) => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -41,7 +47,7 @@ export const useBankEdit = (bank: Bank | null) => {
         branchAddress: bank.branchAddress || '',
         city: bank.city || '',
         state: bank.state || '',
-        country: bank.country || 'India',
+        country: bank.country || 'IN',
         pincode: bank.pincode || '',
         contactPerson: bank.contactPerson || '',
         contactPhone: bank.contactPhone || '',
@@ -55,104 +61,56 @@ export const useBankEdit = (bank: Bank | null) => {
     }
   }, [bank]);
 
-  const handleChange = (field: keyof BankFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
+  const handleChange = useCallback((field: keyof BankFormData, value: any) => {
+    setFormData(prev => {
+      const newFormData = { ...prev, [field]: value };
+      const fieldError = validateBankField(field, value, newFormData);
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        if (fieldError) newErrors[field] = fieldError;
+        else delete newErrors[field];
         return newErrors;
       });
-    }
-  };
+      return newFormData;
+    });
+  }, []);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = useCallback((): boolean => {
+    const { isValid, errors: validationErrors } = validateBank(formData);
+    setErrors(validationErrors);
+    if (isValid) setWarnings(validateBankBusinessRules(formData));
+    else setWarnings([]);
+    return isValid;
+  }, [formData]);
 
-    if (!formData.bankName.trim()) {
-      newErrors.bankName = 'Bank name is required';
-    }
-
-    if (!formData.accountName.trim()) {
-      newErrors.accountName = 'Account name is required';
-    }
-
-    if (!formData.accountNumber.trim()) {
-      newErrors.accountNumber = 'Account number is required';
-    }
-
-    if (!formData.ifscCode.trim()) {
-      newErrors.ifscCode = 'IFSC code is required';
-    }
-
-    if (!formData.branchName.trim()) {
-      newErrors.branchName = 'Branch name is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     if (bank) {
       setFormData({
-        bankName: bank.bankName || '',
-        accountName: bank.accountName || '',
-        accountNumber: bank.accountNumber || '',
-        accountType: bank.accountType || 'savings',
-        ifscCode: bank.ifscCode || '',
-        branchName: bank.branchName || '',
-        branchAddress: bank.branchAddress || '',
-        city: bank.city || '',
-        state: bank.state || '',
-        country: bank.country || 'India',
-        pincode: bank.pincode || '',
-        contactPerson: bank.contactPerson || '',
-        contactPhone: bank.contactPhone || '',
-        contactEmail: bank.contactEmail || '',
-        openingBalance: bank.openingBalance || 0,
-        currentBalance: bank.currentBalance || 0,
-        currency: bank.currency || 'INR',
-        status: bank.status || 'active',
-        notes: bank.notes || ''
+        bankName: bank.bankName || '', accountName: bank.accountName || '',
+        accountNumber: bank.accountNumber || '', accountType: bank.accountType || 'savings',
+        ifscCode: bank.ifscCode || '', branchName: bank.branchName || '',
+        branchAddress: bank.branchAddress || '', city: bank.city || '',
+        state: bank.state || '', country: bank.country || 'IN',
+        pincode: bank.pincode || '', contactPerson: bank.contactPerson || '',
+        contactPhone: bank.contactPhone || '', contactEmail: bank.contactEmail || '',
+        openingBalance: bank.openingBalance || 0, currentBalance: bank.currentBalance || 0,
+        currency: bank.currency || 'INR', status: bank.status || 'active', notes: bank.notes || ''
       });
     }
-    setErrors({});
-    setIsSubmitting(false);
-  };
+    setErrors({}); setWarnings([]); setIsSubmitting(false);
+  }, [bank]);
 
-  const handleSubmit = async (submitFn: (id: string | number, data: BankFormData) => Promise<any>) => {
-    if (!validateForm() || !bank) {
-      return false;
-    }
-
+  const handleSubmit = useCallback(async (
+    submitFn: (id: string | number, data: BankFormData) => Promise<any>
+  ) => {
+    if (!validateForm() || !bank) return false;
     setIsSubmitting(true);
-    try {
-      await submitFn(bank.id, formData);
-      return true;
-    } catch (error) {
-      console.error('Error updating bank:', error);
-      setErrors(prev => ({
-        ...prev,
-        submit: error instanceof Error ? error.message : 'Failed to update bank'
-      }));
+    try { await submitFn(bank.id, formData); return true; }
+    catch (error) {
+      setErrors(prev => ({ ...prev, submit: error instanceof Error ? error.message : 'Failed to update bank' }));
       return false;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    } finally { setIsSubmitting(false); }
+  }, [formData, validateForm, bank]);
 
-  return {
-    formData,
-    errors,
-    isSubmitting,
-    handleChange,
-    handleSubmit,
-    resetForm,
-    setFormData,
-    setErrors
-  };
+  return { formData, errors, warnings, isSubmitting, handleChange, handleSubmit, validateForm, resetForm, setFormData, setErrors, setWarnings };
 };

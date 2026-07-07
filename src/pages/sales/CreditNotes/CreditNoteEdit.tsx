@@ -1,5 +1,5 @@
 // src/pages/sales/CreditNotes/CreditNoteEdit.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -17,6 +17,12 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import ErrorSummary from '../../../components/common/ErrorSummary';
+import {
+  validateCreditNoteForm,
+  formatValidationErrors,
+  type ValidationResult,
+} from '../../../validations/creditNote.validation';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 import type { CreditNote } from '../../../types/creditNote/CreditNoteTypes';
 
@@ -170,6 +176,11 @@ const CreditNoteEdit: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [validationResult, setValidationResult] = useState<ValidationResult>({
+    isValid: true,
+    errors: {},
+    itemErrors: [],
+  });
   const [originalCreditNote, setOriginalCreditNote] = useState<CreditNote | null>(null);
 
   // Use the toast and confirm hook
@@ -218,7 +229,7 @@ const CreditNoteEdit: React.FC = () => {
     }
   }, [id]);
 
-  const loadCreditNote = async (creditNoteId: string) => {
+  const loadCreditNote = useCallback(async (creditNoteId: string) => {
     setLoading(true);
     try {
       const data = await getCreditNote(creditNoteId) as CreditNote;
@@ -312,7 +323,6 @@ const CreditNoteEdit: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading credit note:', error);
-      // Try dummy data on error
       const dummyData = generateDummyCreditNote(creditNoteId);
       if (dummyData) {
         setOriginalCreditNote(dummyData);
@@ -360,7 +370,7 @@ const CreditNoteEdit: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getCreditNote, showError, warning, navigate]);
 
   // Track changes
   useEffect(() => {
@@ -372,7 +382,7 @@ const CreditNoteEdit: React.FC = () => {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
-  const handleCustomerSelect = (option: DropdownOption) => {
+  const handleCustomerSelect = useCallback((option: DropdownOption) => {
     const customer = DEMO_CUSTOMERS.find(c => c.id === option.value);
     if (customer) {
       setFormData(prev => ({
@@ -385,9 +395,9 @@ const CreditNoteEdit: React.FC = () => {
       }));
       setErrors(prev => { const e = { ...prev }; delete e.customerId; return e; });
     }
-  };
+  }, []);
 
-  const handleInvoiceSelect = (option: DropdownOption) => {
+  const handleInvoiceSelect = useCallback((option: DropdownOption) => {
     const invoice = DEMO_INVOICES.find(inv => inv.id === option.value);
     if (invoice) {
       setFormData(prev => ({
@@ -396,16 +406,24 @@ const CreditNoteEdit: React.FC = () => {
         invoiceNumber: invoice.number,
       }));
     }
-  };
+  }, []);
 
-  const handleReasonSelect = (option: DropdownOption) => {
+  const handleReasonSelect = useCallback((option: DropdownOption) => {
     setFormData(prev => ({ ...prev, reason: option.value }));
     setErrors(prev => { const e = { ...prev }; delete e.reason; return e; });
-  };
+  }, []);
 
-  const handleItemsChange = (newItems: ItemSelectionItem[]) => setItems(newItems);
+  const handleInputChange = useCallback((field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => { const e = { ...prev }; delete e[field]; return e; });
+  }, []);
 
-  const handleAddCustomItem = () => {
+  const handleItemsChange = useCallback((newItems: ItemSelectionItem[]) => {
+    setItems(newItems);
+    setErrors(prev => { const e = { ...prev }; delete e.items; return e; });
+  }, []);
+
+  const handleAddCustomItem = useCallback(() => {
     setItems(prev => [
       ...prev,
       {
@@ -423,11 +441,12 @@ const CreditNoteEdit: React.FC = () => {
         purity:       '22K',
       },
     ]);
-  };
+    setErrors(prev => { const e = { ...prev }; delete e.items; return e; });
+  }, []);
 
   // ── Totals ───────────────────────────────────────────────────────────────────
 
-  const calculateTotals = () => {
+  const calculateTotals = useCallback(() => {
     let subtotal = 0, taxAmount = 0, totalDiscount = 0;
     items.forEach(item => {
       const base = (item.quantity || 1) * (item.rate || 0);
@@ -439,22 +458,23 @@ const CreditNoteEdit: React.FC = () => {
       taxAmount += (base - disc) * ((item.taxRate || 18) / 100);
     });
     return { subtotal, totalDiscount, taxAmount, total: subtotal - totalDiscount + taxAmount };
-  };
+  }, [items]);
 
   const totals = calculateTotals();
 
   // ── Submit ───────────────────────────────────────────────────────────────────
 
-  const validateForm = (): boolean => {
-    const e: Record<string, string> = {};
-    if (!formData.customerId) e.customerId = 'Customer is required';
-    if (!formData.reason)     e.reason     = 'Reason is required';
-    if (items.length === 0)   e.items      = 'At least one item is required';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
+  const validateForm = useCallback((): boolean => {
+    const result = validateCreditNoteForm(formData, items);
+    setValidationResult(result);
+    
+    const formattedErrors = formatValidationErrors(result);
+    setErrors(formattedErrors);
+    
+    return result.isValid;
+  }, [formData, items]);
 
-  const handleSubmit = async (status: 'draft' | 'sent') => {
+  const handleSubmit = useCallback(async (status: 'draft' | 'sent') => {
     if (!validateForm()) {
       showError('Please fix the validation errors before submitting.');
       return;
@@ -481,7 +501,6 @@ const CreditNoteEdit: React.FC = () => {
           total:      totals.total,
           status,
         });
-        // Small delay to show success before navigation
         await new Promise(resolve => setTimeout(resolve, 500));
         navigate(`/sales/credit-notes/${id}/view`);
       },
@@ -491,10 +510,10 @@ const CreditNoteEdit: React.FC = () => {
         : 'Credit note updated and sent successfully.',
       'Failed to update credit note. Please try again.'
     );
-  };
+  }, [formData, items, totals, id, validateForm, showError, withLoading, updateCreditNote, navigate]);
 
   // Cancel handler with unsaved changes confirmation
-  const handleCancel = async () => {
+  const handleCancel = useCallback(async () => {
     if (!hasChanges) {
       navigate(`/sales/credit-notes/${id}/view`);
       return;
@@ -511,10 +530,10 @@ const CreditNoteEdit: React.FC = () => {
         navigate(`/sales/credit-notes/${id}/view`);
       }
     );
-  };
+  }, [hasChanges, withConfirmation, navigate, id]);
 
   // Reset form to original state
-  const handleReset = async () => {
+  const handleReset = useCallback(async () => {
     if (!hasChanges) {
       warning('No changes to reset.');
       return;
@@ -561,16 +580,21 @@ const CreditNoteEdit: React.FC = () => {
           }));
           setItems(formattedItems);
           setErrors({});
+          setValidationResult({
+            isValid: true,
+            errors: {},
+            itemErrors: [],
+          });
           initialSnapshotRef.current = JSON.stringify({ formData, items: formattedItems });
           setHasChanges(false);
           success('Form reset to original credit note data.');
         }
       }
     );
-  };
+  }, [hasChanges, withConfirmation, originalCreditNote, warning, success]);
 
   // Delete credit note handler
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!id) return;
     
     await withConfirmation(
@@ -593,22 +617,32 @@ const CreditNoteEdit: React.FC = () => {
         );
       }
     );
-  };
+  }, [id, withConfirmation, withLoading, deleteCreditNote, navigate]);
 
   // ── Columns config ───────────────────────────────────────────────────────────
 
-  const creditNoteColumns = {
-    item: true, purity: true, description: true,
-    qty: true, unit: true, rate: true,
-    discount: true, tax: true, amount: true, action: true,
-  };
+  const creditNoteColumns = [
+    { key: 'item', label: 'Item', width: 'min-w-[180px] max-w-[220px]' },
+    { key: 'purity', label: 'Purity', width: 'w-28' },
+    { key: 'description', label: 'Description', width: 'w-32' },
+    { key: 'qty', label: 'Qty', width: 'w-24' },
+    { key: 'unit', label: 'Unit', width: 'w-16' },
+    { key: 'rate', label: 'Rate', width: 'w-28' },
+    { key: 'discount', label: 'Discount', width: 'w-28' },
+    { key: 'tax', label: 'Tax', width: 'w-20' },
+    { key: 'amount', label: 'Amount', width: 'w-28' },
+    { key: 'action', label: 'Action', width: 'w-10' },
+  ];
+
+  // Check if there are any errors
+  const hasErrors = Object.keys(errors).length > 0;
 
   // ── Loading guard ─────────────────────────────────────────────────────────────
 
   if (loading || hookLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading credit note data..." />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -637,7 +671,7 @@ const CreditNoteEdit: React.FC = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between mb-6">
@@ -675,15 +709,17 @@ const CreditNoteEdit: React.FC = () => {
               <Trash2 className="h-4 w-4" />
               Delete
             </button>
-            <button
-              type="button"
-              onClick={handleReset}
-              disabled={!hasChanges || !isEditable}
-              className="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Reset changes"
-            >
-              Reset
-            </button>
+            {hasChanges && isEditable && (
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={!hasChanges || !isEditable}
+                className="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Reset changes"
+              >
+                Reset
+              </button>
+            )}
             <button
               type="button"
               onClick={handleCancel}
@@ -713,10 +749,7 @@ const CreditNoteEdit: React.FC = () => {
               title={!isEditable ? 'Only draft credit notes can be edited' : ''}
             >
               {saving || hookSaving ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  Saving...
-                </>
+                <LoadingSpinner size="sm" />
               ) : (
                 <>
                   <Send className="h-4 w-4" />
@@ -741,18 +774,13 @@ const CreditNoteEdit: React.FC = () => {
         )}
 
         {/* Error Summary */}
-        {Object.keys(errors).length > 0 && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.values(errors).map((error, index) => (
-                  <li key={index}>{error}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        {hasErrors && (
+          <ErrorSummary
+            errors={errors}
+            title="Please fix the following errors:"
+            variant="warning"
+            maxDisplay={5}
+          />
         )}
 
         <form className="space-y-6">
@@ -783,9 +811,7 @@ const CreditNoteEdit: React.FC = () => {
                   disabled={!isEditable}
                 />
                 {errors.customerId && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.customerId}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.customerId}</p>
                 )}
               </div>
 
@@ -815,12 +841,15 @@ const CreditNoteEdit: React.FC = () => {
                 <input
                   type="date"
                   value={formData.creditNoteDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, creditNoteDate: e.target.value }))}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    !isEditable ? 'bg-gray-50' : 'bg-white'
-                  }`}
+                  onChange={(e) => handleInputChange('creditNoteDate', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.creditNoteDate ? 'border-red-500' : 'border-gray-300'
+                  } ${!isEditable ? 'bg-gray-50' : 'bg-white'}`}
                   disabled={!isEditable}
                 />
+                {errors.creditNoteDate && (
+                  <p className="mt-1 text-xs text-red-500">{errors.creditNoteDate}</p>
+                )}
               </div>
 
               {/* Reason */}
@@ -840,9 +869,7 @@ const CreditNoteEdit: React.FC = () => {
                   disabled={!isEditable}
                 />
                 {errors.reason && (
-                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.reason}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.reason}</p>
                 )}
               </div>
             </div>
@@ -862,7 +889,7 @@ const CreditNoteEdit: React.FC = () => {
           </div>
 
           {/* ── Items ── */}
-          <div className="relative">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
             <ItemSelectionTable
               items={items}
               onItemsChange={handleItemsChange}
@@ -883,21 +910,19 @@ const CreditNoteEdit: React.FC = () => {
               addButtonLabel="Add Item"
               title="Items"
               additionalCharges={[]}
-              autoAddDefaultRow
+              autoAddDefaultRow={false}
               addButtonAtBottom
+              className={!isEditable ? 'pointer-events-none opacity-75' : ''}
             />
+            {errors.items && (
+              <p className="mt-1 text-xs text-red-500">{errors.items}</p>
+            )}
             {!isEditable && (
               <div className="mt-2 text-xs text-gray-500 text-center">
                 Items cannot be edited for non-draft credit notes
               </div>
             )}
           </div>
-
-          {errors.items && (
-            <p className="text-sm text-red-500 flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" /> {errors.items}
-            </p>
-          )}
 
           {/* ── Notes ── */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -907,7 +932,7 @@ const CreditNoteEdit: React.FC = () => {
             </h2>
             <textarea
               value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
               rows={3}
               className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none ${
                 !isEditable ? 'bg-gray-50' : 'bg-white'
@@ -917,50 +942,17 @@ const CreditNoteEdit: React.FC = () => {
             />
           </div>
 
-          {/* Form Actions - Mobile */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 pb-6 md:hidden">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleSubmit('draft')}
-                disabled={saving || hookSaving || !isEditable || !hasChanges}
-                className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {saving || hookSaving ? (
-                  <LoadingSpinner size="sm" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Draft
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSubmit('sent')}
-                disabled={saving || hookSaving || !isEditable || !hasChanges}
-                className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {saving || hookSaving ? (
-                  <LoadingSpinner size="sm" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                Send
-              </button>
-            </div>
-          </div>
-
         </form>
       </div>
+
+      {/* Saving Overlay */}
+      {saving && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

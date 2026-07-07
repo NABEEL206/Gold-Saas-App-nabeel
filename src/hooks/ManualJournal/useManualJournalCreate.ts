@@ -1,237 +1,134 @@
 // src/hooks/ManualJournal/useManualJournalCreate.ts
 
-import { useState } from 'react';
-import type{ ManualJournalFormData, ManualJournalEntry } from '../../types/ManualJournal/ManualJournalType';
+import { useState, useCallback } from 'react';
+import type { ManualJournalFormData, ManualJournalEntry } from '../../types/ManualJournal/ManualJournalType';
+import { 
+  validateManualJournal, 
+  validateManualJournalField,
+  validateManualJournalBusinessRules 
+} from '../../validations/manualJournalValidation';
 
 export const useManualJournalCreate = () => {
   const [formData, setFormData] = useState<ManualJournalFormData>({
     journalDate: new Date().toISOString().split('T')[0],
     description: '',
     entries: [
-      {
-        accountId: '',
-        accountName: '',
-        accountCode: '',
-        debitAmount: 0,
-        creditAmount: 0,
-        description: ''
-      },
-      {
-        accountId: '',
-        accountName: '',
-        accountCode: '',
-        debitAmount: 0,
-        creditAmount: 0,
-        description: ''
-      }
+      { accountId: '', accountName: '', accountCode: '', debitAmount: 0, creditAmount: 0, description: '' },
+      { accountId: '', accountName: '', accountCode: '', debitAmount: 0, creditAmount: 0, description: '' }
     ],
     totalDebit: 0,
     totalCredit: 0,
     status: 'draft',
-    referenceNumber: '',
-    notes: '',
-    attachment: ''
+    referenceNumber: undefined,
+    notes: undefined,
+    attachment: undefined
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field: keyof ManualJournalFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
+  const handleChange = useCallback((field: keyof ManualJournalFormData, value: any) => {
+    setFormData(prev => {
+      const newFormData = { ...prev, [field]: value };
+      const fieldError = validateManualJournalField(field, value, newFormData);
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        if (fieldError) newErrors[field] = fieldError;
+        else delete newErrors[field];
         return newErrors;
       });
-    }
-  };
-
-  const handleEntryChange = (index: number, field: keyof ManualJournalEntry, value: any) => {
-    const updatedEntries = [...formData.entries];
-    updatedEntries[index] = {
-      ...updatedEntries[index],
-      [field]: value
-    };
-    
-    // Calculate totals
-    let totalDebit = 0;
-    let totalCredit = 0;
-    updatedEntries.forEach(entry => {
-      totalDebit += entry.debitAmount || 0;
-      totalCredit += entry.creditAmount || 0;
+      return newFormData;
     });
+  }, []);
 
-    setFormData(prev => ({
-      ...prev,
-      entries: updatedEntries,
-      totalDebit,
-      totalCredit
-    }));
+  const handleEntryChange = useCallback((index: number, field: keyof ManualJournalEntry, value: any) => {
+    setFormData(prev => {
+      const updatedEntries = [...prev.entries];
+      updatedEntries[index] = { ...updatedEntries[index], [field]: value };
+      
+      let totalDebit = 0, totalCredit = 0;
+      updatedEntries.forEach(entry => {
+        totalDebit += entry.debitAmount || 0;
+        totalCredit += entry.creditAmount || 0;
+      });
 
-    // Clear entry-specific errors
-    if (errors[`entry_${index}_${field}`]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[`entry_${index}_${field}`];
+      const newFormData = { ...prev, entries: updatedEntries, totalDebit, totalCredit };
+      
+      // Validate the changed entry field
+      const fieldKey = `entries[${index}].${field}`;
+      const fieldError = validateManualJournalField(fieldKey, value, newFormData);
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        if (fieldError) newErrors[fieldKey] = fieldError;
+        else delete newErrors[fieldKey];
+        // Clear balance error if totals match
+        if (totalDebit === totalCredit && totalDebit > 0) delete newErrors['balance'];
         return newErrors;
       });
-    }
-  };
 
-  const addEntry = () => {
-    setFormData(prev => ({
-      ...prev,
-      entries: [
-        ...prev.entries,
-        {
-          accountId: '',
-          accountName: '',
-          accountCode: '',
-          debitAmount: 0,
-          creditAmount: 0,
-          description: ''
-        }
-      ]
-    }));
-  };
-
-  const removeEntry = (index: number) => {
-    if (formData.entries.length <= 2) {
-      setErrors(prev => ({
-        ...prev,
-        entries: 'Minimum 2 entries required'
-      }));
-      return;
-    }
-
-    const updatedEntries = formData.entries.filter((_, i) => i !== index);
-    
-    // Recalculate totals
-    let totalDebit = 0;
-    let totalCredit = 0;
-    updatedEntries.forEach(entry => {
-      totalDebit += entry.debitAmount || 0;
-      totalCredit += entry.creditAmount || 0;
+      return newFormData;
     });
+  }, []);
 
+  const addEntry = useCallback(() => {
     setFormData(prev => ({
       ...prev,
-      entries: updatedEntries,
-      totalDebit,
-      totalCredit
+      entries: [...prev.entries, { accountId: '', accountName: '', accountCode: '', debitAmount: 0, creditAmount: 0, description: '' }]
     }));
-  };
+    setErrors(prev => { const n = { ...prev }; delete n.entries; return n; });
+  }, []);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-
-    if (!formData.journalDate) {
-      newErrors.journalDate = 'Journal date is required';
-    }
-
-    if (formData.entries.length < 2) {
-      newErrors.entries = 'At least 2 entries are required';
-    } else {
-      let hasError = false;
-      formData.entries.forEach((entry, index) => {
-        if (!entry.accountId) {
-          newErrors[`entry_${index}_accountId`] = 'Account is required';
-          hasError = true;
-        }
-        if (entry.debitAmount === 0 && entry.creditAmount === 0) {
-          newErrors[`entry_${index}_amount`] = 'Either debit or credit amount is required';
-          hasError = true;
-        }
-        if (entry.debitAmount > 0 && entry.creditAmount > 0) {
-          newErrors[`entry_${index}_amount`] = 'Cannot have both debit and credit amounts';
-          hasError = true;
-        }
-      });
-
-      // Check if totals balance
-      if (!hasError && formData.totalDebit !== formData.totalCredit) {
-        newErrors.balance = `Total debit (₹${formData.totalDebit.toFixed(2)}) must equal total credit (₹${formData.totalCredit.toFixed(2)})`;
+  const removeEntry = useCallback((index: number) => {
+    setFormData(prev => {
+      if (prev.entries.length <= 2) {
+        setErrors(prevErrs => ({ ...prevErrs, entries: 'Minimum 2 entries required' }));
+        return prev;
       }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const resetForm = () => {
-    setFormData({
-      journalDate: new Date().toISOString().split('T')[0],
-      description: '',
-      entries: [
-        {
-          accountId: '',
-          accountName: '',
-          accountCode: '',
-          debitAmount: 0,
-          creditAmount: 0,
-          description: ''
-        },
-        {
-          accountId: '',
-          accountName: '',
-          accountCode: '',
-          debitAmount: 0,
-          creditAmount: 0,
-          description: ''
-        }
-      ],
-      totalDebit: 0,
-      totalCredit: 0,
-      status: 'draft',
-      referenceNumber: '',
-      notes: '',
-      attachment: ''
+      const updatedEntries = prev.entries.filter((_, i) => i !== index);
+      let totalDebit = 0, totalCredit = 0;
+      updatedEntries.forEach(entry => { totalDebit += entry.debitAmount || 0; totalCredit += entry.creditAmount || 0; });
+      
+      setErrors(prevErrs => {
+        const newErrors = { ...prevErrs };
+        delete newErrors.entries;
+        if (totalDebit === totalCredit && totalDebit > 0) delete newErrors['balance'];
+        return newErrors;
+      });
+      
+      return { ...prev, entries: updatedEntries, totalDebit, totalCredit };
     });
-    setErrors({});
-    setIsSubmitting(false);
-  };
+  }, []);
 
-  const handleSubmit = async (submitFn: (data: ManualJournalFormData) => Promise<any>) => {
-    if (!validateForm()) {
-      return false;
-    }
+  const validateForm = useCallback((): boolean => {
+    const { isValid, errors: validationErrors } = validateManualJournal(formData);
+    setErrors(validationErrors);
+    if (isValid) setWarnings(validateManualJournalBusinessRules(formData));
+    else setWarnings([]);
+    return isValid;
+  }, [formData]);
 
+  const resetForm = useCallback(() => {
+    setFormData({
+      journalDate: new Date().toISOString().split('T')[0], description: '',
+      entries: [
+        { accountId: '', accountName: '', accountCode: '', debitAmount: 0, creditAmount: 0, description: '' },
+        { accountId: '', accountName: '', accountCode: '', debitAmount: 0, creditAmount: 0, description: '' }
+      ],
+      totalDebit: 0, totalCredit: 0, status: 'draft', referenceNumber: undefined, notes: undefined, attachment: undefined
+    });
+    setErrors({}); setWarnings([]); setIsSubmitting(false);
+  }, []);
+
+  const handleSubmit = useCallback(async (submitFn: (data: ManualJournalFormData) => Promise<any>) => {
+    if (!validateForm()) return false;
     setIsSubmitting(true);
-    try {
-      await submitFn(formData);
-      resetForm();
-      return true;
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      setErrors(prev => ({
-        ...prev,
-        submit: error instanceof Error ? error.message : 'Failed to create manual journal'
-      }));
+    try { await submitFn(formData); resetForm(); return true; }
+    catch (error) {
+      setErrors(prev => ({ ...prev, submit: error instanceof Error ? error.message : 'Failed to create manual journal' }));
       return false;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    } finally { setIsSubmitting(false); }
+  }, [formData, validateForm, resetForm]);
 
-  return {
-    formData,
-    errors,
-    isSubmitting,
-    handleChange,
-    handleEntryChange,
-    addEntry,
-    removeEntry,
-    handleSubmit,
-    resetForm,
-    setFormData,
-    setErrors
-  };
+  return { formData, errors, warnings, isSubmitting, handleChange, handleEntryChange, addEntry, removeEntry, handleSubmit, validateForm, resetForm, setFormData, setErrors, setWarnings };
 };

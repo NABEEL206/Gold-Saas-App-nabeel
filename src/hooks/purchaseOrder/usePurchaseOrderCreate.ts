@@ -1,18 +1,23 @@
 // src/hooks/purchaseOrder/usePurchaseOrderCreate.ts
 
-import { useState } from 'react';
-import type{ PurchaseOrderFormData, PurchaseOrderItem } from '../../types/purchaseOrder/PurchaseOrderType';
+import { useState, useCallback } from 'react';
+import type { PurchaseOrderFormData, PurchaseOrderItem } from '../../types/purchaseOrder/PurchaseOrderType';
+import { 
+  validatePurchaseOrder, 
+  validatePurchaseOrderField,
+  validatePurchaseOrderBusinessRules 
+} from '../../validations/purchaseOrderValidation';
 
 export const usePurchaseOrderCreate = () => {
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
-    vendorId: '',
-    vendorName: '',
-    vendorEmail: '',
-    vendorPhone: '',
-    vendorAddress: '',
+    vendorId: undefined,
+    vendorName: undefined,
+    vendorEmail: undefined,
+    vendorPhone: undefined,
+    vendorAddress: undefined,
     orderDate: new Date().toISOString().split('T')[0],
-    deliveryDate: '',
-    expectedDeliveryDate: '',
+    deliveryDate: undefined,
+    expectedDeliveryDate: undefined,
     status: 'draft',
     priority: 'medium',
     items: [],
@@ -25,45 +30,71 @@ export const usePurchaseOrderCreate = () => {
     totalAmount: 0,
     currency: 'INR',
     exchangeRate: 1,
-    notes: '',
-    terms: '',
-    shippingAddress: '',
-    billingAddress: '',
-    paymentTerms: '',
-    attachment: ''
+    notes: undefined,
+    terms: undefined,
+    shippingAddress: undefined,
+    billingAddress: undefined,
+    paymentTerms: undefined,
+    attachment: undefined
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field: keyof PurchaseOrderFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
+  const handleChange = useCallback((field: keyof PurchaseOrderFormData, value: any) => {
+    setFormData(prev => {
+      const newFormData = {
+        ...prev,
+        [field]: value
+      };
+
+      // Real-time field validation using the validation file
+      const fieldError = validatePurchaseOrderField(field, value, newFormData);
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        if (fieldError) {
+          newErrors[field] = fieldError;
+        } else {
+          delete newErrors[field];
+        }
         return newErrors;
       });
-    }
-  };
 
-  const handleItemsChange = (items: PurchaseOrderItem[]) => {
+      // If shipping/handling/other charges change, recalculate total
+      if (field === 'shippingCharges' || field === 'handlingCharges' || field === 'otherCharges') {
+        const totalAmount = newFormData.subtotal - newFormData.discountTotal + newFormData.taxTotal + 
+          (newFormData.shippingCharges || 0) + 
+          (newFormData.handlingCharges || 0) + 
+          (newFormData.otherCharges || 0);
+        
+        return {
+          ...newFormData,
+          totalAmount
+        };
+      }
+
+      return newFormData;
+    });
+  }, []);
+
+  const handleItemsChange = useCallback((items: PurchaseOrderItem[]) => {
     // Calculate totals
     let subtotal = 0;
     let discountTotal = 0;
     let taxTotal = 0;
     
     items.forEach(item => {
-      subtotal += item.quantity * item.rate;
+      const itemTotal = (item.quantity || 0) * (item.rate || 0);
+      subtotal += itemTotal;
+      
       const discountAmount = item.discountType === 'fixed' 
-        ? item.discount 
-        : (item.quantity * item.rate) * (item.discount / 100);
+        ? (item.discount || 0)
+        : itemTotal * ((item.discount || 0) / 100);
       discountTotal += discountAmount;
-      const afterDiscount = (item.quantity * item.rate) - discountAmount;
-      const taxAmount = afterDiscount * (item.taxRate / 100);
+      
+      const afterDiscount = itemTotal - discountAmount;
+      const taxAmount = afterDiscount * ((item.taxRate || 0) / 100);
       taxTotal += taxAmount;
     });
 
@@ -80,49 +111,42 @@ export const usePurchaseOrderCreate = () => {
       taxTotal,
       totalAmount
     }));
-  };
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.vendorId && !formData.vendorName) {
-      newErrors.vendorId = 'Vendor is required';
-    }
-
-    if (!formData.orderDate) {
-      newErrors.orderDate = 'Order date is required';
-    }
-
-    if (!formData.items || formData.items.length === 0) {
-      newErrors.items = 'At least one item is required';
-    } else {
-      formData.items.forEach((item, index) => {
-        if (!item.productName) {
-          newErrors[`item_${index}_productName`] = 'Product name is required';
-        }
-        if (!item.quantity || item.quantity <= 0) {
-          newErrors[`item_${index}_quantity`] = 'Quantity must be greater than 0';
-        }
-        if (!item.rate || item.rate <= 0) {
-          newErrors[`item_${index}_rate`] = 'Rate must be greater than 0';
-        }
+    // Clear items error if items exist
+    if (items.length > 0 && errors.items) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.items;
+        return newErrors;
       });
     }
+  }, [formData.shippingCharges, formData.handlingCharges, formData.otherCharges, errors.items]);
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const validateForm = useCallback((): boolean => {
+    const { isValid, errors: validationErrors } = validatePurchaseOrder(formData);
+    setErrors(validationErrors);
+    
+    // Check business rules for warnings
+    if (isValid) {
+      const businessWarnings = validatePurchaseOrderBusinessRules(formData);
+      setWarnings(businessWarnings);
+    } else {
+      setWarnings([]);
+    }
+    
+    return isValid;
+  }, [formData]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
-      vendorId: '',
-      vendorName: '',
-      vendorEmail: '',
-      vendorPhone: '',
-      vendorAddress: '',
+      vendorId: undefined,
+      vendorName: undefined,
+      vendorEmail: undefined,
+      vendorPhone: undefined,
+      vendorAddress: undefined,
       orderDate: new Date().toISOString().split('T')[0],
-      deliveryDate: '',
-      expectedDeliveryDate: '',
+      deliveryDate: undefined,
+      expectedDeliveryDate: undefined,
       status: 'draft',
       priority: 'medium',
       items: [],
@@ -135,18 +159,19 @@ export const usePurchaseOrderCreate = () => {
       totalAmount: 0,
       currency: 'INR',
       exchangeRate: 1,
-      notes: '',
-      terms: '',
-      shippingAddress: '',
-      billingAddress: '',
-      paymentTerms: '',
-      attachment: ''
+      notes: undefined,
+      terms: undefined,
+      shippingAddress: undefined,
+      billingAddress: undefined,
+      paymentTerms: undefined,
+      attachment: undefined
     });
     setErrors({});
+    setWarnings([]);
     setIsSubmitting(false);
-  };
+  }, []);
 
-  const handleSubmit = async (submitFn: (data: PurchaseOrderFormData) => Promise<any>) => {
+  const handleSubmit = useCallback(async (submitFn: (data: PurchaseOrderFormData) => Promise<any>) => {
     if (!validateForm()) {
       return false;
     }
@@ -166,17 +191,20 @@ export const usePurchaseOrderCreate = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [formData, validateForm, resetForm]);
 
   return {
     formData,
     errors,
+    warnings,
     isSubmitting,
     handleChange,
     handleItemsChange,
     handleSubmit,
+    validateForm,
     resetForm,
     setFormData,
-    setErrors
+    setErrors,
+    setWarnings
   };
 };

@@ -16,6 +16,7 @@ import {
 } from '../../../types/purchaseOrder/PurchaseOrderType';
 import SearchableDropdown, { type DropdownOption } from '../../../components/common/Searchabledropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 
 // ─── Static option lists ───────────────────────────────────────────────────────
@@ -27,6 +28,13 @@ const PO_PRIORITY_OPTIONS: DropdownOption[] = PURCHASE_ORDER_PRIORITIES.map(p =>
   value: p,
   label: PURCHASE_ORDER_PRIORITY_LABELS[p],
 }));
+
+const CURRENCY_OPTIONS: DropdownOption[] = [
+  { value: 'INR', label: 'INR (₹)' },
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'GBP', label: 'GBP (£)' },
+];
 
 // ─── Product suggestions ───────────────────────────────────────────────────────
 const PRODUCT_SUGGESTIONS = [
@@ -53,7 +61,7 @@ const PurchaseOrderEdit: React.FC = () => {
   const {
     success,
     error: showError,
-    warning,
+    warning: showWarning,
     withConfirmation,
     withLoading,
     isOpen: modalOpen,
@@ -68,10 +76,13 @@ const PurchaseOrderEdit: React.FC = () => {
   const [selectedVendorInfo, setSelectedVendorInfo] = useState<{
     email?: string; phone?: string; address?: string; city?: string; state?: string;
   } | null>(null);
+  const [showErrorSummary, setShowErrorSummary] = useState(true);
+  const [showWarningSummary, setShowWarningSummary] = useState(true);
 
   const {
     formData,
     errors,
+    warnings,
     isSubmitting,
     handleChange,
     handleItemsChange,
@@ -111,6 +122,40 @@ const PurchaseOrderEdit: React.FC = () => {
     }
   }, [errors.submit, showError]);
 
+  // Auto-show error summary when new errors appear
+  useEffect(() => {
+    const formErrors = getFormErrors();
+    if (Object.keys(formErrors).length > 0) {
+      setShowErrorSummary(true);
+    }
+  }, [errors]);
+
+  // Show warnings as toasts
+  useEffect(() => {
+    if (warnings && warnings.length > 0) {
+      warnings.forEach(warning => showWarning(warning));
+    }
+  }, [warnings, showWarning]);
+
+  // Filter out submit error from form errors for display
+  const getFormErrors = () => {
+    return Object.entries(errors).reduce((acc, [key, value]) => {
+      if (key !== 'submit') {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, string>);
+  };
+
+  // Convert warnings array to errors object for ErrorSummary
+  const getWarningErrors = () => {
+    if (!warnings || warnings.length === 0) return {};
+    return warnings.reduce((acc, warning, index) => {
+      acc[`warning_${index}`] = warning;
+      return acc;
+    }, {} as Record<string, string>);
+  };
+
   // Load the purchase order
   useEffect(() => {
     const load = async () => {
@@ -126,14 +171,14 @@ const PurchaseOrderEdit: React.FC = () => {
         if (data) {
           setOrder(data);
           setFormData({
-            vendorId:             data.vendorId             || '',
-            vendorName:           data.vendorName           || '',
-            vendorEmail:          data.vendorEmail          || '',
-            vendorPhone:          data.vendorPhone          || '',
-            vendorAddress:        data.vendorAddress        || '',
+            vendorId:             data.vendorId             || undefined,
+            vendorName:           data.vendorName           || undefined,
+            vendorEmail:          data.vendorEmail          || undefined,
+            vendorPhone:          data.vendorPhone          || undefined,
+            vendorAddress:        data.vendorAddress        || undefined,
             orderDate:            data.orderDate            || new Date().toISOString().split('T')[0],
-            deliveryDate:         data.deliveryDate         || '',
-            expectedDeliveryDate: data.expectedDeliveryDate || '',
+            deliveryDate:         data.deliveryDate         || undefined,
+            expectedDeliveryDate: data.expectedDeliveryDate || undefined,
             status:               data.status               || 'draft',
             priority:             data.priority             || 'medium',
             items:                data.items                || [],
@@ -146,12 +191,12 @@ const PurchaseOrderEdit: React.FC = () => {
             totalAmount:          data.totalAmount          || 0,
             currency:             data.currency             || 'INR',
             exchangeRate:         data.exchangeRate         || 1,
-            notes:                data.notes                || '',
-            terms:                data.terms                || '',
-            shippingAddress:      data.shippingAddress      || '',
-            billingAddress:       data.billingAddress       || '',
-            paymentTerms:         data.paymentTerms         || '',
-            attachment:           data.attachment           || '',
+            notes:                data.notes                || undefined,
+            terms:                data.terms                || undefined,
+            shippingAddress:      data.shippingAddress      || undefined,
+            billingAddress:       data.billingAddress       || undefined,
+            paymentTerms:         data.paymentTerms         || undefined,
+            attachment:           data.attachment           || undefined,
           });
         } else {
           setLoadError('Purchase order not found');
@@ -260,6 +305,9 @@ const PurchaseOrderEdit: React.FC = () => {
     );
   };
 
+  const formErrors = getFormErrors();
+  const warningErrors = getWarningErrors();
+
   // ── Guards ────────────────────────────────────────────────────────────────────
   if (loadingOrder) {
     return (
@@ -342,21 +390,26 @@ const PurchaseOrderEdit: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Summary */}
-        {Object.keys(errors).length > 0 && Object.keys(errors).some(key => key !== 'submit') && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
-                {Object.entries(errors)
-                  .filter(([key]) => key !== 'submit')
-                  .map(([key, value]) => (
-                    <li key={key}>{value}</li>
-                  ))}
-              </ul>
-            </div>
-          </div>
+        {/* Error Summary - Using reusable component */}
+        {showErrorSummary && Object.keys(formErrors).length > 0 && (
+          <ErrorSummary
+            errors={formErrors}
+            variant="error"
+            title="Please fix the following errors:"
+            onClose={() => setShowErrorSummary(false)}
+            maxDisplay={10}
+          />
+        )}
+
+        {/* Warning Summary - Using reusable component */}
+        {showWarningSummary && Object.keys(warningErrors).length > 0 && (
+          <ErrorSummary
+            errors={warningErrors}
+            variant="warning"
+            title="Please review the following warnings:"
+            onClose={() => setShowWarningSummary(false)}
+            maxDisplay={5}
+          />
         )}
 
         {/* ── Form ── */}
@@ -437,8 +490,11 @@ const PurchaseOrderEdit: React.FC = () => {
                   type="date"
                   value={formData.expectedDeliveryDate || ''}
                   onChange={(e) => handleChange('expectedDeliveryDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.expectedDeliveryDate ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {errors.expectedDeliveryDate && <p className="mt-1 text-sm text-red-500">{errors.expectedDeliveryDate}</p>}
               </div>
 
               {/* Status */}
@@ -452,6 +508,7 @@ const PurchaseOrderEdit: React.FC = () => {
                   placeholder="Search status..."
                   resetSearchOnOpen
                 />
+                {errors.status && <p className="mt-1 text-sm text-red-500">{errors.status}</p>}
               </div>
 
               {/* Priority */}
@@ -465,6 +522,36 @@ const PurchaseOrderEdit: React.FC = () => {
                   placeholder="Search priority..."
                   resetSearchOnOpen
                 />
+                {errors.priority && <p className="mt-1 text-sm text-red-500">{errors.priority}</p>}
+              </div>
+
+              {/* Currency */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                <SearchableDropdown
+                  options={CURRENCY_OPTIONS}
+                  value={formData.currency || 'INR'}
+                  onChange={(opt) => handleChange('currency', opt.value)}
+                  triggerPlaceholder="Select Currency"
+                  placeholder="Search currency..."
+                />
+                {errors.currency && <p className="mt-1 text-sm text-red-500">{errors.currency}</p>}
+              </div>
+
+              {/* Exchange Rate */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Rate</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={formData.exchangeRate || ''}
+                  onChange={(e) => handleChange('exchangeRate', parseFloat(e.target.value) || 1)}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.exchangeRate ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="1.0000"
+                />
+                {errors.exchangeRate && <p className="mt-1 text-sm text-red-500">{errors.exchangeRate}</p>}
               </div>
 
               {/* Vendor Address (auto-filled, editable) */}
@@ -476,9 +563,12 @@ const PurchaseOrderEdit: React.FC = () => {
                   value={formData.vendorAddress || ''}
                   onChange={(e) => handleChange('vendorAddress', e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.vendorAddress ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Auto-filled from vendor selection, or enter manually"
                 />
+                {errors.vendorAddress && <p className="mt-1 text-sm text-red-500">{errors.vendorAddress}</p>}
               </div>
 
             </div>
@@ -487,6 +577,11 @@ const PurchaseOrderEdit: React.FC = () => {
           {/* ── Section: Order Items ── */}
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-4">Order Items</h3>
+            {errors.items && typeof errors.items === 'string' && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{errors.items}</p>
+              </div>
+            )}
             <ItemSelectionTable
               items={formData.items}
               onItemsChange={handleItemsChange}
@@ -523,9 +618,12 @@ const PurchaseOrderEdit: React.FC = () => {
                   value={formData.notes || ''}
                   onChange={(e) => handleChange('notes', e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.notes ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Enter additional notes"
                 />
+                {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes}</p>}
               </div>
 
               {/* Terms & Conditions */}
@@ -537,9 +635,12 @@ const PurchaseOrderEdit: React.FC = () => {
                   value={formData.terms || ''}
                   onChange={(e) => handleChange('terms', e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.terms ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Enter terms and conditions"
                 />
+                {errors.terms && <p className="mt-1 text-sm text-red-500">{errors.terms}</p>}
               </div>
 
               {/* Payment Terms */}
@@ -549,9 +650,12 @@ const PurchaseOrderEdit: React.FC = () => {
                   type="text"
                   value={formData.paymentTerms || ''}
                   onChange={(e) => handleChange('paymentTerms', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    errors.paymentTerms ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., Net 30 days"
                 />
+                {errors.paymentTerms && <p className="mt-1 text-sm text-red-500">{errors.paymentTerms}</p>}
               </div>
 
             </div>
