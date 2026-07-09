@@ -1,37 +1,26 @@
 // src/pages/purchases/Bills/BillView.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft,
-  Edit,
-  Trash,
-  DollarSign,
-  Building2,
-  Calendar,
-  FileText,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  XCircle,
-  Package,
-  Mail,
-  Phone,
-  MapPin,
-  CreditCard,
-  Printer,
-  Download,
+  ArrowLeft, Edit, Trash, DollarSign, Building2, Calendar,
+  FileText, CheckCircle, Clock, AlertCircle, XCircle, Package,
+  Mail, Phone, MapPin, CreditCard, Printer, Download, Eye,
+  FileText as FileTextIcon,
 } from 'lucide-react';
 import { useBills } from '../../../hooks/Bill/useBills';
-import { useBillView } from '../../../hooks/Bill/useBillView';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+import { DocumentRenderer } from '../../../Templates/DocumentRenderer';
+import { formatCurrency } from '../../../utils/Invoice/calculations';
+import type { DocumentData } from '../../../types/Template/TemplateTypes';
 
-// Status Badge
+type ViewMode = 'details' | 'preview';
+
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const config = {
+  const config: Record<string, { color: string; icon: React.ElementType; label: string }> = {
     draft: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Draft' },
     pending: { color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle, label: 'Pending' },
     approved: { color: 'bg-blue-100 text-blue-700', icon: CheckCircle, label: 'Approved' },
@@ -40,14 +29,9 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     overdue: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Overdue' },
     cancelled: { color: 'bg-gray-100 text-gray-500', icon: XCircle, label: 'Cancelled' },
   };
-  const defaultConfig = { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
-  const { color, icon: Icon, label } = config[status as keyof typeof config] || defaultConfig;
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
-      {label}
-    </span>
-  );
+  const cfg = config[status] || { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
+  const { color, icon: Icon, label } = cfg;
+  return <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}><Icon className="h-3 w-3" />{label}</span>;
 };
 
 const BillView: React.FC = () => {
@@ -57,438 +41,165 @@ const BillView: React.FC = () => {
   const [bill, setBill] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('details');
+  const [previewLayout, setPreviewLayout] = useState<'modern' | 'classic' | 'compact' | 'minimal'>('modern');
 
-  // Use the toast and confirm hook
-  const {
-    success,
-    error: showError,
-    warning,
-    withConfirmation,
-    withLoading,
-    isOpen: modalOpen,
-    options: modalOptions,
-    isLoading: modalLoading,
-    handleConfirm: onModalConfirm,
-    handleCancel: onModalCancel,
-  } = useToastAndConfirm();
+  const { success, error: showError, warning, withConfirmation, withLoading, isOpen: modalOpen, options: modalOptions, isLoading: modalLoading, handleConfirm: onModalConfirm, handleCancel: onModalCancel } = useToastAndConfirm();
 
-  const { 
-    formatCurrency,
-    getItemCount,
-    getTotalItems,
-  } = useBillView(bill);
+  useEffect(() => { if (id) loadBill(id); else { showError('Invalid ID'); navigate('/purchases/bills'); } }, [id]);
 
-  useEffect(() => {
-    const loadBill = async () => {
-      if (id) {
-        setLoading(true);
-        try {
-          const data = await getBillById(id);
-          if (data) {
-            setBill(data);
-          } else {
-            setError('Bill not found');
-            showError('Bill not found');
-          }
-        } catch (err) {
-          console.error('Error loading bill:', err);
-          setError('Error loading bill');
-          showError('Failed to load bill details. Please try again.');
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        showError('Invalid bill ID');
-        navigate('/purchases/bills');
-      }
+  const loadBill = async (billId: string) => {
+    setLoading(true);
+    try {
+      const data = await getBillById(billId);
+      if (data) setBill(data);
+      else { setError('Not found'); showError('Bill not found'); }
+    } catch { setError('Error loading'); showError('Failed to load.'); }
+    finally { setLoading(false); }
+  };
+
+  const getItemCount = () => bill?.items?.length || 0;
+  const getTotalItems = () => bill?.items?.reduce((sum: number, i: any) => sum + (i.quantity || 0), 0) || 0;
+
+  const documentData = useMemo((): DocumentData | null => {
+    if (!bill) return null;
+    return {
+      documentNumber: bill.billNumber,
+      documentDate: new Date(bill.billDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      dueDate: bill.dueDate ? new Date(bill.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : undefined,
+      company: {
+        name: 'JewelPro Solutions Pvt Ltd', address: '123, Gold Street, Zaveri Bazaar',
+        city: 'Mumbai', state: 'Maharashtra', pincode: '400002', country: 'India',
+        phone: '+91 98765 43210', email: 'info@jewelpro.com', gst: '27AABCG1234A1Z5',
+      },
+      vendor: { name: bill.vendorName || 'N/A', address: bill.vendorAddress, phone: bill.vendorPhone, email: bill.vendorEmail, gst: bill.vendorGST },
+      items: (bill.items || []).map((item: any) => ({ name: item.productName, description: item.description || '', quantity: item.quantity, unit: item.unit || 'Pcs', rate: item.rate, discount: item.discount, taxRate: (item.taxAmount / ((item.quantity * item.rate) - (item.discount || 0)) * 100) || 0, total: item.total })),
+      subtotal: bill.subtotal, discountTotal: bill.discountTotal, taxTotal: bill.taxTotal,
+      shippingCharges: bill.shippingCharges, totalAmount: bill.totalAmount,
+      paidAmount: bill.paidAmount, balanceDue: bill.balanceDue,
+      notes: bill.notes, terms: bill.terms,
     };
-    loadBill();
-  }, [id, getBillById, navigate, showError]);
+  }, [bill]);
 
   const handleDelete = async () => {
     if (!id) return;
-    
     await withConfirmation(
-      {
-        title: 'Delete Bill',
-        message: `Are you sure you want to delete bill "${bill?.billNumber}"? This action cannot be undone.`,
-        confirmText: 'Delete',
-        cancelText: 'Keep',
-        variant: 'danger',
-      },
-      async () => {
-        await withLoading(
-          async () => {
-            await deleteBill(id);
-            navigate('/purchases/bills');
-          },
-          'Deleting bill...',
-          `Bill "${bill?.billNumber}" deleted successfully.`,
-          'Failed to delete bill. Please try again.'
-        );
-      }
+      { title: 'Delete', message: `Delete "${bill?.billNumber}"?`, confirmText: 'Delete', variant: 'danger' },
+      async () => { await withLoading(async () => { await deleteBill(id); navigate('/purchases/bills'); }, 'Deleting...', 'Deleted.', 'Failed to delete.'); }
     );
   };
 
-  const handleEdit = () => {
-    console.log('Edit clicked - Bill ID:', id);
-    if (id) {
-      navigate(`/purchases/bills/${id}/edit`);
-    } else {
-      showError('Cannot edit: Invalid bill ID');
-    }
-  };
-
-  const handlePrint = () => {
-    success('Preparing document for printing...');
-    setTimeout(() => window.print(), 500);
-  };
-
-  const handleDownload = () => {
-    warning('Download functionality will be implemented soon.');
-  };
+  const handleEdit = () => { if (id) navigate(`/purchases/bills/${id}/edit`); };
+  const handlePrint = () => { setViewMode('preview'); setTimeout(() => window.print(), 300); };
+  const handleDownload = () => { warning('Coming soon.'); };
 
   const dropdownItems = [
-    {
-      label: 'Print',
-      icon: <Printer className="h-4 w-4 text-gray-500" />,
-      onClick: handlePrint,
-    },
-    {
-      label: 'Download',
-      icon: <Download className="h-4 w-4 text-blue-500" />,
-      onClick: handleDownload,
-    },
-    {
-      label: 'Edit Bill',
-      icon: <Edit className="h-4 w-4 text-amber-500" />,
-      onClick: handleEdit,
-    },
-    {
-      label: 'Delete Bill',
-      icon: <Trash className="h-4 w-4 text-red-500" />,
-      onClick: handleDelete,
-      danger: true,
-    },
+    { label: 'Print', icon: <Printer className="h-4 w-4 text-gray-500" />, onClick: handlePrint },
+    { label: 'Download', icon: <Download className="h-4 w-4 text-blue-500" />, onClick: handleDownload },
+    { label: 'Edit', icon: <Edit className="h-4 w-4 text-amber-500" />, onClick: handleEdit },
+    { label: 'Delete', icon: <Trash className="h-4 w-4 text-red-500" />, onClick: handleDelete, danger: true },
   ];
 
-  if (loading) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading bill details..." />
-      </div>
-    );
-  }
-
-  if (error || !bill) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">{error || 'Bill not found'}</p>
-          <button
-            onClick={() => navigate('/purchases/bills')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
-          >
-            Back to Bills
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="p-6 flex items-center justify-center min-h-[400px]"><LoadingSpinner size="lg" text="Loading..." /></div>;
+  if (error || !bill) return <div className="p-6 flex items-center justify-center min-h-[400px]"><div className="text-center"><FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500">{error || 'Not found'}</p><button onClick={() => navigate('/purchases/bills')} className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600">Back</button></div></div>;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/purchases/bills')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{bill.billNumber}</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Bill Details</p>
+    <div className="bg-gray-50 min-h-screen">
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+        <div className="px-4 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/purchases/bills')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ArrowLeft className="h-5 w-5 text-gray-600" /></button>
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-amber-500" />
+              <div>
+                <div className="flex items-center gap-2"><h1 className="text-lg font-bold text-gray-900">{bill.billNumber}</h1><StatusBadge status={bill.status} /></div>
+                <p className="text-[11px] text-gray-500">{new Date(bill.billDate).toLocaleDateString()} | {bill.vendorName} | {formatCurrency(bill.totalAmount)}</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
-            >
-              <Edit className="h-4 w-4" />
-              Edit Bill
-            </button>
-            <ThreeDotDropdown
-              items={dropdownItems}
-              position="right"
-            />
+            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+              <button onClick={() => setViewMode('details')} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'details' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><FileTextIcon className="h-3.5 w-3.5" />Details</button>
+              <button onClick={() => setViewMode('preview')} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'preview' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Eye className="h-3.5 w-3.5" />PDF View</button>
+            </div>
+            <button onClick={handleEdit} className="px-3 py-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 flex items-center gap-1"><Edit className="h-3.5 w-3.5" />Edit</button>
+            <div onClick={(e) => e.stopPropagation()}><ThreeDotDropdown items={dropdownItems} position="right" /></div>
           </div>
         </div>
-
-        {/* Status Badges */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          <StatusBadge status={bill.status} />
-          <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800 inline-flex items-center gap-1">
-            <Package className="h-3 w-3" />
-            {getItemCount()} items ({getTotalItems()} units)
-          </span>
-          {bill.dueDate && (
-            <span className={`px-3 py-1 text-sm font-medium rounded-full inline-flex items-center gap-1 ${
-              bill.status === 'overdue' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-            }`}>
-              <Calendar className="h-3 w-3" />
-              Due: {new Date(bill.dueDate).toLocaleDateString()}
-            </span>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Info */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Vendor Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-gray-500" />
-                Vendor Information
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-500">Vendor Name</label>
-                  <p className="text-gray-900 font-medium">{bill.vendorName || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500">Vendor ID</label>
-                  <p className="text-gray-900">{bill.vendorId || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500">Email</label>
-                  <p className="text-gray-900 flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    {bill.vendorEmail || 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500">Phone</label>
-                  <p className="text-gray-900 flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    {bill.vendorPhone || 'N/A'}
-                  </p>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-sm text-gray-500">Address</label>
-                  <p className="text-gray-900 flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
-                    {bill.vendorAddress || 'N/A'}
-                  </p>
-                </div>
-                {bill.vendorGST && (
-                  <div>
-                    <label className="text-sm text-gray-500">GST Number</label>
-                    <p className="text-gray-900">{bill.vendorGST}</p>
-                  </div>
-                )}
-                {bill.purchaseOrderNumber && (
-                  <div>
-                    <label className="text-sm text-gray-500">PO Number</label>
-                    <p className="text-gray-900">{bill.purchaseOrderNumber}</p>
-                  </div>
-                )}
-              </div>
+        {viewMode === 'preview' && (
+          <div className="px-4 py-1.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-1 bg-white rounded-md border border-gray-200 p-0.5">
+              {(['modern', 'classic', 'compact', 'minimal'] as const).map(layout => (
+                <button key={layout} onClick={() => setPreviewLayout(layout)} className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors capitalize ${previewLayout === layout ? 'bg-amber-500 text-white' : 'text-gray-500 hover:text-gray-700'}`}>{layout}</button>
+              ))}
             </div>
-
-            {/* Bill Items */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <Package className="w-5 h-5 text-gray-500" />
-                Bill Items
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Item</th>
-                      <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 uppercase">Qty</th>
-                      <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 uppercase">Unit</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Rate</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Discount</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Tax</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bill.items.map((item: any, index: number) => (
-                      <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-2 px-3">
-                          <p className="font-medium text-gray-900">{item.productName}</p>
-                          {item.description && (
-                            <p className="text-xs text-gray-500">{item.description}</p>
-                          )}
-                        </td>
-                        <td className="text-center py-2 px-3">{item.quantity}</td>
-                        <td className="text-center py-2 px-3">{item.unit || '-'}</td>
-                        <td className="text-right py-2 px-3">{formatCurrency(item.rate)}</td>
-                        <td className="text-right py-2 px-3 text-green-600">
-                          {item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'}
-                        </td>
-                        <td className="text-right py-2 px-3">{formatCurrency(item.taxAmount)}</td>
-                        <td className="text-right py-2 px-3 font-semibold text-amber-700">
-                          {formatCurrency(item.total)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t-2 border-gray-300">
-                      <td colSpan={5} className="py-2 px-3 text-right font-medium">Subtotal</td>
-                      <td className="py-2 px-3 text-right">{formatCurrency(bill.subtotal)}</td>
-                    </tr>
-                    {bill.discountTotal > 0 && (
-                      <tr>
-                        <td colSpan={5} className="py-1 px-3 text-right text-green-600 font-medium">Discount</td>
-                        <td className="py-1 px-3 text-right text-green-600">-{formatCurrency(bill.discountTotal)}</td>
-                      </tr>
-                    )}
-                    {bill.taxTotal > 0 && (
-                      <tr>
-                        <td colSpan={5} className="py-1 px-3 text-right text-blue-600 font-medium">Tax</td>
-                        <td className="py-1 px-3 text-right text-blue-600">{formatCurrency(bill.taxTotal)}</td>
-                      </tr>
-                    )}
-                    {bill.shippingCharges > 0 && (
-                      <tr>
-                        <td colSpan={5} className="py-1 px-3 text-right text-gray-600 font-medium">Shipping</td>
-                        <td className="py-1 px-3 text-right">{formatCurrency(bill.shippingCharges)}</td>
-                      </tr>
-                    )}
-                    <tr className="border-t-2 border-gray-300">
-                      <td colSpan={5} className="py-2 px-3 text-right font-bold text-gray-900">Total</td>
-                      <td className="py-2 px-3 text-right font-bold text-amber-700">{formatCurrency(bill.totalAmount)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-
-            {/* Payment Information */}
-            {bill.paymentDate && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-gray-500" />
-                  Payment Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-gray-500">Payment Method</label>
-                    <p className="text-gray-900">{bill.paymentMethod || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">Payment Date</label>
-                    <p className="text-gray-900">{new Date(bill.paymentDate).toLocaleDateString()}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Notes & Terms */}
-            {bill.notes && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Notes</h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{bill.notes}</p>
-              </div>
-            )}
-
-            {bill.terms && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Terms & Conditions</h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{bill.terms}</p>
-              </div>
-            )}
+            <button onClick={handlePrint} className="flex items-center gap-1 px-3 py-1 text-[11px] font-medium text-white bg-amber-500 rounded hover:bg-amber-600"><Printer className="h-3 w-3" />Print</button>
           </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Summary */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Summary</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Bill Number</span>
-                  <span className="text-sm font-medium text-gray-900">{bill.billNumber}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Bill Date</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {new Date(bill.billDate).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Status</span>
-                  <span className="text-sm font-medium">
-                    <StatusBadge status={bill.status} />
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Total Amount</span>
-                  <span className="text-sm font-bold text-amber-600">{formatCurrency(bill.totalAmount)}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Items</span>
-                  <span className="text-sm font-medium text-gray-900">{getItemCount()} items</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-sm text-gray-500">Total Units</span>
-                  <span className="text-sm font-medium text-gray-900">{getTotalItems()} units</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
-              <div className="space-y-2">
-                <button
-                  onClick={handleEdit}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
-                >
-                  <Edit className="h-4 w-4" />
-                  Edit Bill
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                >
-                  <Trash className="h-4 w-4" />
-                  Delete Bill
-                </button>
-                <button
-                  onClick={() => navigate('/purchases/bills')}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Bills
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Confirmation Modal - Replaces the custom delete modal */}
-      <ConfirmationModal
-        isOpen={modalOpen}
-        onClose={onModalCancel}
-        onConfirm={onModalConfirm}
-        title={modalOptions?.title}
-        message={modalOptions?.message ?? ''}
-        confirmText={modalOptions?.confirmText}
-        cancelText={modalOptions?.cancelText}
-        variant={modalOptions?.variant}
-        isLoading={modalLoading}
-      />
+      <div className="p-4">
+        {viewMode === 'details' ? (
+          <div className="max-w-7xl mx-auto space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <StatusBadge status={bill.status} />
+              <span className="px-3 py-1 text-sm rounded-full bg-green-100 text-green-800 flex items-center gap-1"><Package className="h-3 w-3" />{getItemCount()} items ({getTotalItems()} units)</span>
+              {bill.dueDate && <span className={`px-3 py-1 text-sm rounded-full flex items-center gap-1 ${bill.status === 'overdue' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}><Calendar className="h-3 w-3" />Due: {new Date(bill.dueDate).toLocaleDateString()}</span>}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2 space-y-4">
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3"><Building2 className="h-4 w-4 inline mr-1" />Vendor</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div><p className="font-medium">{bill.vendorName}</p><p className="text-gray-500"><Mail className="h-3.5 w-3.5 inline" /> {bill.vendorEmail || 'N/A'}</p><p className="text-gray-500"><Phone className="h-3.5 w-3.5 inline" /> {bill.vendorPhone || 'N/A'}</p></div>
+                    <div>{bill.vendorAddress && <p className="text-gray-500"><MapPin className="h-3.5 w-3.5 inline" /> {bill.vendorAddress}</p>}{bill.vendorGST && <p className="text-gray-500 mt-1">GST: {bill.vendorGST}</p>}{bill.purchaseOrderNumber && <p className="text-gray-500">PO: {bill.purchaseOrderNumber}</p>}</div>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <h3 className="text-xs font-semibold uppercase mb-3">Items</h3>
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50"><tr><th className="px-3 py-2 text-left">Item</th><th className="px-3 py-2 text-right">Qty</th><th className="px-3 py-2 text-right">Rate</th><th className="px-3 py-2 text-right">Total</th></tr></thead>
+                    <tbody className="divide-y">
+                      {bill.items.map((item: any, i: number) => (
+                        <tr key={i}><td className="px-3 py-2 font-medium">{item.productName}</td><td className="px-3 py-2 text-right">{item.quantity}</td><td className="px-3 py-2 text-right">{formatCurrency(item.rate)}</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(item.total)}</td></tr>
+                      ))}
+                    </tbody>
+                    <tfoot><tr className="border-t"><td colSpan={3} className="py-2 px-3 text-right font-bold">Total</td><td className="py-2 px-3 text-right font-bold text-amber-600">{formatCurrency(bill.totalAmount)}</td></tr></tfoot>
+                  </table>
+                </div>
+                {bill.paymentDate && (
+                  <div className="bg-white rounded-lg border border-gray-200 p-5">
+                    <h3 className="text-xs font-semibold uppercase mb-2"><CreditCard className="h-4 w-4 inline mr-1" />Payment</h3>
+                    <div className="grid grid-cols-2 gap-2 text-sm"><div><span className="text-gray-500">Method:</span> {bill.paymentMethod || 'N/A'}</div><div><span className="text-gray-500">Date:</span> {new Date(bill.paymentDate).toLocaleDateString()}</div></div>
+                  </div>
+                )}
+                {bill.notes && <div className="bg-white rounded-lg border border-gray-200 p-5"><h4 className="text-xs font-semibold uppercase mb-1">Notes</h4><p className="text-sm text-gray-600">{bill.notes}</p></div>}
+              </div>
+              <div className="space-y-4">
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <h4 className="text-xs font-semibold uppercase mb-3">Summary</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-500">Bill #</span><span className="font-medium">{bill.billNumber}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Date</span><span>{new Date(bill.billDate).toLocaleDateString()}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Status</span><StatusBadge status={bill.status} /></div>
+                    {bill.paidAmount > 0 && <div className="flex justify-between"><span className="text-gray-500">Paid</span><span className="text-green-600">{formatCurrency(bill.paidAmount)}</span></div>}
+                    {bill.balanceDue > 0 && <div className="flex justify-between"><span className="text-gray-500">Balance</span><span className="text-red-600">{formatCurrency(bill.balanceDue)}</span></div>}
+                    <div className="flex justify-between border-t pt-2"><span className="font-bold">Total</span><span className="font-bold text-amber-600">{formatCurrency(bill.totalAmount)}</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-[210mm] mx-auto">
+            {documentData && (
+              <DocumentRenderer data={documentData} layout={previewLayout} config={{ documentType: 'bill', showCompanyLogo: true, showSignature: true, showTerms: true }} />
+            )}
+          </div>
+        )}
+      </div>
+
+      <ConfirmationModal isOpen={modalOpen} onClose={onModalCancel} onConfirm={onModalConfirm} title={modalOptions?.title} message={modalOptions?.message ?? ''} confirmText={modalOptions?.confirmText} cancelText={modalOptions?.cancelText} variant={modalOptions?.variant} isLoading={modalLoading} />
     </div>
   );
 };

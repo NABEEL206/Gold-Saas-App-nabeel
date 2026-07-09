@@ -363,6 +363,8 @@ export const useInvoices = () => {
           customerAddress: data.customerAddress || '',
           customerGst: data.customerGst || '',
           items: data.items || [],
+          oldGoldItems: data.oldGoldItems || [],
+          oldGoldTotal: data.oldGoldTotal || 0,
           subtotal: data.subtotal || 0,
           taxRate: data.taxRate || 18,
           taxAmount: data.taxAmount || 0,

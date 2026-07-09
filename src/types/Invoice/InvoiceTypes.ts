@@ -11,6 +11,8 @@ export interface Invoice {
   customerGst?: string;
   customerAddress?: string;
   items: InvoiceItem[];
+  oldGoldItems?: InvoiceOldGoldItem[];
+  oldGoldTotal?: number;
   subtotal: number;
   taxRate: number;
   taxAmount: number;
@@ -27,6 +29,18 @@ export interface Invoice {
   termsAndConditions: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface InvoiceOldGoldItem {
+  id?: string;
+  description: string;
+  hsn?: string;
+  grossWt: number;
+  lessWastage: number;
+  netWt: number;
+  purity?: string;
+  rate?: number;
+  amount: number;
 }
 
 export interface InvoiceItem {
@@ -54,6 +68,7 @@ export interface InvoiceFormData {
   date: string;
   dueDate: string;
   items: InvoiceItemFormData[];
+  oldGoldItems?: InvoiceOldGoldItem[];
   discount: number;
   discountType: 'percentage' | 'fixed';
   shippingCharge: number;
