@@ -134,19 +134,19 @@ const CustomerView: React.FC = () => {
     const items: ThreeDotDropdownItem[] = [
       {
         label: 'Export as PDF',
-        icon: <File className="h-4 w-4 text-red-500" />,
+        icon: <File className="h-4 w-4" style={{ color: 'var(--error)' }} />,
         onClick: () => handleExport('pdf'),
         disabled: exportLoading,
       },
       {
         label: 'Export as Excel',
-        icon: <FileSpreadsheet className="h-4 w-4 text-green-500" />,
+        icon: <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />,
         onClick: () => handleExport('excel'),
         disabled: exportLoading,
       },
       {
         label: 'Print',
-        icon: <Printer className="h-4 w-4 text-blue-500" />,
+        icon: <Printer className="h-4 w-4" style={{ color: 'var(--info)' }} />,
         onClick: handlePrint,
       },
     ];
@@ -156,19 +156,19 @@ const CustomerView: React.FC = () => {
 
   const getStatusIcon = useCallback((status: string) => {
     switch (status) {
-      case 'active': return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'inactive': return <Clock className="h-5 w-5 text-gray-500" />;
-      case 'suspended': return <AlertCircle className="h-5 w-5 text-red-500" />;
+      case 'active': return <CheckCircle className="h-5 w-5" style={{ color: 'var(--success)' }} />;
+      case 'inactive': return <Clock className="h-5 w-5" style={{ color: 'var(--foreground-tertiary)' }} />;
+      case 'suspended': return <AlertCircle className="h-5 w-5" style={{ color: 'var(--error)' }} />;
       default: return null;
     }
   }, []);
 
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-700';
-      case 'inactive': return 'bg-gray-100 text-gray-700';
-      case 'suspended': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'active': return { bg: 'var(--success-light)', text: 'var(--success)' };
+      case 'inactive': return { bg: 'var(--surface-hover)', text: 'var(--foreground-secondary)' };
+      case 'suspended': return { bg: 'var(--error-light)', text: 'var(--error)' };
+      default: return { bg: 'var(--surface-hover)', text: 'var(--foreground-secondary)' };
     }
   }, []);
 
@@ -193,14 +193,43 @@ const CustomerView: React.FC = () => {
 
   if (error || !customer) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-md mx-auto">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-700 mb-2">Customer Not Found</h3>
-          <p className="text-sm text-red-600">{error || 'Customer does not exist'}</p>
+      <div
+        className="p-6 min-h-screen themed-transition"
+        style={{ background: 'var(--background)' }}
+      >
+        <div
+          className="rounded-lg p-6 text-center max-w-md mx-auto themed-transition"
+          style={{
+            background: 'var(--error-light)',
+            border: '1px solid var(--error)',
+          }}
+        >
+          <AlertCircle
+            className="h-12 w-12 mx-auto mb-3"
+            style={{ color: 'var(--error)' }}
+          />
+          <h3
+            className="text-lg font-semibold mb-2"
+            style={{ color: 'var(--error)' }}
+          >
+            Customer Not Found
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--error)' }}>
+            {error || 'Customer does not exist'}
+          </p>
           <button
             onClick={handleGoBack}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--error)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
           >
             Go Back
           </button>
@@ -209,29 +238,63 @@ const CustomerView: React.FC = () => {
     );
   }
 
+  const statusStyles = getStatusColor(customer.status);
+
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <button
               onClick={handleGoBack}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{ background: 'transparent' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Go back"
             >
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
+              <ArrowLeft
+                className="h-5 w-5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              />
             </button>
             <div>
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-bold text-gray-900">{customer.displayName}</h1>
-                <span className="text-sm text-gray-500">#{customer.customerCode}</span>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(customer.status)}`}>
+                <h1
+                  className="text-2xl font-bold themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  {customer.displayName}
+                </h1>
+                <span
+                  className="text-sm themed-transition"
+                  style={{ color: 'var(--foreground-secondary)' }}
+                >
+                  #{customer.customerCode}
+                </span>
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+                  style={{
+                    background: statusStyles.bg,
+                    color: statusStyles.text,
+                  }}
+                >
                   {getStatusIcon(customer.status)}
                   {customer.status.charAt(0).toUpperCase() + customer.status.slice(1)}
                 </span>
               </div>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
                 {customer.customerType.charAt(0).toUpperCase() + customer.customerType.slice(1)}
               </p>
             </div>
@@ -240,7 +303,18 @@ const CustomerView: React.FC = () => {
             {/* Edit Button */}
             <button
               onClick={handleEdit}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--primary)',
+                background: 'var(--primary-light)',
+                border: '1px solid var(--primary)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.8';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               <Edit className="h-4 w-4" />
               <span>Edit</span>
@@ -250,11 +324,27 @@ const CustomerView: React.FC = () => {
             <button
               onClick={handleDeleteClick}
               disabled={deleting}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!deleting) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {deleting ? (
                 <>
-                  <div className="h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                  <div
+                    className="h-4 w-4 border-2 border-t-transparent rounded-full animate-spin"
+                    style={{ borderColor: 'var(--error)' }}
+                  />
                   <span>Deleting...</span>
                 </>
               ) : (
@@ -276,82 +366,206 @@ const CustomerView: React.FC = () => {
         </div>
 
         {/* Customer Details */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div
+          className="rounded-xl shadow-sm themed-transition"
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-card)',
+          }}
+        >
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Personal Info */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <User className="h-4 w-4" />
+                <h3
+                  className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  <User className="h-4 w-4" style={{ color: 'var(--gold)' }} />
                   Personal Information
                 </h3>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-xs text-gray-500">Name</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      Name
+                    </p>
+                    <p
+                      className="text-sm font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       {[customer.salutation, customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'N/A'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Display Name</p>
-                    <p className="text-sm font-medium text-gray-900">{customer.displayName}</p>
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      Display Name
+                    </p>
+                    <p
+                      className="text-sm font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {customer.displayName}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Customer Type</p>
-                    <p className="text-sm font-medium text-gray-900 capitalize">{customer.customerType}</p>
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      Customer Type
+                    </p>
+                    <p
+                      className="text-sm font-medium capitalize themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {customer.customerType}
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* Contact Info */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
+                <h3
+                  className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  <Mail className="h-4 w-4" style={{ color: 'var(--gold)' }} />
                   Contact Information
                 </h3>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-xs text-gray-500">Email</p>
-                    <p className="text-sm font-medium text-gray-900">{customer.email || 'N/A'}</p>
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      Email
+                    </p>
+                    <p
+                      className="text-sm font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {customer.email || 'N/A'}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Work Phone</p>
-                    <p className="text-sm font-medium text-gray-900">{customer.workPhone || 'N/A'}</p>
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      Work Phone
+                    </p>
+                    <p
+                      className="text-sm font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {customer.workPhone || 'N/A'}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Mobile Number</p>
-                    <p className="text-sm font-medium text-gray-900">{customer.mobileNumber}</p>
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      Mobile Number
+                    </p>
+                    <p
+                      className="text-sm font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {customer.mobileNumber}
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* Address */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
+                <h3
+                  className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  <MapPin className="h-4 w-4" style={{ color: 'var(--gold)' }} />
                   Address
                 </h3>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-xs text-gray-500">Billing Address</p>
-                    <p className="text-sm font-medium text-gray-900">{customer.billingAddress || 'N/A'}</p>
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      Billing Address
+                    </p>
+                    <p
+                      className="text-sm font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {customer.billingAddress || 'N/A'}
+                    </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <p className="text-xs text-gray-500">City</p>
-                      <p className="text-sm font-medium text-gray-900">{customer.city || 'N/A'}</p>
+                      <p
+                        className="text-xs themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
+                        City
+                      </p>
+                      <p
+                        className="text-sm font-medium themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
+                        {customer.city || 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">State</p>
-                      <p className="text-sm font-medium text-gray-900">{customer.state || 'N/A'}</p>
+                      <p
+                        className="text-xs themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
+                        State
+                      </p>
+                      <p
+                        className="text-sm font-medium themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
+                        {customer.state || 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Pincode</p>
-                      <p className="text-sm font-medium text-gray-900">{customer.pincode || 'N/A'}</p>
+                      <p
+                        className="text-xs themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
+                        Pincode
+                      </p>
+                      <p
+                        className="text-sm font-medium themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
+                        {customer.pincode || 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Country</p>
-                      <p className="text-sm font-medium text-gray-900">{customer.country}</p>
+                      <p
+                        className="text-xs themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
+                        Country
+                      </p>
+                      <p
+                        className="text-sm font-medium themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
+                        {customer.country}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -359,26 +573,69 @@ const CustomerView: React.FC = () => {
 
               {/* Financial & Tax */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
+                <h3
+                  className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  <CreditCard className="h-4 w-4" style={{ color: 'var(--gold)' }} />
                   Financial & Tax
                 </h3>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-xs text-gray-500">Opening Balance</p>
-                    <p className="text-sm font-medium text-gray-900">₹{customer.openingBalance.toFixed(2)}</p>
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      Opening Balance
+                    </p>
+                    <p
+                      className="text-sm font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      ₹{customer.openingBalance.toFixed(2)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Credit Limit</p>
-                    <p className="text-sm font-medium text-gray-900">₹{customer.creditLimit.toFixed(2)}</p>
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      Credit Limit
+                    </p>
+                    <p
+                      className="text-sm font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      ₹{customer.creditLimit.toFixed(2)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">GST Number</p>
-                    <p className="text-sm font-medium text-gray-900">{customer.gstNumber || 'N/A'}</p>
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      GST Number
+                    </p>
+                    <p
+                      className="text-sm font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {customer.gstNumber || 'N/A'}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">PAN Number</p>
-                    <p className="text-sm font-medium text-gray-900">{customer.panNumber || 'N/A'}</p>
+                    <p
+                      className="text-xs themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      PAN Number
+                    </p>
+                    <p
+                      className="text-sm font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {customer.panNumber || 'N/A'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -386,30 +643,54 @@ const CustomerView: React.FC = () => {
               {/* Notes */}
               {customer.notes && (
                 <div className="md:col-span-2">
-                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
+                  <h3
+                    className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    <FileText className="h-4 w-4" style={{ color: 'var(--gold)' }} />
                     Notes
                   </h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">{customer.notes}</p>
+                  <p
+                    className="text-sm p-3 rounded-lg themed-transition"
+                    style={{
+                      color: 'var(--foreground)',
+                      background: 'var(--surface-hover)',
+                    }}
+                  >
+                    {customer.notes}
+                  </p>
                 </div>
               )}
 
               {/* Meta Information */}
-              <div className="md:col-span-2 border-t border-gray-200 pt-4">
-                <div className="flex flex-wrap gap-6 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <span className="font-medium">Created:</span>
+              <div
+                className="md:col-span-2 pt-4 themed-transition"
+                style={{ borderTop: '1px solid var(--border)' }}
+              >
+                <div className="flex flex-wrap gap-6 text-sm">
+                  <div
+                    className="flex items-center gap-1 themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
+                  >
+                    <Calendar className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                    <span className="font-medium" style={{ color: 'var(--foreground)' }}>Created:</span>
                     {formatDate(customer.createdAt)}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span className="font-medium">Last Updated:</span>
+                  <div
+                    className="flex items-center gap-1 themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
+                  >
+                    <Clock className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                    <span className="font-medium" style={{ color: 'var(--foreground)' }}>Last Updated:</span>
                     {formatDate(customer.updatedAt)}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    <span className="font-medium">Created By:</span> {customer.createdBy}
+                  <div
+                    className="flex items-center gap-1 themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
+                  >
+                    <Users className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                    <span className="font-medium" style={{ color: 'var(--foreground)' }}>Created By:</span>
+                    {customer.createdBy}
                   </div>
                 </div>
               </div>
@@ -418,18 +699,17 @@ const CustomerView: React.FC = () => {
         </div>
       </div>
 
-
-<ConfirmationModal
-  isOpen={modalOpen}
-  onClose={onModalCancel}    // This just closes the modal, no navigation
-  onConfirm={onModalConfirm}  
-  title={modalOptions?.title}
-  message={modalOptions?.message ?? ''}
-  confirmText={modalOptions?.confirmText}
-  cancelText={modalOptions?.cancelText}
-  variant={modalOptions?.variant}
-  isLoading={modalLoading}
-/>
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

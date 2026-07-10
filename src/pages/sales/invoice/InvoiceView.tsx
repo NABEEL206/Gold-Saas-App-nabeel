@@ -42,43 +42,63 @@ type ViewMode = "details" | "preview";
 const StatusBadge: React.FC<{ status: Invoice["status"] }> = ({ status }) => {
   const config: Record<
     string,
-    { color: string; icon: React.ReactNode; label: string }
+    { icon: React.ReactNode; label: string }
   > = {
     draft: {
-      color: "bg-gray-100 text-gray-700",
       icon: <FileText className="h-3 w-3" />,
       label: "Draft",
     },
     sent: {
-      color: "bg-blue-100 text-blue-700",
       icon: <Clock className="h-3 w-3" />,
       label: "Sent",
     },
     paid: {
-      color: "bg-green-100 text-green-700",
       icon: <CheckCircle className="h-3 w-3" />,
       label: "Paid",
     },
     partial: {
-      color: "bg-yellow-100 text-yellow-700",
       icon: <Clock className="h-3 w-3" />,
       label: "Partial",
     },
     overdue: {
-      color: "bg-red-100 text-red-700",
       icon: <AlertCircle className="h-3 w-3" />,
       label: "Overdue",
     },
     cancelled: {
-      color: "bg-gray-100 text-gray-700",
       icon: <XCircle className="h-3 w-3" />,
       label: "Cancelled",
     },
   };
-  const { color, icon, label } = config[status];
+
+  const getStatusStyles = () => {
+    switch (status) {
+      case 'draft':
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-secondary)' };
+      case 'sent':
+        return { bg: 'var(--info-light)', color: 'var(--info)' };
+      case 'paid':
+        return { bg: 'var(--success-light)', color: 'var(--success)' };
+      case 'partial':
+        return { bg: 'var(--warning-light)', color: 'var(--warning)' };
+      case 'overdue':
+        return { bg: 'var(--error-light)', color: 'var(--error)' };
+      case 'cancelled':
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-tertiary)' };
+      default:
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-secondary)' };
+    }
+  };
+
+  const { icon, label } = config[status];
+  const styles = getStatusStyles();
+
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: styles.bg,
+        color: styles.color,
+      }}
     >
       {icon}
       {label}
@@ -337,22 +357,22 @@ export const InvoiceView: React.FC = () => {
   const dropdownItems = [
     {
       label: "Print",
-      icon: <Printer className="h-4 w-4 text-gray-500" />,
+      icon: <Printer className="h-4 w-4" style={{ color: 'var(--foreground-secondary)' }} />,
       onClick: handlePrint,
     },
     {
       label: "Export as PDF",
-      icon: <Download className="h-4 w-4 text-red-500" />,
+      icon: <Download className="h-4 w-4" style={{ color: 'var(--error)' }} />,
       onClick: () => handleExport("pdf"),
     },
     {
       label: "Export as Excel",
-      icon: <Download className="h-4 w-4 text-green-500" />,
+      icon: <Download className="h-4 w-4" style={{ color: 'var(--success)' }} />,
       onClick: () => handleExport("excel"),
     },
     {
       label: "Edit",
-      icon: <Edit className="h-4 w-4 text-amber-500" />,
+      icon: <Edit className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
       onClick: handleEdit,
       show: invoice?.status === "draft",
     },
@@ -361,7 +381,7 @@ export const InvoiceView: React.FC = () => {
       icon: deleteLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <Trash2 className="h-4 w-4 text-red-500" />
+        <Trash2 className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: handleDelete,
       show: invoice?.status === "draft",
@@ -369,14 +389,14 @@ export const InvoiceView: React.FC = () => {
     },
     {
       label: "Send",
-      icon: <Send className="h-4 w-4 text-blue-500" />,
+      icon: <Send className="h-4 w-4" style={{ color: 'var(--info)' }} />,
       onClick: () => handleStatusUpdate("sent"),
       show: invoice?.status === "draft",
       disabled: updating,
     },
     {
       label: "Mark Paid",
-      icon: <CheckCircle className="h-4 w-4 text-green-500" />,
+      icon: <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />,
       onClick: () => handleStatusUpdate("paid"),
       show:
         invoice?.status === "sent" ||
@@ -386,7 +406,7 @@ export const InvoiceView: React.FC = () => {
     },
     {
       label: "Cancel",
-      icon: <XCircle className="h-4 w-4 text-red-500" />,
+      icon: <XCircle className="h-4 w-4" style={{ color: 'var(--error)' }} />,
       onClick: () => handleStatusUpdate("cancelled"),
       show: invoice?.status === "sent" || invoice?.status === "draft",
       disabled: updating,
@@ -401,13 +421,31 @@ export const InvoiceView: React.FC = () => {
     );
   if (!invoice)
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div
+        className="p-6 flex items-center justify-center min-h-[400px] themed-transition"
+        style={{ background: 'var(--background)' }}
+      >
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">Invoice not found</p>
+          <AlertCircle
+            className="h-12 w-12 mx-auto mb-3"
+            style={{ color: 'var(--foreground-tertiary)' }}
+          />
+          <p className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+            Invoice not found
+          </p>
           <button
             onClick={handleGoBack}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back
           </button>
@@ -416,27 +454,53 @@ export const InvoiceView: React.FC = () => {
     );
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div
+      className="min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Sticky Header */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+      <div
+        className="sticky top-0 z-30 border-b shadow-sm themed-transition"
+        style={{
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={handleGoBack}
-              className="p-1.5 hover:bg-gray-100 rounded-lg"
+              className="p-1.5 rounded-lg transition-colors themed-transition"
+              style={{ background: 'transparent' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
+              <ArrowLeft
+                className="h-5 w-5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              />
             </button>
             <div className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-amber-500" />
+              <Receipt className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-bold text-gray-900">
+                  <h1
+                    className="text-lg font-bold themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     {invoice.invoiceNo}
                   </h1>
                   <StatusBadge status={invoice.status} />
                 </div>
-                <p className="text-[11px] text-gray-500">
+                <p
+                  className="text-[11px] themed-transition"
+                  style={{ color: 'var(--foreground-secondary)' }}
+                >
                   {new Date(invoice.date).toLocaleDateString()} |{" "}
                   {invoice.customerName} | {formatCurrency(invoice.total)}
                 </p>
@@ -444,17 +508,38 @@ export const InvoiceView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+            <div
+              className="flex items-center rounded-lg p-0.5 themed-transition"
+              style={{ background: 'var(--surface-hover)' }}
+            >
               <button
                 onClick={() => setViewMode("details")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === "details" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all themed-transition ${
+                  viewMode === "details"
+                    ? "bg-surface text-foreground shadow-sm"
+                    : "text-foreground-secondary hover:text-foreground"
+                }`}
+                style={{
+                  background: viewMode === "details" ? 'var(--surface)' : 'transparent',
+                  color: viewMode === "details" ? 'var(--foreground)' : 'var(--foreground-secondary)',
+                  boxShadow: viewMode === "details" ? 'var(--shadow-sm)' : 'none',
+                }}
               >
                 <FileTextIcon className="h-3.5 w-3.5" />
                 Details
               </button>
               <button
                 onClick={() => setViewMode("preview")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === "preview" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all themed-transition ${
+                  viewMode === "preview"
+                    ? "bg-surface text-foreground shadow-sm"
+                    : "text-foreground-secondary hover:text-foreground"
+                }`}
+                style={{
+                  background: viewMode === "preview" ? 'var(--surface)' : 'transparent',
+                  color: viewMode === "preview" ? 'var(--foreground)' : 'var(--foreground-secondary)',
+                  boxShadow: viewMode === "preview" ? 'var(--shadow-sm)' : 'none',
+                }}
               >
                 <Eye className="h-3.5 w-3.5" />
                 PDF View
@@ -464,14 +549,36 @@ export const InvoiceView: React.FC = () => {
               <>
                 <button
                   onClick={() => handleStatusUpdate("sent")}
-                  className="px-3 py-1.5 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                  style={{
+                    color: 'var(--info)',
+                    background: 'var(--info-light)',
+                    border: '1px solid var(--info)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   <Send className="h-3.5 w-3.5" />
                   Send
                 </button>
                 <button
                   onClick={handleEdit}
-                  className="px-3 py-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                  style={{
+                    color: 'var(--primary)',
+                    background: 'var(--primary-light)',
+                    border: '1px solid var(--primary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   <Edit className="h-3.5 w-3.5" />
                   Edit
@@ -483,7 +590,18 @@ export const InvoiceView: React.FC = () => {
               invoice.status === "overdue") && (
               <button
                 onClick={() => handleStatusUpdate("paid")}
-                className="px-3 py-1.5 text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 flex items-center gap-1"
+                className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                style={{
+                  color: 'var(--success)',
+                  background: 'var(--success-light)',
+                  border: '1px solid var(--success)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
               >
                 <CheckCircle className="h-3.5 w-3.5" />
                 Paid
@@ -498,14 +616,34 @@ export const InvoiceView: React.FC = () => {
           </div>
         </div>
         {viewMode === "preview" && (
-          <div className="px-4 py-1.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-1 bg-white rounded-md border border-gray-200 p-0.5">
+          <div
+            className="px-4 py-1.5 border-t flex items-center justify-between themed-transition"
+            style={{
+              background: 'var(--surface-hover)',
+              borderColor: 'var(--border-subtle)',
+            }}
+          >
+            <div
+              className="flex items-center gap-1 rounded-md border p-0.5 themed-transition"
+              style={{
+                background: 'var(--surface)',
+                borderColor: 'var(--border)',
+              }}
+            >
               {(["modern", "classic", "compact", "minimal"] as const).map(
                 (layout) => (
                   <button
                     key={layout}
                     onClick={() => setPreviewLayout(layout)}
-                    className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors capitalize ${previewLayout === layout ? "bg-amber-500 text-white" : "text-gray-500 hover:text-gray-700"}`}
+                    className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors capitalize themed-transition ${
+                      previewLayout === layout
+                        ? "text-white"
+                        : "text-foreground-secondary hover:text-foreground"
+                    }`}
+                    style={{
+                      background: previewLayout === layout ? 'var(--primary)' : 'transparent',
+                      color: previewLayout === layout ? 'white' : 'var(--foreground-secondary)',
+                    }}
                   >
                     {layout}
                   </button>
@@ -513,12 +651,25 @@ export const InvoiceView: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-400">
+              <span
+                className="text-[11px] themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              >
                 Total: {formatCurrency(invoice.total)}
               </span>
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-1 px-3 py-1 text-[11px] font-medium text-white bg-amber-500 rounded hover:bg-amber-600"
+                className="flex items-center gap-1 px-3 py-1 text-[11px] font-medium rounded transition-colors themed-transition"
+                style={{
+                  background: 'var(--primary)',
+                  color: 'white',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--primary)';
+                }}
               >
                 <Printer className="h-3 w-3" />
                 Print
@@ -532,26 +683,52 @@ export const InvoiceView: React.FC = () => {
         {viewMode === "details" ? (
           <div className="max-w-5xl mx-auto space-y-4">
             {/* Invoice Header */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5 bg-gradient-to-r from-amber-50 to-white">
+            <div
+              className="rounded-lg border p-5 themed-transition"
+              style={{
+                background: 'var(--surface)',
+                borderColor: 'var(--border)',
+              }}
+            >
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">
+                  <h2
+                    className="text-xl font-bold themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     {invoice.invoiceNo}
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p
+                    className="text-sm mt-1 themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
+                  >
                     Date: {new Date(invoice.date).toLocaleDateString()}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p
+                    className="text-sm themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
+                  >
                     Due: {new Date(invoice.dueDate).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-500">Total Amount</p>
-                  <p className="text-2xl font-bold text-amber-600">
+                  <p
+                    className="text-sm themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
+                  >
+                    Total Amount
+                  </p>
+                  <p
+                    className="text-2xl font-bold themed-transition"
+                    style={{ color: 'var(--gold)' }}
+                  >
                     {formatCurrency(invoice.total)}
                   </p>
                   {invoice.balanceDue > 0 && (
-                    <p className="text-sm text-red-600 mt-1">
+                    <p
+                      className="text-sm mt-1 themed-transition"
+                      style={{ color: 'var(--error)' }}
+                    >
                       Balance: {formatCurrency(invoice.balanceDue)}
                     </p>
                   )}
@@ -560,33 +737,57 @@ export const InvoiceView: React.FC = () => {
             </div>
 
             {/* Customer */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
-              <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
+            <div
+              className="rounded-lg border p-5 themed-transition"
+              style={{
+                background: 'var(--surface)',
+                borderColor: 'var(--border)',
+              }}
+            >
+              <h3
+                className="text-xs font-semibold uppercase tracking-wider mb-3 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Customer
               </h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="font-medium text-gray-900">
+                  <p
+                    className="font-medium themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     {invoice.customerName}
                   </p>
-                  <p className="text-gray-600 flex items-center gap-1 mt-1">
-                    <Mail className="h-3.5 w-3.5" />
+                  <p
+                    className="flex items-center gap-1 mt-1 themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
+                  >
+                    <Mail className="h-3.5 w-3.5" style={{ color: 'var(--foreground-tertiary)' }} />
                     {invoice.customerEmail}
                   </p>
-                  <p className="text-gray-600 flex items-center gap-1 mt-1">
-                    <Phone className="h-3.5 w-3.5" />
+                  <p
+                    className="flex items-center gap-1 mt-1 themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
+                  >
+                    <Phone className="h-3.5 w-3.5" style={{ color: 'var(--foreground-tertiary)' }} />
                     {invoice.customerPhone}
                   </p>
                 </div>
                 <div>
                   {invoice.customerAddress && (
-                    <p className="text-gray-600 flex items-center gap-1">
-                      <Building2 className="h-3.5 w-3.5" />
+                    <p
+                      className="flex items-center gap-1 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
+                      <Building2 className="h-3.5 w-3.5" style={{ color: 'var(--foreground-tertiary)' }} />
                       {invoice.customerAddress}
                     </p>
                   )}
                   {invoice.customerGst && (
-                    <p className="text-gray-600 mt-1">
+                    <p
+                      className="mt-1 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       GST: {invoice.customerGst}
                     </p>
                   )}
@@ -595,62 +796,119 @@ export const InvoiceView: React.FC = () => {
             </div>
 
             {/* Items */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
-              <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
+            <div
+              className="rounded-lg border p-5 themed-transition"
+              style={{
+                background: 'var(--surface)',
+                borderColor: 'var(--border)',
+              }}
+            >
+              <h3
+                className="text-xs font-semibold uppercase tracking-wider mb-3 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Items ({invoice.items?.length || 0})
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
-                  <thead className="bg-gray-50">
+                  <thead
+                    className="themed-transition"
+                    style={{ background: 'var(--surface-hover)' }}
+                  >
                     <tr>
-                      <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500">
+                      <th
+                        className="px-3 py-2 text-left text-[11px] font-medium themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Item
                       </th>
-                      <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500">
+                      <th
+                        className="px-3 py-2 text-right text-[11px] font-medium themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Qty
                       </th>
-                      <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500">
+                      <th
+                        className="px-3 py-2 text-right text-[11px] font-medium themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Rate
                       </th>
-                      <th className="px-3 py-2 text-center text-[11px] font-medium text-gray-500">
+                      <th
+                        className="px-3 py-2 text-center text-[11px] font-medium themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Purity
                       </th>
-                      <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500">
+                      <th
+                        className="px-3 py-2 text-right text-[11px] font-medium themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Tax
                       </th>
-                      <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500">
+                      <th
+                        className="px-3 py-2 text-right text-[11px] font-medium themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Total
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody
+                    className="divide-y themed-transition"
+                    style={{ borderColor: 'var(--border-subtle)' }}
+                  >
                     {invoice.items?.map((item, i) => (
                       <tr key={i}>
                         <td className="px-3 py-2">
-                          <p className="font-medium text-gray-900">
+                          <p
+                            className="font-medium themed-transition"
+                            style={{ color: 'var(--foreground)' }}
+                          >
                             {item.itemName}
                           </p>
-                          <p className="text-[10px] text-gray-400">
+                          <p
+                            className="text-[10px] themed-transition"
+                            style={{ color: 'var(--foreground-tertiary)' }}
+                          >
                             {item.description}
                           </p>
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td
+                          className="px-3 py-2 text-right themed-transition"
+                          style={{ color: 'var(--foreground-secondary)' }}
+                        >
                           {item.quantity}
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td
+                          className="px-3 py-2 text-right themed-transition"
+                          style={{ color: 'var(--foreground-secondary)' }}
+                        >
                           {formatCurrency(item.rate)}
                         </td>
                         <td className="px-3 py-2 text-center">
                           {item.purity && (
-                            <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded themed-transition"
+                              style={{
+                                background: 'var(--primary-light)',
+                                color: 'var(--primary)',
+                              }}
+                            >
                               {item.purity}
                             </span>
                           )}
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td
+                          className="px-3 py-2 text-right themed-transition"
+                          style={{ color: 'var(--foreground-secondary)' }}
+                        >
                           {item.taxRate}%
                         </td>
-                        <td className="px-3 py-2 text-right font-medium">
+                        <td
+                          className="px-3 py-2 text-right font-medium themed-transition"
+                          style={{ color: 'var(--foreground)' }}
+                        >
                           {formatCurrency(item.total)}
                         </td>
                       </tr>
@@ -662,70 +920,133 @@ export const InvoiceView: React.FC = () => {
 
             {/* Old Gold Exchange Table */}
             {oldGoldCalc.itemCount > 0 && (
-              <div className="bg-white rounded-lg border border-amber-200 p-5 bg-amber-50/30">
+              <div
+                className="rounded-lg border p-5 themed-transition"
+                style={{
+                  background: 'var(--primary-light)',
+                  borderColor: 'var(--primary)',
+                }}
+              >
                 <div className="flex items-center gap-2 mb-3">
-                  <RotateCcw className="h-4 w-4 text-amber-600" />
-                  <h3 className="text-xs font-semibold text-amber-800 uppercase tracking-wider">
+                  <RotateCcw className="h-4 w-4" style={{ color: 'var(--primary)' }} />
+                  <h3
+                    className="text-xs font-semibold uppercase tracking-wider themed-transition"
+                    style={{ color: 'var(--primary)' }}
+                  >
                     Old Gold Exchange ({oldGoldCalc.itemCount})
                   </h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
-                    <thead className="bg-amber-100/50">
+                    <thead
+                      className="themed-transition"
+                      style={{ background: 'var(--primary-light)' }}
+                    >
                       <tr>
-                        <th className="px-2 py-1.5 text-left text-[11px] text-amber-700">
+                        <th
+                          className="px-2 py-1.5 text-left text-[11px] themed-transition"
+                          style={{ color: 'var(--primary)' }}
+                        >
                           Desc
                         </th>
-                        <th className="px-2 py-1.5 text-right text-[11px] text-amber-700">
+                        <th
+                          className="px-2 py-1.5 text-right text-[11px] themed-transition"
+                          style={{ color: 'var(--primary)' }}
+                        >
                           G.WT
                         </th>
-                        <th className="px-2 py-1.5 text-right text-[11px] text-amber-700">
+                        <th
+                          className="px-2 py-1.5 text-right text-[11px] themed-transition"
+                          style={{ color: 'var(--primary)' }}
+                        >
                           N.WT
                         </th>
-                        <th className="px-2 py-1.5 text-center text-[11px] text-amber-700">
+                        <th
+                          className="px-2 py-1.5 text-center text-[11px] themed-transition"
+                          style={{ color: 'var(--primary)' }}
+                        >
                           Purity
                         </th>
-                        <th className="px-2 py-1.5 text-right text-[11px] text-amber-700">
+                        <th
+                          className="px-2 py-1.5 text-right text-[11px] themed-transition"
+                          style={{ color: 'var(--primary)' }}
+                        >
                           Rate
                         </th>
-                        <th className="px-2 py-1.5 text-right text-[11px] text-amber-700">
+                        <th
+                          className="px-2 py-1.5 text-right text-[11px] themed-transition"
+                          style={{ color: 'var(--primary)' }}
+                        >
                           Amount
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-amber-100">
+                    <tbody
+                      className="divide-y themed-transition"
+                      style={{ borderColor: 'var(--border-subtle)' }}
+                    >
                       {oldGoldCalc.items.map((item, i) => (
                         <tr key={i}>
-                          <td className="px-2 py-1.5">{item.description}</td>
-                          <td className="px-2 py-1.5 text-right">
+                          <td
+                            className="px-2 py-1.5 themed-transition"
+                            style={{ color: 'var(--foreground-secondary)' }}
+                          >
+                            {item.description}
+                          </td>
+                          <td
+                            className="px-2 py-1.5 text-right themed-transition"
+                            style={{ color: 'var(--foreground-secondary)' }}
+                          >
                             {item.grossWt?.toFixed(3)}
                           </td>
-                          <td className="px-2 py-1.5 text-right">
+                          <td
+                            className="px-2 py-1.5 text-right themed-transition"
+                            style={{ color: 'var(--foreground-secondary)' }}
+                          >
                             {item.netWt?.toFixed(3)}
                           </td>
                           <td className="px-2 py-1.5 text-center">
-                            <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded themed-transition"
+                              style={{
+                                background: 'var(--primary-light)',
+                                color: 'var(--primary)',
+                              }}
+                            >
                               {item.purity || "91.6"}
                             </span>
                           </td>
-                          <td className="px-2 py-1.5 text-right">
+                          <td
+                            className="px-2 py-1.5 text-right themed-transition"
+                            style={{ color: 'var(--foreground-secondary)' }}
+                          >
                             {formatCurrency(item.rate || 0)}
                           </td>
-                          <td className="px-2 py-1.5 text-right font-bold text-amber-700">
+                          <td
+                            className="px-2 py-1.5 text-right font-bold themed-transition"
+                            style={{ color: 'var(--primary)' }}
+                          >
                             {formatCurrency(item.amount)}
                           </td>
                         </tr>
                       ))}
                     </tbody>
-                    <tfoot className="bg-amber-100/50">
+                    <tfoot
+                      className="themed-transition"
+                      style={{ background: 'var(--primary-light)' }}
+                    >
                       <tr>
                         <td
                           colSpan={5}
-                          className="px-2 py-1.5 text-right font-semibold text-amber-800"
+                          className="px-2 py-1.5 text-right font-semibold themed-transition"
+                          style={{ color: 'var(--primary)' }}
                         >
                           Total
                         </td>
-                        <td className="px-2 py-1.5 text-right font-bold text-amber-700">
+                        <td
+                          className="px-2 py-1.5 text-right font-bold themed-transition"
+                          style={{ color: 'var(--primary)' }}
+                        >
                           {oldGoldCalc.formattedTotal}
                         </td>
                       </tr>
@@ -736,47 +1057,74 @@ export const InvoiceView: React.FC = () => {
             )}
 
             {/* Totals */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
+            <div
+              className="rounded-lg border p-5 themed-transition"
+              style={{
+                background: 'var(--surface)',
+                borderColor: 'var(--border)',
+              }}
+            >
               <div className="flex justify-end">
                 <div className="w-72 space-y-1.5 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Subtotal</span>
-                    <span>{formatCurrency(invoice.subtotal)}</span>
+                    <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                      Subtotal
+                    </span>
+                    <span className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                      {formatCurrency(invoice.subtotal)}
+                    </span>
                   </div>
                   {invoice.discount > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Discount</span>
-                      <span className="text-green-600">
+                      <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                        Discount
+                      </span>
+                      <span style={{ color: 'var(--success)' }}>
                         -{formatCurrency(invoice.discount)}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Tax</span>
-                    <span>{formatCurrency(invoice.taxAmount)}</span>
+                    <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                      Tax
+                    </span>
+                    <span className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                      {formatCurrency(invoice.taxAmount)}
+                    </span>
                   </div>
                   {oldGoldCalc.total > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-amber-600">Old Gold</span>
-                      <span className="text-amber-600">
+                      <span className="themed-transition" style={{ color: 'var(--primary)' }}>
+                        Old Gold
+                      </span>
+                      <span style={{ color: 'var(--primary)' }}>
                         -{oldGoldCalc.formattedTotal}
                       </span>
                     </div>
                   )}
                   {invoice.shippingCharge > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Shipping</span>
-                      <span>{formatCurrency(invoice.shippingCharge)}</span>
+                      <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                        Shipping
+                      </span>
+                      <span className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                        {formatCurrency(invoice.shippingCharge)}
+                      </span>
                     </div>
                   )}
-                  <div className="border-t pt-2 flex justify-between text-base font-bold">
-                    <span>Total</span>
-                    <span className="text-amber-600">
+                  <div
+                    className="pt-2 flex justify-between text-base font-bold themed-transition"
+                    style={{ borderTop: '1px solid var(--border)' }}
+                  >
+                    <span className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                      Total
+                    </span>
+                    <span style={{ color: 'var(--gold)' }}>
                       {formatCurrency(invoice.total)}
                     </span>
                   </div>
                   {invoice.balanceDue > 0 && (
-                    <div className="flex justify-between text-red-600 font-semibold">
+                    <div className="flex justify-between font-semibold themed-transition" style={{ color: 'var(--error)' }}>
                       <span>Balance Due</span>
                       <span>{formatCurrency(invoice.balanceDue)}</span>
                     </div>
@@ -787,21 +1135,41 @@ export const InvoiceView: React.FC = () => {
 
             {/* Notes & Terms */}
             {(invoice.notes || invoice.termsAndConditions) && (
-              <div className="bg-white rounded-lg border border-gray-200 p-5 grid grid-cols-2 gap-4">
+              <div
+                className="rounded-lg border p-5 grid grid-cols-2 gap-4 themed-transition"
+                style={{
+                  background: 'var(--surface)',
+                  borderColor: 'var(--border)',
+                }}
+              >
                 {invoice.notes && (
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-700 uppercase mb-1">
+                    <h4
+                      className="text-xs font-semibold uppercase mb-1 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       Notes
                     </h4>
-                    <p className="text-sm text-gray-600">{invoice.notes}</p>
+                    <p
+                      className="text-sm themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
+                      {invoice.notes}
+                    </p>
                   </div>
                 )}
                 {invoice.termsAndConditions && (
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-700 uppercase mb-1">
+                    <h4
+                      className="text-xs font-semibold uppercase mb-1 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       Terms
                     </h4>
-                    <p className="text-sm text-gray-600">
+                    <p
+                      className="text-sm themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       {invoice.termsAndConditions}
                     </p>
                   </div>
@@ -824,7 +1192,10 @@ export const InvoiceView: React.FC = () => {
                 }}
               />
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div
+                className="text-center py-8 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
                 Loading preview...
               </div>
             )}

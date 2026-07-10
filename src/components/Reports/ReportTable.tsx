@@ -43,26 +43,30 @@ const ReportTable: React.FC<ReportTableProps> = ({
             <div
               key={report.id}
               onClick={() => onSelect(report.id)}
-              className={`
-                bg-white border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md
-                ${selectedId === report.id ? 'border-amber-500 ring-2 ring-amber-200' : 'border-gray-200 hover:border-gray-300'}
-              `}
+              className="rounded-lg p-4 cursor-pointer transition-all duration-200 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: selectedId === report.id
+                  ? '1px solid var(--gold)'
+                  : '1px solid var(--border)',
+                boxShadow: selectedId === report.id ? '0 0 0 2px var(--focus-ring)' : 'var(--shadow-sm)',
+              }}
+              onMouseEnter={e => { if (selectedId !== report.id) (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow)'; }}
+              onMouseLeave={e => { if (selectedId !== report.id) (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-sm)'; }}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className={`p-2 rounded-lg ${colorClass}`}>
                   <FileText className="h-5 w-5" />
                 </div>
                 {report.popular && (
-                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                    Popular
-                  </span>
+                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Popular</span>
                 )}
               </div>
-              <h3 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
+              <h3 className="font-medium text-sm mb-1 line-clamp-2" style={{ color: 'var(--text)' }}>
                 {report.title}
               </h3>
-              <p className="text-xs text-gray-500 mb-2">{report.category}</p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>{report.category}</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 {report.createdBy} • {report.lastVisited}
               </p>
             </div>
@@ -74,72 +78,67 @@ const ReportTable: React.FC<ReportTableProps> = ({
 
   return (
     <table className="w-full">
-      <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+      <thead
+        className="sticky top-0"
+        style={{ background: 'var(--hover-bg)', borderBottom: '1px solid var(--border)' }}
+      >
         <tr>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Report Name
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Report Category
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Created By
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Last Visited
-          </th>
-          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Actions
-          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Report Name</th>
+          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Report Category</th>
+          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Created By</th>
+          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Last Visited</th>
+          <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Actions</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-100">
+      <tbody style={{ borderColor: 'var(--border)' }}>
         {reports.map((report) => {
           const colorClass = colorClasses[report.color] || 'bg-gray-50 text-gray-500';
           return (
             <tr
               key={report.id}
               onClick={() => onSelect(report.id)}
-              className={`
-                hover:bg-gray-50 transition-colors cursor-pointer
-                ${selectedId === report.id ? 'bg-amber-50' : ''}
-              `}
+              className="transition-colors cursor-pointer"
+              style={{
+                background: selectedId === report.id ? 'var(--active-bg)' : 'transparent',
+                borderBottom: '1px solid var(--border)',
+              }}
+              onMouseEnter={e => { if (selectedId !== report.id) (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'; }}
+              onMouseLeave={e => { if (selectedId !== report.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
               <td className="px-6 py-3">
                 <div className="flex items-center gap-3">
                   <div className={`p-1.5 rounded ${colorClass}`}>
                     <FileText className="h-4 w-4" />
                   </div>
-                  <span className="text-sm font-medium text-gray-900">
-                    {report.title}
-                  </span>
+                  <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>{report.title}</span>
                   {report.popular && (
-                    <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
-                      ★
-                    </span>
+                    <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">★</span>
                   )}
                 </div>
               </td>
-              <td className="px-6 py-3 text-sm text-gray-600">
-                {report.category}
-              </td>
-              <td className="px-6 py-3 text-sm text-gray-500">
-                {report.createdBy}
-              </td>
-              <td className="px-6 py-3 text-sm text-gray-400">
-                {report.lastVisited}
-              </td>
+              <td className="px-6 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{report.category}</td>
+              <td className="px-6 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{report.createdBy}</td>
+              <td className="px-6 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{report.lastVisited}</td>
               <td className="px-6 py-3">
                 <div className="flex items-center justify-end gap-1">
-                  <button className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded transition-colors">
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded transition-colors">
-                    <Download className="h-4 w-4" />
-                  </button>
-                  <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded transition-colors">
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
+                  <button
+                    className="p-1.5 rounded transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; (e.currentTarget as HTMLElement).style.background = 'var(--primary-light)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = ''; }}
+                  ><Eye className="h-4 w-4" /></button>
+                  <button
+                    className="p-1.5 rounded transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; (e.currentTarget as HTMLElement).style.background = 'var(--primary-light)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = ''; }}
+                  ><Download className="h-4 w-4" /></button>
+                  <button
+                    className="p-1.5 rounded transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text)'; (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = ''; }}
+                  ><MoreVertical className="h-4 w-4" /></button>
                 </div>
               </td>
             </tr>

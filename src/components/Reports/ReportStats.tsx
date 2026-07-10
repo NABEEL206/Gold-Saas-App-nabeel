@@ -55,16 +55,19 @@ const ReportStats: React.FC = () => {
       {stats.map((stat, index) => (
         <div
           key={index}
-          className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow"
+          className="rounded-xl p-4 themed-transition"
+          style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
+          onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow)'}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-sm)'}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600">{stat.label}</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{stat.label}</span>
             <div className={`p-2 rounded-lg ${colorMap[stat.color as keyof typeof colorMap]}`}>
               {stat.icon}
             </div>
           </div>
           <div className="flex items-end justify-between">
-            <span className="text-2xl font-bold text-gray-900">{stat.value}</span>
+            <span className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{stat.value}</span>
             {stat.change && (
               <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
                 {stat.change}

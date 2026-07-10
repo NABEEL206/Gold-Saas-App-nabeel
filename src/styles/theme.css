@@ -1,0 +1,221 @@
+/* ============================================================
+   DESIGN TOKENS — LuxJewel Theme System
+   Extracted from exact screenshots:
+   Light = white cards, lavender bg, purple active sidebar
+   Dark  = deep navy bg, dark navy sidebar, purple active
+   ============================================================ */
+
+:root {
+  /* ── Surfaces ─────────────────────────────────────────── */
+  --background:    #F4F5FA;   /* light lavender page bg */
+  --card:          #FFFFFF;   /* white cards */
+  --sidebar:       #FFFFFF;   /* white sidebar */
+  --header:        #FFFFFF;   /* white header */
+
+  /* ── Brand / Primary ─────────────────────────────────── */
+  --primary:         #7C3AED;   /* purple — active sidebar, buttons */
+  --primary-hover:   #6D28D9;   /* darker purple on hover */
+  --primary-light:   #EDE9FE;   /* very light purple bg tint */
+  --gold:            #D4AF37;   /* gold accent — prices, highlights */
+
+  /* ── Header gradient ─────────────────────────────────── */
+  /* Light header = plain white, no gradient */
+  --header-from:   #FFFFFF;
+  --header-via:    #FFFFFF;
+  --header-to:     #FFFFFF;
+  --header-bg:     #FFFFFF;
+  --header-border: #E5E7EB;
+  --header-text:   #1A1A2E;
+  --header-text-secondary: #6B7280;
+  --header-icon:   #6B7280;
+  --header-hover:  rgba(0, 0, 0, 0.05);
+
+  /* ── Typography ──────────────────────────────────────── */
+  --text:           #1A1A2E;   /* near-black */
+  --text-secondary: #6B7280;   /* medium gray */
+  --text-muted:     #9CA3AF;   /* light gray */
+
+  /* ── Borders ─────────────────────────────────────────── */
+  --border:        #E5E7EB;
+  --border-subtle: #F3F4F6;
+
+  /* ── Semantic ────────────────────────────────────────── */
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger:  #EF4444;
+  --info:    #3B82F6;
+
+  /* ── Interactive states ──────────────────────────────── */
+  --hover-bg:   rgba(124, 58, 237, 0.06);   /* subtle purple tint on hover */
+  --active-bg:  rgba(124, 58, 237, 0.12);   /* purple tint on active */
+  --focus-ring: rgba(124, 58, 237, 0.30);
+
+  /* ── Sidebar item states ─────────────────────────────── */
+  /* Active: solid purple bg with white text (as in screenshot) */
+  --sidebar-active-bg:    #7C3AED;
+  --sidebar-active-text:  #FFFFFF;
+  --sidebar-active-from:  #7C3AED;
+  --sidebar-active-to:    #6D28D9;
+
+  /* Hover: soft purple tint */
+  --sidebar-hover-bg:    #EDE9FE;
+  --sidebar-hover-text:  #7C3AED;
+
+  /* Inactive text */
+  --sidebar-text:        #4B5563;
+  /* Inactive icon color — gold */
+  --sidebar-icon:        #D4AF37;
+
+  /* ── Shadows ─────────────────────────────────────────── */
+  --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.06);
+  --shadow:    0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+
+  /* ── Misc ────────────────────────────────────────────── */
+  --transition:       200ms ease;
+  --scrollbar-thumb:  #D1D5DB;
+  --scrollbar-track:  transparent;
+}
+
+/* ============================================================
+   DARK THEME
+   Exact colors from dark mode screenshot:
+   - Deep navy background
+   - Slightly lighter navy sidebar/cards
+   - Purple active state unchanged
+   ============================================================ */
+html.dark {
+  /* ── Surfaces ─────────────────────────────────────────── */
+  --background:    #13131F;   /* darkest layer — page bg */
+  --card:          #1E1E30;   /* card surface */
+  --sidebar:       #1A1A2E;   /* sidebar bg */
+  --header:        #1A1A2E;   /* header bg */
+
+  /* ── Brand / Primary ─────────────────────────────────── */
+  --primary:         #8B5CF6;   /* slightly lighter purple for dark bg */
+  --primary-hover:   #7C3AED;
+  --primary-light:   rgba(139, 92, 246, 0.15);
+  --gold:            #D4AF37;
+
+  /* ── Header gradient (dark = solid dark navy, no gradient) */
+  --header-from:   #1A1A2E;
+  --header-via:    #1E1E30;
+  --header-to:     #1A1A2E;
+  --header-bg:     #1A1A2E;
+  --header-border: #2D2D45;
+  --header-text:   #F1F1F8;
+  --header-text-secondary: #A1A1AA;
+  --header-icon:   #A1A1AA;
+  --header-hover:  rgba(255, 255, 255, 0.07);
+
+  /* ── Typography ──────────────────────────────────────── */
+  --text:           #F1F1F8;   /* near-white */
+  --text-secondary: #A1A1AA;   /* medium gray */
+  --text-muted:     #6B6B80;   /* dim gray */
+
+  /* ── Borders ─────────────────────────────────────────── */
+  --border:        #2D2D45;   /* subtle dark border */
+  --border-subtle: #252538;
+
+  /* ── Semantic ────────────────────────────────────────── */
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger:  #EF4444;
+  --info:    #60A5FA;
+
+  /* ── Interactive states ──────────────────────────────── */
+  --hover-bg:   rgba(139, 92, 246, 0.08);
+  --active-bg:  rgba(139, 92, 246, 0.18);
+  --focus-ring: rgba(139, 92, 246, 0.40);
+
+  /* ── Sidebar item states ─────────────────────────────── */
+  /* Active: same solid purple bg */
+  --sidebar-active-bg:    #7C3AED;
+  --sidebar-active-text:  #FFFFFF;
+  --sidebar-active-from:  #7C3AED;
+  --sidebar-active-to:    #6D28D9;
+
+  /* Hover: subtle purple tint on dark */
+  --sidebar-hover-bg:    rgba(139, 92, 246, 0.15);
+  --sidebar-hover-text:  #C4B5FD;
+
+  /* Inactive text */
+  --sidebar-text:        #A1A1AA;
+  /* Inactive icon color — gold stays same in dark */
+  --sidebar-icon:        #D4AF37;
+
+  /* ── Shadows ─────────────────────────────────────────── */
+  --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.40);
+  --shadow:    0 4px 6px -1px rgba(0,0,0,0.50), 0 2px 4px -1px rgba(0,0,0,0.30);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.60), 0 4px 6px -2px rgba(0,0,0,0.40);
+
+  /* ── Misc ────────────────────────────────────────────── */
+  --scrollbar-thumb:  #3D3D58;
+  --scrollbar-track:  transparent;
+}
+
+/* ============================================================
+   GLOBAL BASE STYLES
+   ============================================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  transition:
+    background-color var(--transition),
+    color var(--transition);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color var(--transition),
+    color var(--transition);
+}
+
+/* ── Custom scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb  { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+/* ── Smooth transition helper class ────────────────────── */
+.themed-transition {
+  transition:
+    background-color var(--transition),
+    border-color     var(--transition),
+    color            var(--transition),
+    box-shadow       var(--transition);
+}
+
+/* ── Sidebar nav links — CSS-driven active & hover ──────
+   Using CSS classes instead of inline JS handlers so that
+   active state is always correct regardless of React
+   re-render timing (fixes "white text on click" bug).
+   ────────────────────────────────────────────────────── */
+.sidebar-nav-link {
+  background: transparent;
+  transition: background var(--transition);
+}
+
+.sidebar-nav-link:hover {
+  background: var(--sidebar-hover-bg) !important;
+}
+
+/* Active state — purple bg, always visible */
+.sidebar-nav-link.is-active {
+  background: var(--sidebar-active-bg) !important;
+}
+
+/* Keep hover the same as active when hovering over an active item */
+.sidebar-nav-link.is-active:hover {
+  background: var(--sidebar-active-bg) !important;
+}

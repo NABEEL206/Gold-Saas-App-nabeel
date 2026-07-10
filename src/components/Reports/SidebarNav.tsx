@@ -25,69 +25,72 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
   const folderItems = items.slice(1);
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
+    <div
+      className="w-64 flex flex-col h-full themed-transition"
+      style={{ background: 'var(--card)', borderRight: '1px solid var(--border)' }}
+    >
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-gray-900">Reports</h1>
-        <p className="text-xs text-gray-400 mt-0.5">All your business reports</p>
+      <div className="p-4" style={{ borderBottom: '1px solid var(--border)' }}>
+        <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>Reports</h1>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>All your business reports</p>
       </div>
-      
+
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {/* Home item */}
         <button
           onClick={() => onSelect(homeItem.id)}
-          className={`
-            w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all duration-200
-            ${selectedId === homeItem.id 
-              ? 'bg-amber-50 text-amber-700 font-medium' 
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }
-          `}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all duration-200"
+          style={selectedId === homeItem.id
+            ? { background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 500 }
+            : { color: 'var(--text-secondary)' }
+          }
+          onMouseEnter={e => { if (selectedId !== homeItem.id) (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'; }}
+          onMouseLeave={e => { if (selectedId !== homeItem.id) (e.currentTarget as HTMLElement).style.background = ''; }}
         >
           <span className="flex items-center gap-3">
-            <span className={selectedId === homeItem.id ? 'text-amber-500' : 'text-gray-400'}>
+            <span style={{ color: selectedId === homeItem.id ? 'var(--gold)' : 'var(--text-muted)' }}>
               {homeItem.icon}
             </span>
             {homeItem.label}
           </span>
           {selectedId === homeItem.id && (
-            <ChevronRight className="h-4 w-4 text-amber-500" />
+            <ChevronRight className="h-4 w-4" style={{ color: 'var(--gold)' }} />
           )}
         </button>
 
         {/* Divider */}
-        <div className="h-px bg-gray-200 my-2"></div>
+        <div className="h-px my-2" style={{ background: 'var(--border)' }} />
 
         {/* Folder items */}
         {folderItems.map((item) => (
           <button
             key={item.id}
             onClick={() => onSelect(item.id)}
-            className={`
-              w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all duration-200
-              ${selectedId === item.id 
-                ? 'bg-amber-50 text-amber-700 font-medium' 
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }
-            `}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all duration-200"
+            style={selectedId === item.id
+              ? { background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 500 }
+              : { color: 'var(--text-secondary)' }
+            }
+            onMouseEnter={e => { if (selectedId !== item.id) (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'; }}
+            onMouseLeave={e => { if (selectedId !== item.id) (e.currentTarget as HTMLElement).style.background = ''; }}
           >
             <span className="flex items-center gap-3">
-              <span className={selectedId === item.id ? 'text-amber-500' : 'text-gray-400'}>
+              <span style={{ color: selectedId === item.id ? 'var(--gold)' : 'var(--text-muted)' }}>
                 {item.icon}
               </span>
               {item.label}
             </span>
             {selectedId === item.id && (
-              <ChevronRight className="h-4 w-4 text-amber-500" />
+              <ChevronRight className="h-4 w-4" style={{ color: 'var(--gold)' }} />
             )}
           </button>
         ))}
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center gap-2 text-xs text-gray-400">
+      <div className="p-4" style={{ borderTop: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
           <FolderOpen className="h-3.5 w-3.5" />
           <span>{items.length - 1} folders</span>
         </div>

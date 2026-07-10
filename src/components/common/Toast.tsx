@@ -116,11 +116,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         toastOptions={{
           duration: 3000,
           style: {
-            background: '#fff',
-            color: '#333',
+            background: 'var(--card)',
+            color: 'var(--text)',
             padding: '12px 16px',
             borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            boxShadow: 'var(--shadow-lg)',
+            border: '1px solid var(--border)',
             minWidth: '280px',
             maxWidth: '420px',
           },

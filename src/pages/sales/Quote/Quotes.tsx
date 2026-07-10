@@ -28,16 +28,42 @@ import type { Quote } from '../../../types/Quote/QuoteTypes';
 
 // Status Badge
 const StatusBadge: React.FC<{ status: Quote['status'] }> = ({ status }) => {
-  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: <FileText className="h-3 w-3" />, label: 'Draft' },
-    sent: { color: 'bg-blue-100 text-blue-700', icon: <Clock className="h-3 w-3" />, label: 'Sent' },
-    accepted: { color: 'bg-green-100 text-green-700', icon: <CheckCircle className="h-3 w-3" />, label: 'Accepted' },
-    rejected: { color: 'bg-red-100 text-red-700', icon: <AlertCircle className="h-3 w-3" />, label: 'Rejected' },
-    expired: { color: 'bg-yellow-100 text-yellow-700', icon: <Clock className="h-3 w-3" />, label: 'Expired' },
+  const config: Record<string, { icon: React.ReactNode; label: string }> = {
+    draft: { icon: <FileText className="h-3 w-3" />, label: 'Draft' },
+    sent: { icon: <Clock className="h-3 w-3" />, label: 'Sent' },
+    accepted: { icon: <CheckCircle className="h-3 w-3" />, label: 'Accepted' },
+    rejected: { icon: <AlertCircle className="h-3 w-3" />, label: 'Rejected' },
+    expired: { icon: <Clock className="h-3 w-3" />, label: 'Expired' },
   };
-  const { color, icon, label } = config[status];
+
+  const getStatusStyles = () => {
+    switch (status) {
+      case 'draft':
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-secondary)' };
+      case 'sent':
+        return { bg: 'var(--info-light)', color: 'var(--info)' };
+      case 'accepted':
+        return { bg: 'var(--success-light)', color: 'var(--success)' };
+      case 'rejected':
+        return { bg: 'var(--error-light)', color: 'var(--error)' };
+      case 'expired':
+        return { bg: 'var(--warning-light)', color: 'var(--warning)' };
+      default:
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-secondary)' };
+    }
+  };
+
+  const { icon, label } = config[status];
+  const styles = getStatusStyles();
+
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: styles.bg,
+        color: styles.color,
+      }}
+    >
       {icon}
       {label}
     </span>
@@ -190,14 +216,24 @@ const Quotes: React.FC = () => {
       key: 'quoteNo',
       header: 'Quote No',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">{item.quoteNo}</span>
+        <span
+          className="text-sm font-medium themed-transition"
+          style={{ color: 'var(--foreground)' }}
+        >
+          {item.quoteNo}
+        </span>
       ),
     },
     {
       key: 'date',
       header: 'Date',
       render: (item) => (
-        <span className="text-sm text-gray-600">{new Date(item.date).toLocaleDateString()}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {new Date(item.date).toLocaleDateString()}
+        </span>
       ),
     },
     {
@@ -205,8 +241,18 @@ const Quotes: React.FC = () => {
       header: 'Customer',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{item.customerName}</p>
-          <p className="text-xs text-gray-500">{item.customerEmail}</p>
+          <p
+            className="text-sm font-medium themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.customerName}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.customerEmail}
+          </p>
         </div>
       ),
     },
@@ -214,7 +260,12 @@ const Quotes: React.FC = () => {
       key: 'total',
       header: 'Total',
       render: (item) => (
-        <span className="text-sm font-semibold text-amber-600">{formatCurrency(item.total)}</span>
+        <span
+          className="text-sm font-semibold themed-transition"
+          style={{ color: 'var(--gold)' }}
+        >
+          {formatCurrency(item.total)}
+        </span>
       ),
     },
     {
@@ -226,7 +277,12 @@ const Quotes: React.FC = () => {
       key: 'validUntil',
       header: 'Valid Until',
       render: (item) => (
-        <span className="text-sm text-gray-600">{new Date(item.validUntil).toLocaleDateString()}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {new Date(item.validUntil).toLocaleDateString()}
+        </span>
       ),
     },
   ];
@@ -238,7 +294,7 @@ const Quotes: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportWithLoading('pdf'),
       disabled: exportLoading,
@@ -248,7 +304,7 @@ const Quotes: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportWithLoading('excel'),
       disabled: exportLoading,
@@ -265,15 +321,24 @@ const Quotes: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Gem className="h-6 w-6 text-amber-500" />
+          <h1
+            className="text-2xl font-bold flex items-center gap-2 themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            <Gem className="h-6 w-6" style={{ color: 'var(--gold)' }} />
             Quotes
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
             {stats ? `${stats.totalQuotes} total quotes` : 'Manage jewelry quotes for customers'}
           </p>
         </div>
@@ -281,7 +346,20 @@ const Quotes: React.FC = () => {
           <button
             onClick={handleRefreshWithLoading}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
             title="Refresh quote list"
           >
             {refreshLoading ? (
@@ -293,7 +371,17 @@ const Quotes: React.FC = () => {
           </button>
           <button
             onClick={handleCreateNew}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Quote
@@ -302,7 +390,20 @@ const Quotes: React.FC = () => {
             <button
               onClick={handleBulkDeleteAction}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -321,7 +422,7 @@ const Quotes: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -331,26 +432,65 @@ const Quotes: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-card)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by quote no, customer..."
                 value={filters.searchQuery}
                 onChange={handleSearchChange}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.status}
               onChange={handleStatusChange}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
@@ -373,7 +513,7 @@ const Quotes: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => item.id}
         emptyMessage="No quotes found"
-        emptyIcon={<FileText className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<FileText className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage,

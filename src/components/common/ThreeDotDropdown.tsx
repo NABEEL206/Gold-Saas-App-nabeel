@@ -79,7 +79,16 @@ const ThreeDotDropdown: React.FC<ThreeDotDropdownProps> = ({
     <div className={`relative inline-block ${className}`}>
       <button
         onClick={handleToggle}
-        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+        className="p-2 rounded-lg transition-colors"
+        style={{ color: 'var(--text-secondary)' }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)';
+          (e.currentTarget as HTMLElement).style.color = 'var(--text)';
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.background = '';
+          (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
+        }}
         title="More options"
       >
         <MoreVertical className="h-5 w-5" />
@@ -102,15 +111,21 @@ const ThreeDotDropdown: React.FC<ThreeDotDropdownProps> = ({
           
           {/* Dropdown Menu */}
           <div
-            className={`absolute ${
-              position === 'right' ? 'right-0' : 'left-0'
-            } mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20`}
+            className={`absolute ${position === 'right' ? 'right-0' : 'left-0'} mt-2 w-48 rounded-lg py-1 z-20 themed-transition`}
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-lg)',
+            }}
           >
-            {/* Import option - shown if onImport is provided */}
+            {/* Import option */}
             {onImport && (
               <button
                 onClick={handleImportClick}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
+                style={{ color: 'var(--text)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
               >
                 <span className="flex-shrink-0">
                   {importIcon || <Upload className="h-4 w-4 text-blue-500" />}
@@ -119,20 +134,19 @@ const ThreeDotDropdown: React.FC<ThreeDotDropdownProps> = ({
               </button>
             )}
 
-            {/* Separator if both import and items exist */}
             {onImport && items.length > 0 && (
-              <div className="border-t border-gray-100 my-1" />
+              <div className="my-1" style={{ borderTop: '1px solid var(--border)' }} />
             )}
 
-            {/* Regular items */}
             {items.map((item, index) => (
               <button
                 key={index}
                 onClick={() => handleItemClick(item.onClick)}
                 disabled={item.disabled}
-                className={`w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  item.danger ? 'text-red-600 hover:bg-red-50' : 'text-gray-700'
-                }`}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ color: item.danger ? 'var(--danger)' : 'var(--text)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = item.danger ? 'rgba(239,68,68,0.08)' : 'var(--hover-bg)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
               >
                 {item.icon && <span className="flex-shrink-0">{item.icon}</span>}
                 {item.label}

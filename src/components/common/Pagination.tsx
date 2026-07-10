@@ -77,7 +77,10 @@ const Pagination: React.FC<PaginationProps> = ({
   };
 
   return (
-    <div className={`flex items-center justify-end gap-4 px-4 py-3 bg-white border-t border-gray-200 ${className}`}>
+    <div
+      className={`flex items-center justify-end gap-4 px-4 py-3 themed-transition ${className}`}
+      style={{ background: 'var(--card)', borderTop: '1px solid var(--border)' }}
+    >
       {/* Items per page dropdown and range info */}
       <div className="flex items-center gap-3">
         {onItemsPerPageChange && totalItems > 0 && (
@@ -85,7 +88,8 @@ const Pagination: React.FC<PaginationProps> = ({
             <select
               value={itemsPerPage}
               onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-              className="px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+              className="px-2 py-1 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent themed-transition"
+              style={{ border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)' }}
             >
               {itemsPerPageOptions.map((option) => (
                 <option key={option} value={option}>
@@ -98,7 +102,7 @@ const Pagination: React.FC<PaginationProps> = ({
 
         {/* Range info */}
         {totalItems > 0 && (
-          <span className="text-sm text-gray-600">
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {startIndex} - {endIndex}
           </span>
         )}
@@ -111,7 +115,10 @@ const Pagination: React.FC<PaginationProps> = ({
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="p-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
             aria-label="Previous page"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -125,16 +132,24 @@ const Pagination: React.FC<PaginationProps> = ({
                   <button
                     onClick={() => onPageChange(page)}
                     className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                      page === currentPage
-                        ? 'bg-amber-500 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                      page === currentPage ? 'text-white' : ''
                     }`}
+                    style={page === currentPage
+                      ? { background: 'var(--primary)', color: '#fff' }
+                      : { color: 'var(--text-secondary)' }
+                    }
+                    onMouseEnter={e => {
+                      if (page !== currentPage) (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)';
+                    }}
+                    onMouseLeave={e => {
+                      if (page !== currentPage) (e.currentTarget as HTMLElement).style.background = '';
+                    }}
                     aria-current={page === currentPage ? 'page' : undefined}
                   >
                     {page}
                   </button>
                 ) : (
-                  <span className="px-1 text-gray-400 text-sm">…</span>
+                  <span className="px-1 text-sm" style={{ color: 'var(--text-muted)' }}>…</span>
                 )}
               </React.Fragment>
             ))}
@@ -144,7 +159,10 @@ const Pagination: React.FC<PaginationProps> = ({
           <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="p-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
             aria-label="Next page"
           >
             <ChevronRight className="h-4 w-4" />

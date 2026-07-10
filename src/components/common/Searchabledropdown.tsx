@@ -245,12 +245,15 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   const dropdownContent = isOpen ? (
     <div
       ref={dropdownRef}
-      style={style}
-      className="rounded-lg border border-gray-200 bg-white shadow-xl shadow-gray-900/10 flex flex-col overflow-hidden"
+      style={{ ...style, background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)' }}
+      className="rounded-lg flex flex-col overflow-hidden themed-transition"
     >
       {/* Search box */}
-      <div className="flex-shrink-0 m-2 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 ring-1 ring-amber-500/20 focus-within:ring-2 focus-within:ring-amber-500/30">
-        <svg className="h-4 w-4 flex-shrink-0 text-amber-400" viewBox="0 0 16 16" fill="none">
+      <div
+        className="flex-shrink-0 m-2 flex items-center gap-2 rounded-lg px-3 py-1.5"
+        style={{ border: '1px solid var(--primary)', background: 'var(--active-bg)' }}
+      >
+        <svg className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--primary)' }} viewBox="0 0 16 16" fill="none">
           <circle cx="7" cy="7" r="5.25" stroke="currentColor" strokeWidth="1.4" />
           <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
@@ -260,17 +263,18 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
           placeholder={placeholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full border-none bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
+          className="w-full border-none bg-transparent text-sm outline-none"
+          style={{ color: 'var(--text)' }}
         />
       </div>
 
       {/* Option list */}
       <div
-        className="overflow-y-auto px-1 pb-2 [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]"
+        className="overflow-y-auto px-1 pb-2"
         style={{ maxHeight: maxListHeight }}
       >
         {groupedOptions.length === 0 && showEmptyState && (
-          <div className="px-3 py-4 text-center text-sm text-gray-400">
+          <div className="px-3 py-4 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
             {emptyStateText}
           </div>
         )}
@@ -278,7 +282,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         {groupedOptions.map(([group, opts]) => (
           <div key={group || "ungrouped"} className="[&+&]:mt-1">
             {group && (
-              <div className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              <div className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 {group}
               </div>
             )}
@@ -296,19 +300,18 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                   role="option"
                   aria-selected={isSelected}
                   onMouseEnter={() => setHighlightedIndex(flatIndex)}
-                  onMouseDown={(e) => e.preventDefault()} // prevent blur before click
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(opt)}
-                  className={[
-                    "mx-0.5 my-0.5 select-none rounded-lg px-3 py-2 text-sm transition-all duration-100",
+                  className="mx-0.5 my-0.5 select-none rounded-lg px-3 py-2 text-sm transition-all duration-100 cursor-pointer"
+                  style={
                     opt.disabled
-                      ? "cursor-not-allowed text-gray-300"
-                      : "cursor-pointer",
-                    isSelected
-                      ? "bg-gradient-to-r from-amber-500 to-amber-600 font-medium text-white shadow-sm"
+                      ? { cursor: 'not-allowed', color: 'var(--text-muted)' }
+                      : isSelected
+                      ? { background: `var(--primary)`, color: '#fff', fontWeight: 500 }
                       : isHighlighted
-                      ? "bg-amber-50 text-amber-700"
-                      : "text-gray-700 hover:bg-amber-50 hover:text-amber-600",
-                  ].join(" ")}
+                      ? { background: 'var(--primary-light)', color: 'var(--primary)' }
+                      : { color: 'var(--text)' }
+                  }
                 >
                   {opt.label}
                 </div>
@@ -334,17 +337,16 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        className={[
-          "flex w-full items-center justify-between rounded-lg border px-3.5 py-2 text-sm transition-all duration-200",
-          disabled
-            ? "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400"
-            : "cursor-pointer bg-white text-gray-800 hover:border-amber-400 hover:shadow-sm",
-          isOpen
-            ? "border-amber-500 ring-2 ring-amber-500/30 shadow-sm"
-            : "border-gray-300",
-        ].join(" ")}
+        className="flex w-full items-center justify-between rounded-lg px-3.5 py-2 text-sm transition-all duration-200 themed-transition"
+        style={{
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          border: isOpen ? '1px solid var(--primary)' : '1px solid var(--border)',
+          background: disabled ? 'var(--hover-bg)' : 'var(--card)',
+          color: disabled ? 'var(--text-muted)' : 'var(--text)',
+          boxShadow: isOpen ? '0 0 0 2px var(--focus-ring)' : undefined,
+        }}
       >
-        <span className={`truncate ${!selectedOption ? "text-gray-400" : "text-gray-800"}`}>
+        <span className={`truncate ${!selectedOption ? '' : ''}`} style={{ color: selectedOption ? 'var(--text)' : 'var(--text-muted)' }}>
           {selectedOption ? selectedOption.label : triggerPlaceholder}
         </span>
         <svg

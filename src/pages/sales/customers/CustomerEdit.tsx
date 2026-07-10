@@ -244,10 +244,21 @@ export const CustomerEdit: React.FC = () => {
   // Loading state
   if (loading || initialLoading) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+      <div
+        className="p-6 min-h-screen flex items-center justify-center themed-transition"
+        style={{ background: 'var(--background)' }}
+      >
         <div className="text-center">
-          <Loader className="h-8 w-8 text-amber-500 animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Loading customer details...</p>
+          <Loader
+            className="h-8 w-8 mx-auto mb-3 animate-spin"
+            style={{ color: 'var(--primary)' }}
+          />
+          <p
+            className="text-sm themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            Loading customer details...
+          </p>
         </div>
       </div>
     );
@@ -256,14 +267,43 @@ export const CustomerEdit: React.FC = () => {
   // Error state
   if (pageError) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-md mx-auto">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-700 mb-2">Error</h3>
-          <p className="text-sm text-red-600">{pageError}</p>
+      <div
+        className="p-6 min-h-screen themed-transition"
+        style={{ background: 'var(--background)' }}
+      >
+        <div
+          className="rounded-lg p-6 text-center max-w-md mx-auto themed-transition"
+          style={{
+            background: 'var(--error-light)',
+            border: '1px solid var(--error)',
+          }}
+        >
+          <AlertCircle
+            className="h-12 w-12 mx-auto mb-3"
+            style={{ color: 'var(--error)' }}
+          />
+          <h3
+            className="text-lg font-semibold mb-2"
+            style={{ color: 'var(--error)' }}
+          >
+            Error
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--error)' }}>
+            {pageError}
+          </p>
           <button
             onClick={() => navigate('/customers', { replace: true })}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--error)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
           >
             Go Back to Customers
           </button>
@@ -275,11 +315,29 @@ export const CustomerEdit: React.FC = () => {
   // No form data
   if (!formData) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
+      <div
+        className="p-6 min-h-screen themed-transition"
+        style={{ background: 'var(--background)' }}
+      >
         <div className="max-w-4xl mx-auto">
-          <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-200 text-center">
-            <Loader className="h-6 w-6 text-amber-500 animate-spin mx-auto mb-3" />
-            <p className="text-sm text-gray-500">Preparing customer form...</p>
+          <div
+            className="p-8 rounded-xl shadow-sm text-center themed-transition"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-card)',
+            }}
+          >
+            <Loader
+              className="h-6 w-6 mx-auto mb-3 animate-spin"
+              style={{ color: 'var(--primary)' }}
+            />
+            <p
+              className="text-sm themed-transition"
+              style={{ color: 'var(--foreground-secondary)' }}
+            >
+              Preparing customer form...
+            </p>
           </div>
         </div>
       </div>
@@ -287,42 +345,90 @@ export const CustomerEdit: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={handleBackClick}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 rounded-lg transition-colors themed-transition"
+            style={{ background: 'transparent' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--surface-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
+            <ArrowLeft
+              className="h-5 w-5 themed-transition"
+              style={{ color: 'var(--foreground-secondary)' }}
+            />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Edit Customer</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Update customer details</p>
+            <h1
+              className="text-2xl font-bold themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              Edit Customer
+            </h1>
+            <p
+              className="text-sm mt-0.5 themed-transition"
+              style={{ color: 'var(--foreground-secondary)' }}
+            >
+              Update customer details
+            </p>
           </div>
         </div>
 
         {/* Error summary */}
         {errors.submit && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <p className="text-sm text-red-700">{errors.submit}</p>
+          <div
+            className="mb-6 p-4 rounded-lg flex items-start gap-3 themed-transition"
+            style={{
+              background: 'var(--error-light)',
+              border: '1px solid var(--error)',
+            }}
+          >
+            <AlertCircle
+              className="h-5 w-5 mt-0.5 flex-shrink-0"
+              style={{ color: 'var(--error)' }}
+            />
+            <p className="text-sm" style={{ color: 'var(--error)' }}>
+              {errors.submit}
+            </p>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-xl shadow-sm themed-transition"
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-card)',
+          }}
+        >
           <div className="p-6 space-y-6">
             {/* Personal Information */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <User className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <User className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Personal Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     Salutation
                   </label>
                   <SearchableDropdown
@@ -339,32 +445,64 @@ export const CustomerEdit: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     First Name
                   </label>
                   <input
                     type="text"
                     value={formData.firstName}
                     onChange={(e) => handleInputChange('firstName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="Enter first name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Last Name <span className="text-red-500">*</span>
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    Last Name <span style={{ color: 'var(--error)' }}>*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.lastName}
                     onChange={(e) => handleInputChange('lastName', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.lastName ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: errors.lastName ? '1px solid var(--error)' : '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = errors.lastName ? 'var(--error)' : 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="Enter last name"
                   />
                   {errors.lastName && (
-                    <p className="mt-1 text-xs text-red-500">{errors.lastName}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.lastName}
+                    </p>
                   )}
                 </div>
               </div>
@@ -372,14 +510,20 @@ export const CustomerEdit: React.FC = () => {
 
             {/* Customer Details */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Building2 className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Customer Details
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Customer Type <span className="text-red-500">*</span>
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    Customer Type <span style={{ color: 'var(--error)' }}>*</span>
                   </label>
                   <SearchableDropdown
                     options={customerTypeOptions}
@@ -395,20 +539,36 @@ export const CustomerEdit: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Display Name <span className="text-red-500">*</span>
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    Display Name <span style={{ color: 'var(--error)' }}>*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.displayName}
                     onChange={(e) => handleInputChange('displayName', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.displayName ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: errors.displayName ? '1px solid var(--error)' : '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = errors.displayName ? 'var(--error)' : 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="Enter display name"
                   />
                   {errors.displayName && (
-                    <p className="mt-1 text-xs text-red-500">{errors.displayName}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.displayName}
+                    </p>
                   )}
                 </div>
               </div>
@@ -416,58 +576,109 @@ export const CustomerEdit: React.FC = () => {
 
             {/* Contact Information */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Mail className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Mail className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Contact Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    <Mail className="h-4 w-4 inline mr-1" />
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    <Mail className="h-4 w-4 inline mr-1" style={{ color: 'var(--foreground-tertiary)' }} />
                     Email Address
                   </label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.email ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: errors.email ? '1px solid var(--error)' : '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = errors.email ? 'var(--error)' : 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="customer@email.com"
                   />
                   {errors.email && (
-                    <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.email}
+                    </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    <Phone className="h-4 w-4 inline mr-1" />
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    <Phone className="h-4 w-4 inline mr-1" style={{ color: 'var(--foreground-tertiary)' }} />
                     Work Phone
                   </label>
                   <input
                     type="text"
                     value={formData.workPhone}
                     onChange={(e) => handleInputChange('workPhone', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="022-1234567"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    <Phone className="h-4 w-4 inline mr-1" />
-                    Mobile Number <span className="text-red-500">*</span>
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    <Phone className="h-4 w-4 inline mr-1" style={{ color: 'var(--foreground-tertiary)' }} />
+                    Mobile Number <span style={{ color: 'var(--error)' }}>*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.mobileNumber}
                     onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.mobileNumber ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: errors.mobileNumber ? '1px solid var(--error)' : '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = errors.mobileNumber ? 'var(--error)' : 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="9876543210"
                   />
                   {errors.mobileNumber && (
-                    <p className="mt-1 text-xs text-red-500">{errors.mobileNumber}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.mobileNumber}
+                    </p>
                   )}
                 </div>
               </div>
@@ -475,62 +686,132 @@ export const CustomerEdit: React.FC = () => {
 
             {/* Address */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <MapPin className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Address
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     Billing Address
                   </label>
                   <textarea
                     value={formData.billingAddress}
                     onChange={(e) => handleInputChange('billingAddress', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition"
+                    style={{
+                      border: '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     rows={2}
                     placeholder="Enter billing address"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       City
                     </label>
                     <input
                       type="text"
                       value={formData.city}
                       onChange={(e) => handleInputChange('city', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                      style={{
+                        border: '1px solid var(--border)',
+                        background: 'var(--background)',
+                        color: 'var(--foreground)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       placeholder="Enter city"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       State
                     </label>
                     <input
                       type="text"
                       value={formData.state}
                       onChange={(e) => handleInputChange('state', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                      style={{
+                        border: '1px solid var(--border)',
+                        background: 'var(--background)',
+                        color: 'var(--foreground)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       placeholder="Enter state"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       Pincode
                     </label>
                     <input
                       type="text"
                       value={formData.pincode}
                       onChange={(e) => handleInputChange('pincode', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                      style={{
+                        border: '1px solid var(--border)',
+                        background: 'var(--background)',
+                        color: 'var(--foreground)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       placeholder="Enter pincode"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       Country
                     </label>
                     <SearchableDropdown
@@ -552,67 +833,134 @@ export const CustomerEdit: React.FC = () => {
 
             {/* Financial & Tax Information */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <CreditCard className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Financial & Tax Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     Opening Balance
                   </label>
                   <input
                     type="number"
                     value={formData.openingBalance}
                     onChange={(e) => handleInputChange('openingBalance', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     Credit Limit
                   </label>
                   <input
                     type="number"
                     value={formData.creditLimit}
                     onChange={(e) => handleInputChange('creditLimit', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     GST Number
                   </label>
                   <input
                     type="text"
                     value={formData.gstNumber}
                     onChange={(e) => handleInputChange('gstNumber', e.target.value.toUpperCase())}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.gstNumber ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: errors.gstNumber ? '1px solid var(--error)' : '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = errors.gstNumber ? 'var(--error)' : 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="22AAAAA0000A1Z1"
                   />
                   {errors.gstNumber && (
-                    <p className="mt-1 text-xs text-red-500">{errors.gstNumber}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.gstNumber}
+                    </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     PAN Number
                   </label>
                   <input
                     type="text"
                     value={formData.panNumber}
                     onChange={(e) => handleInputChange('panNumber', e.target.value.toUpperCase())}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.panNumber ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: errors.panNumber ? '1px solid var(--error)' : '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = errors.panNumber ? 'var(--error)' : 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="ABCDE1234F"
                   />
                   {errors.panNumber && (
-                    <p className="mt-1 text-xs text-red-500">{errors.panNumber}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.panNumber}
+                    </p>
                   )}
                 </div>
               </div>
@@ -620,14 +968,30 @@ export const CustomerEdit: React.FC = () => {
 
             {/* Notes */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <FileText className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Notes
               </h2>
               <textarea
                 value={formData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 rows={3}
                 placeholder="Add any additional notes about the customer..."
               />
@@ -635,18 +999,43 @@ export const CustomerEdit: React.FC = () => {
           </div>
 
           {/* Actions */}
-          <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
+          <div
+            className="px-6 py-4 rounded-b-xl flex items-center justify-end gap-3 themed-transition"
+            style={{
+              borderTop: '1px solid var(--border)',
+              background: 'var(--surface-hover)',
+            }}
+          >
             <button
               type="button"
               onClick={handleCancelClick}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{ color: 'var(--foreground-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {saving ? (
                 <>

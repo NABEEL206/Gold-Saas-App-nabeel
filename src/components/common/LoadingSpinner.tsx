@@ -38,13 +38,16 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       <div
         className={`${sizeClasses[size]} ${colorClasses[color] || colorClasses['amber-500']} rounded-full border-t-transparent animate-spin`}
       />
-      {text && <p className="text-sm text-gray-500">{text}</p>}
+  {text && <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{text}</p>}
     </div>
   );
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-50">
+      <div
+        className="fixed inset-0 flex items-center justify-center backdrop-blur-sm z-50"
+        style={{ background: 'rgba(var(--background), 0.8)' }}
+      >
         {spinner}
       </div>
     );

@@ -31,11 +31,11 @@ import type { Item } from '../../types/items/Itemstype';
 
 const Items: React.FC = () => {
   const navigate = useNavigate();
-  const { 
-    success, 
-    error: showError, 
-    warning, 
-    withConfirmation, 
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
     withLoading,
     isOpen: modalOpen,
     options: modalOptions,
@@ -43,7 +43,7 @@ const Items: React.FC = () => {
     handleConfirm: onModalConfirm,
     handleCancel: onModalCancel,
   } = useToastAndConfirm();
-  
+
   const {
     loading,
     items,
@@ -79,54 +79,83 @@ const Items: React.FC = () => {
   // Status Badge
   const getStatusBadge = (status: Item['status']) => {
     const statusConfig = {
-      active: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Active' },
-      inactive: { color: 'bg-gray-100 text-gray-700', icon: XCircle, label: 'Inactive' },
-      out_of_stock: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Out of Stock' },
-      low_stock: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Low Stock' },
+      active: { icon: CheckCircle, label: 'Active' },
+      inactive: { icon: XCircle, label: 'Inactive' },
+      out_of_stock: { icon: AlertCircle, label: 'Out of Stock' },
+      low_stock: { icon: Clock, label: 'Low Stock' },
     };
-    
+
     const config = statusConfig[status];
     const Icon = config.icon;
-    
+
+    const getStatusColors = () => {
+      switch (status) {
+        case 'active':
+          return { bg: 'var(--success)', text: 'white' };
+        case 'inactive':
+          return { bg: 'var(--text-muted)', text: 'white' };
+        case 'out_of_stock':
+          return { bg: 'var(--danger)', text: 'white' };
+        case 'low_stock':
+          return { bg: 'var(--warning)', text: 'white' };
+        default:
+          return { bg: 'var(--text-muted)', text: 'white' };
+      }
+    };
+
+    const colors = getStatusColors();
+
     return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+        style={{ background: colors.bg, color: colors.text }}
+      >
         <Icon className="h-3 w-3" />
         {config.label}
       </span>
     );
   };
 
-  const handleView = useCallback((item: Item) => {
-    navigate(`/items/${item.id}`);
-  }, [navigate]);
+  const handleView = useCallback(
+    (item: Item) => {
+      navigate(`/items/${item.id}`);
+    },
+    [navigate]
+  );
 
-  const handleEdit = useCallback((item: Item) => {
-    navigate(`/items/${item.id}/edit`);
-  }, [navigate]);
+  const handleEdit = useCallback(
+    (item: Item) => {
+      navigate(`/items/${item.id}/edit`);
+    },
+    [navigate]
+  );
 
   // Delete single item with confirmation
-  const handleDeleteWithConfirm = useCallback(async (item: Item) => {
-    await withConfirmation(
-      {
-        title: 'Delete Item',
-        message: `Are you sure you want to delete "${item.itemName}"? This action cannot be undone.`,
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        variant: 'danger',
-      },
-      async () => {
-        setDeleteLoading(item.id);
-        try {
-          await handleDelete(item.id);
-          success(`"${item.itemName}" deleted successfully!`);
-        } catch (err) {
-          showError(`Failed to delete "${item.itemName}"`);
-        } finally {
-          setDeleteLoading(null);
+  const handleDeleteWithConfirm = useCallback(
+    async (item: Item) => {
+      await withConfirmation(
+        {
+          title: 'Delete Item',
+          message: `Are you sure you want to delete "${item.itemName}"? This action cannot be undone.`,
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          variant: 'danger',
+        },
+        async () => {
+          setDeleteLoading(item.id);
+          try {
+            await handleDelete(item.id);
+            success(`"${item.itemName}" deleted successfully!`);
+          } catch (err) {
+            showError(`Failed to delete "${item.itemName}"`);
+          } finally {
+            setDeleteLoading(null);
+          }
         }
-      }
-    );
-  }, [withConfirmation, handleDelete, success, showError]);
+      );
+    },
+    [withConfirmation, handleDelete, success, showError]
+  );
 
   // Bulk delete with confirmation
   const handleBulkDeleteWithConfirm = useCallback(async () => {
@@ -186,69 +215,107 @@ const Items: React.FC = () => {
     }
   }, [items.length, handleExport, success, showError, warning]);
 
-  const handleImportWithLoading = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      setImportLoading(true);
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await handleRefresh();
-        success(`Successfully imported ${files.length} file(s)`);
-      } catch (err) {
-        console.error('Import error:', err);
-        showError('Failed to import files. Please check the file format.');
-      } finally {
-        setImportLoading(false);
-        event.target.value = '';
+  const handleImportWithLoading = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = event.target.files;
+      if (files && files.length > 0) {
+        setImportLoading(true);
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await handleRefresh();
+          success(`Successfully imported ${files.length} file(s)`);
+        } catch (err) {
+          console.error('Import error:', err);
+          showError('Failed to import files. Please check the file format.');
+        } finally {
+          setImportLoading(false);
+          event.target.value = '';
+        }
       }
-    }
-  }, [handleRefresh, success, showError]);
+    },
+    [handleRefresh, success, showError]
+  );
 
   const handleSelectAllWrapper = useCallback(() => {
     const shouldSelectAll = selectedItems.length !== currentItems.length;
     handleSelectAll(shouldSelectAll);
   }, [selectedItems.length, currentItems.length, handleSelectAll]);
 
-  const handleSelectItemWrapper = useCallback((id: string) => {
-    const checked = !selectedItems.includes(id);
-    handleSelectItem(id, checked);
-  }, [selectedItems, handleSelectItem]);
+  const handleSelectItemWrapper = useCallback(
+    (id: string) => {
+      const checked = !selectedItems.includes(id);
+      handleSelectItem(id, checked);
+    },
+    [selectedItems, handleSelectItem]
+  );
 
   const columns: TableColumn<Item>[] = [
     {
       key: 'itemCode',
       header: 'Item Code',
-      render: (item) => <span className="font-medium text-gray-900">{item.itemCode}</span>,
+      render: (item) => (
+        <span className="font-medium themed-transition" style={{ color: 'var(--text)' }}>
+          {item.itemCode}
+        </span>
+      ),
     },
     {
       key: 'itemName',
       header: 'Item Name',
-      render: (item) => <span className="text-gray-700">{item.itemName}</span>,
+      render: (item) => (
+        <span className="themed-transition" style={{ color: 'var(--text)' }}>
+          {item.itemName}
+        </span>
+      ),
     },
     {
       key: 'category',
       header: 'Category',
-      render: (item) => <span className="text-gray-600">{item.category}</span>,
+      render: (item) => (
+        <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+          {item.category}
+        </span>
+      ),
     },
     {
       key: 'metalType',
       header: 'Metal',
-      render: (item) => <span className="text-gray-600">{item.metalType}</span>,
+      render: (item) => (
+        <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+          {item.metalType}
+        </span>
+      ),
     },
     {
       key: 'purity',
       header: 'Purity',
-      render: (item) => <span className="text-gray-600">{item.purity}</span>,
+      render: (item) => (
+        <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+          {item.purity}
+        </span>
+      ),
     },
     {
       key: 'stock',
       header: 'Stock',
       align: 'right',
       render: (item) => (
-        <span className={`font-medium ${item.openingStock <= item.reorderLevel ? 'text-red-600' : 'text-gray-900'}`}>
+        <span
+          className={`font-medium themed-transition ${
+            item.openingStock <= item.reorderLevel ? 'text-danger' : ''
+          }`}
+          style={{
+            color:
+              item.openingStock <= item.reorderLevel
+                ? 'var(--danger)'
+                : 'var(--text)',
+          }}
+        >
           {item.openingStock} {item.unit}
           {item.openingStock <= item.reorderLevel && (
-            <span className="ml-1 text-xs text-red-500">(Low)</span>
+            <span className="ml-1 text-xs" style={{ color: 'var(--danger)' }}>
+              (Low)
+            </span>
           )}
         </span>
       ),
@@ -258,7 +325,9 @@ const Items: React.FC = () => {
       header: 'Price',
       align: 'right',
       render: (item) => (
-        <span className="font-medium text-gray-900">₹{item.sellingPrice.toLocaleString()}</span>
+        <span className="font-medium themed-transition" style={{ color: 'var(--text)' }}>
+          ₹{item.sellingPrice.toLocaleString()}
+        </span>
       ),
     },
     {
@@ -274,7 +343,7 @@ const Items: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--danger)' }} />
       ),
       onClick: handleExportWithLoading,
       disabled: exportLoading,
@@ -284,7 +353,7 @@ const Items: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: handleExportWithLoading,
       disabled: exportLoading,
@@ -300,15 +369,20 @@ const Items: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Items</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-2xl font-bold themed-transition" style={{ color: 'var(--text)' }}>
+            Items
+          </h1>
+          <p className="text-sm mt-0.5 themed-transition" style={{ color: 'var(--text-secondary)' }}>
             Manage your inventory items
             {items.length > 0 && (
-              <span className="ml-2 text-xs text-gray-400">
+              <span className="ml-2 text-xs themed-transition" style={{ color: 'var(--text-muted)' }}>
                 (Total: {items.length} items)
               </span>
             )}
@@ -319,7 +393,18 @@ const Items: React.FC = () => {
             <button
               onClick={handleBulkDeleteWithConfirm}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--danger)',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -329,23 +414,53 @@ const Items: React.FC = () => {
               Delete Selected ({selectedItems.length})
             </button>
           )}
-          
+
           {/* View toggle */}
-          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5">
+          <div
+            className="flex items-center gap-1 rounded-lg p-0.5 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <button
               onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewMode === 'table' ? 'bg-amber-500 text-white' : 'text-gray-400 hover:text-gray-600'
-              }`}
+              className="p-1.5 rounded-md transition-colors themed-transition"
+              style={{
+                background: viewMode === 'table' ? 'var(--primary)' : 'transparent',
+                color: viewMode === 'table' ? 'white' : 'var(--text-muted)',
+              }}
+              onMouseEnter={(e) => {
+                if (viewMode !== 'table') {
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (viewMode !== 'table') {
+                  e.currentTarget.style.color = 'var(--text-muted)';
+                }
+              }}
               title="Table view"
             >
               <List className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewMode === 'grid' ? 'bg-amber-500 text-white' : 'text-gray-400 hover:text-gray-600'
-              }`}
+              className="p-1.5 rounded-md transition-colors themed-transition"
+              style={{
+                background: viewMode === 'grid' ? 'var(--primary)' : 'transparent',
+                color: viewMode === 'grid' ? 'white' : 'var(--text-muted)',
+              }}
+              onMouseEnter={(e) => {
+                if (viewMode !== 'grid') {
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (viewMode !== 'grid') {
+                  e.currentTarget.style.color = 'var(--text-muted)';
+                }
+              }}
               title="Grid view"
             >
               <Grid className="h-4 w-4" />
@@ -355,7 +470,18 @@ const Items: React.FC = () => {
           <button
             onClick={handleRefreshWithLoading}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--text-secondary)',
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--hover-bg)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--card)';
+            }}
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
@@ -367,14 +493,24 @@ const Items: React.FC = () => {
 
           <button
             onClick={() => navigate('/items/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             Add New Item
           </button>
 
-          <ThreeDotDropdown 
-            items={headerDropdownItems} 
+          <ThreeDotDropdown
+            items={headerDropdownItems}
             position="right"
             onImport={handleImportWithLoading}
             importLabel="Import Items"
@@ -382,7 +518,7 @@ const Items: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -392,27 +528,63 @@ const Items: React.FC = () => {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--text-muted)' }}
+              />
               <input
                 type="text"
                 placeholder="Search items by name, code or category..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--text)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter className="h-4 w-4 themed-transition" style={{ color: 'var(--text-muted)' }} />
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--text)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -436,7 +608,7 @@ const Items: React.FC = () => {
           getId={(item) => item.id}
           onRowClick={handleView}
           emptyMessage="No items found"
-          emptyIcon={<Package className="h-12 w-12 text-gray-300" />}
+          emptyIcon={<Package className="h-12 w-12" style={{ color: 'var(--text-muted)' }} />}
           pagination={{
             currentPage,
             totalPages,
@@ -455,34 +627,74 @@ const Items: React.FC = () => {
               <div
                 key={item.id}
                 onClick={() => handleView(item)}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+                className="rounded-xl p-4 transition-shadow cursor-pointer themed-transition"
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = 'var(--shadow)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                }}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-gray-900 truncate">{item.itemName}</h3>
-                    <p className="text-xs text-gray-500">{item.itemCode}</p>
+                    <h3
+                      className="text-sm font-medium truncate themed-transition"
+                      style={{ color: 'var(--text)' }}
+                    >
+                      {item.itemName}
+                    </h3>
+                    <p className="text-xs themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                      {item.itemCode}
+                    </p>
                   </div>
                   {getStatusBadge(item.status)}
                 </div>
-                
+
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Category</span>
-                    <span className="text-gray-700">{item.category}</span>
+                    <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                      Category
+                    </span>
+                    <span className="themed-transition" style={{ color: 'var(--text)' }}>
+                      {item.category}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Metal</span>
-                    <span className="text-gray-700">{item.metalType} - {item.purity}</span>
+                    <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                      Metal
+                    </span>
+                    <span className="themed-transition" style={{ color: 'var(--text)' }}>
+                      {item.metalType} - {item.purity}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Stock</span>
-                    <span className={`font-medium ${item.openingStock <= item.reorderLevel ? 'text-red-600' : 'text-gray-700'}`}>
+                    <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                      Stock
+                    </span>
+                    <span
+                      className="font-medium themed-transition"
+                      style={{
+                        color:
+                          item.openingStock <= item.reorderLevel
+                            ? 'var(--danger)'
+                            : 'var(--text)',
+                      }}
+                    >
                       {item.openingStock} {item.unit}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Price</span>
-                    <span className="font-medium text-amber-600">₹{item.sellingPrice.toLocaleString()}</span>
+                    <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                      Price
+                    </span>
+                    <span className="font-medium themed-transition" style={{ color: 'var(--gold)' }}>
+                      ₹{item.sellingPrice.toLocaleString()}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -491,7 +703,7 @@ const Items: React.FC = () => {
 
           {/* Pagination for Grid View */}
           {currentItems.length > 0 && (
-            <div className="mt-6">
+            <div className="mt-6 rounded-xl themed-transition" style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -500,7 +712,7 @@ const Items: React.FC = () => {
                 onPageChange={setCurrentPage}
                 onItemsPerPageChange={handleItemsPerPageChange}
                 itemsPerPageOptions={[10, 20, 50, 100, 200]}
-                className="bg-white rounded-xl shadow-sm border border-gray-200"
+                className="rounded-xl themed-transition"
               />
             </div>
           )}

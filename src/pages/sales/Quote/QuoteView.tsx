@@ -258,52 +258,52 @@ const QuoteView: React.FC = () => {
     const items: ThreeDotDropdownItem[] = [
       {
         label: "Print",
-        icon: <Printer className="h-4 w-4 text-blue-500" />,
+        icon: <Printer className="h-4 w-4" style={{ color: 'var(--info)' }} />,
         onClick: handlePrint,
       },
       {
         label: "Export as PDF",
-        icon: <File className="h-4 w-4 text-red-500" />,
+        icon: <File className="h-4 w-4" style={{ color: 'var(--error)' }} />,
         onClick: () => handleExport("pdf"),
       },
       {
         label: "Export as Excel",
-        icon: <FileSpreadsheet className="h-4 w-4 text-green-500" />,
+        icon: <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />,
         onClick: () => handleExport("excel"),
       },
       {
         label: "Email",
-        icon: <Mail className="h-4 w-4 text-purple-500" />,
+        icon: <Mail className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
         onClick: handleEmail,
       },
     ];
     if (quote?.status === "draft") {
       items.push({
         label: "Send",
-        icon: <Send className="h-4 w-4 text-blue-500" />,
+        icon: <Send className="h-4 w-4" style={{ color: 'var(--info)' }} />,
         onClick: () => handleStatusChange("sent"),
       });
       items.push({
         label: "Edit",
-        icon: <Edit className="h-4 w-4 text-amber-500" />,
+        icon: <Edit className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
         onClick: handleEdit,
       });
     }
     if (quote?.status === "sent") {
       items.push({
         label: "Accept",
-        icon: <CheckCircle className="h-4 w-4 text-green-500" />,
+        icon: <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />,
         onClick: () => handleStatusChange("accepted"),
       });
       items.push({
         label: "Reject",
-        icon: <XCircle className="h-4 w-4 text-red-500" />,
+        icon: <XCircle className="h-4 w-4" style={{ color: 'var(--error)' }} />,
         onClick: () => handleStatusChange("rejected"),
       });
     }
     items.push({
       label: "Delete",
-      icon: <Trash2 className="h-4 w-4 text-red-500" />,
+      icon: <Trash2 className="h-4 w-4" style={{ color: 'var(--error)' }} />,
       onClick: handleDeleteClick,
       danger: true,
     });
@@ -321,30 +321,35 @@ const QuoteView: React.FC = () => {
   const getStatusConfig = useCallback((status: string) => {
     const config: Record<
       string,
-      { color: string; icon: React.ReactNode; label: string }
+      { bg: string; color: string; icon: React.ReactNode; label: string }
     > = {
       draft: {
-        color: "bg-gray-100 text-gray-700",
+        bg: "var(--surface-hover)",
+        color: "var(--foreground-secondary)",
         icon: <FileText className="h-4 w-4" />,
         label: "Draft",
       },
       sent: {
-        color: "bg-blue-100 text-blue-700",
+        bg: "var(--info-light)",
+        color: "var(--info)",
         icon: <Clock className="h-4 w-4" />,
         label: "Sent",
       },
       accepted: {
-        color: "bg-green-100 text-green-700",
+        bg: "var(--success-light)",
+        color: "var(--success)",
         icon: <CheckCircle className="h-4 w-4" />,
         label: "Accepted",
       },
       rejected: {
-        color: "bg-red-100 text-red-700",
+        bg: "var(--error-light)",
+        color: "var(--error)",
         icon: <XCircle className="h-4 w-4" />,
         label: "Rejected",
       },
       expired: {
-        color: "bg-yellow-100 text-yellow-700",
+        bg: "var(--warning-light)",
+        color: "var(--warning)",
         icon: <Clock className="h-4 w-4" />,
         label: "Expired",
       },
@@ -360,16 +365,43 @@ const QuoteView: React.FC = () => {
     );
   if (pageError || !quote)
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-md mx-auto">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-700 mb-2">Not Found</h3>
-          <p className="text-sm text-red-600">
+      <div
+        className="p-6 min-h-screen themed-transition"
+        style={{ background: 'var(--background)' }}
+      >
+        <div
+          className="rounded-lg p-6 text-center max-w-md mx-auto themed-transition"
+          style={{
+            background: 'var(--error-light)',
+            border: '1px solid var(--error)',
+          }}
+        >
+          <AlertCircle
+            className="h-12 w-12 mx-auto mb-3"
+            style={{ color: 'var(--error)' }}
+          />
+          <h3
+            className="text-lg font-semibold mb-2"
+            style={{ color: 'var(--error)' }}
+          >
+            Not Found
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--error)' }}>
             {pageError || "Quote not found"}
           </p>
           <button
             onClick={handleGoBack}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--error)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
           >
             Go Back
           </button>
@@ -381,32 +413,62 @@ const QuoteView: React.FC = () => {
   const documentData = getDocumentData();
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div
+      className="min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Top Header Bar */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+      <div
+        className="sticky top-0 z-30 border-b shadow-sm themed-transition"
+        style={{
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={handleGoBack}
-              className="p-1.5 hover:bg-gray-100 rounded-lg"
+              className="p-1.5 rounded-lg transition-colors themed-transition"
+              style={{ background: 'transparent' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
+              <ArrowLeft
+                className="h-5 w-5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              />
             </button>
             <div className="flex items-center gap-2">
-              <Gem className="h-5 w-5 text-amber-500" />
+              <Gem className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-bold text-gray-900">
+                  <h1
+                    className="text-lg font-bold themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     {quote.quoteNo}
                   </h1>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${statusConfig.color}`}
+                    className="px-2 py-0.5 rounded-full text-[11px] font-medium themed-transition"
+                    style={{
+                      background: statusConfig.bg,
+                      color: statusConfig.color,
+                    }}
                   >
                     {statusConfig.icon}
                     {statusConfig.label}
                   </span>
                 </div>
-                <p className="text-[11px] text-gray-500">
+                <p
+                  className="text-[11px] themed-transition"
+                  style={{ color: 'var(--foreground-secondary)' }}
+                >
                   {new Date(quote.createdAt).toLocaleDateString()} |{" "}
                   {quote.customerName}
                 </p>
@@ -416,25 +478,38 @@ const QuoteView: React.FC = () => {
 
           <div className="flex items-center gap-2">
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+            <div
+              className="flex items-center rounded-lg p-0.5 themed-transition"
+              style={{ background: 'var(--surface-hover)' }}
+            >
               <button
                 onClick={() => setViewMode("details")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all themed-transition ${
                   viewMode === "details"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
+                    ? "bg-surface text-foreground shadow-sm"
+                    : "text-foreground-secondary hover:text-foreground"
                 }`}
+                style={{
+                  background: viewMode === "details" ? 'var(--surface)' : 'transparent',
+                  color: viewMode === "details" ? 'var(--foreground)' : 'var(--foreground-secondary)',
+                  boxShadow: viewMode === "details" ? 'var(--shadow-sm)' : 'none',
+                }}
               >
                 <FileTextIcon className="h-3.5 w-3.5" />
                 Details
               </button>
               <button
                 onClick={() => setViewMode("preview")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all themed-transition ${
                   viewMode === "preview"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
+                    ? "bg-surface text-foreground shadow-sm"
+                    : "text-foreground-secondary hover:text-foreground"
                 }`}
+                style={{
+                  background: viewMode === "preview" ? 'var(--surface)' : 'transparent',
+                  color: viewMode === "preview" ? 'var(--foreground)' : 'var(--foreground-secondary)',
+                  boxShadow: viewMode === "preview" ? 'var(--shadow-sm)' : 'none',
+                }}
               >
                 <Eye className="h-3.5 w-3.5" />
                 PDF View
@@ -446,14 +521,36 @@ const QuoteView: React.FC = () => {
               <>
                 <button
                   onClick={() => handleStatusChange("sent")}
-                  className="px-3 py-1.5 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                  style={{
+                    color: 'var(--info)',
+                    background: 'var(--info-light)',
+                    border: '1px solid var(--info)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   <Send className="h-3.5 w-3.5" />
                   Send
                 </button>
                 <button
                   onClick={handleEdit}
-                  className="px-3 py-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                  style={{
+                    color: 'var(--primary)',
+                    background: 'var(--primary-light)',
+                    border: '1px solid var(--primary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   <Edit className="h-3.5 w-3.5" />
                   Edit
@@ -464,14 +561,36 @@ const QuoteView: React.FC = () => {
               <>
                 <button
                   onClick={() => handleStatusChange("accepted")}
-                  className="px-3 py-1.5 text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                  style={{
+                    color: 'var(--success)',
+                    background: 'var(--success-light)',
+                    border: '1px solid var(--success)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   <CheckCircle className="h-3.5 w-3.5" />
                   Accept
                 </button>
                 <button
                   onClick={() => handleStatusChange("rejected")}
-                  className="px-3 py-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                  style={{
+                    color: 'var(--error)',
+                    background: 'var(--error-light)',
+                    border: '1px solid var(--error)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   <XCircle className="h-3.5 w-3.5" />
                   Reject
@@ -489,18 +608,34 @@ const QuoteView: React.FC = () => {
 
         {/* Preview Toolbar - Only visible in preview mode */}
         {viewMode === "preview" && (
-          <div className="px-4 py-1.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-1 bg-white rounded-md border border-gray-200 p-0.5">
+          <div
+            className="px-4 py-1.5 border-t flex items-center justify-between themed-transition"
+            style={{
+              background: 'var(--surface-hover)',
+              borderColor: 'var(--border-subtle)',
+            }}
+          >
+            <div
+              className="flex items-center gap-1 rounded-md border p-0.5 themed-transition"
+              style={{
+                background: 'var(--surface)',
+                borderColor: 'var(--border)',
+              }}
+            >
               {(["modern", "classic", "compact", "minimal"] as const).map(
                 (layout) => (
                   <button
                     key={layout}
                     onClick={() => setPreviewLayout(layout)}
-                    className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors capitalize ${
+                    className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors capitalize themed-transition ${
                       previewLayout === layout
-                        ? "bg-amber-500 text-white"
-                        : "text-gray-500 hover:text-gray-700"
+                        ? "text-white"
+                        : "text-foreground-secondary hover:text-foreground"
                     }`}
+                    style={{
+                      background: previewLayout === layout ? 'var(--primary)' : 'transparent',
+                      color: previewLayout === layout ? 'white' : 'var(--foreground-secondary)',
+                    }}
                   >
                     {layout}
                   </button>
@@ -508,12 +643,25 @@ const QuoteView: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-400">
+              <span
+                className="text-[11px] themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              >
                 Total: {formatCurrency(quote.total)}
               </span>
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-1 px-3 py-1 text-[11px] font-medium text-white bg-amber-500 rounded hover:bg-amber-600"
+                className="flex items-center gap-1 px-3 py-1 text-[11px] font-medium rounded transition-colors themed-transition"
+                style={{
+                  background: 'var(--primary)',
+                  color: 'white',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--primary)';
+                }}
               >
                 <Printer className="h-3 w-3" />
                 Print
@@ -529,44 +677,69 @@ const QuoteView: React.FC = () => {
           /* ========== DETAILS VIEW ========== */
           <div className="max-w-6xl mx-auto space-y-4">
             {/* Customer & Quote Info */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div
+              className="rounded-xl p-5 themed-transition"
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-card)',
+              }}
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <User className="h-4 w-4 text-amber-500" />
+                  <h3
+                    className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    <User className="h-4 w-4" style={{ color: 'var(--gold)' }} />
                     Customer Information
                   </h3>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900">
+                      <User className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                      <span
+                        className="text-sm font-medium themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
                         {quote.customerName}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <MailIcon className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">
+                      <MailIcon className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                      <span
+                        className="text-sm themed-transition"
+                        style={{ color: 'var(--foreground-secondary)' }}
+                      >
                         {quote.customerEmail}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">
+                      <Phone className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                      <span
+                        className="text-sm themed-transition"
+                        style={{ color: 'var(--foreground-secondary)' }}
+                      >
                         {quote.customerPhone}
                       </span>
                     </div>
                     {quote.customerGst && (
                       <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">
+                        <Building2 className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                        <span
+                          className="text-sm themed-transition"
+                          style={{ color: 'var(--foreground-secondary)' }}
+                        >
                           GST: {quote.customerGst}
                         </span>
                       </div>
                     )}
                     {quote.customerAddress && (
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">
+                        <MapPin className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                        <span
+                          className="text-sm themed-transition"
+                          style={{ color: 'var(--foreground-secondary)' }}
+                        >
                           {quote.customerAddress}
                         </span>
                       </div>
@@ -574,36 +747,71 @@ const QuoteView: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-amber-500" />
+                  <h3
+                    className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    <FileText className="h-4 w-4" style={{ color: 'var(--gold)' }} />
                     Quote Information
                   </h3>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Hash className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">No: </span>
-                      <span className="text-sm font-medium text-gray-900">
+                      <Hash className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                      <span
+                        className="text-sm themed-transition"
+                        style={{ color: 'var(--foreground-secondary)' }}
+                      >
+                        No:{' '}
+                      </span>
+                      <span
+                        className="text-sm font-medium themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
                         {quote.quoteNo}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">Date: </span>
-                      <span className="text-sm font-medium text-gray-900">
+                      <Calendar className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                      <span
+                        className="text-sm themed-transition"
+                        style={{ color: 'var(--foreground-secondary)' }}
+                      >
+                        Date:{' '}
+                      </span>
+                      <span
+                        className="text-sm font-medium themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
                         {new Date(quote.date).toLocaleDateString()}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">Valid: </span>
-                      <span className="text-sm font-medium text-gray-900">
+                      <Clock className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                      <span
+                        className="text-sm themed-transition"
+                        style={{ color: 'var(--foreground-secondary)' }}
+                      >
+                        Valid:{' '}
+                      </span>
+                      <span
+                        className="text-sm font-medium themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
                         {new Date(quote.validUntil).toLocaleDateString()}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <IndianRupee className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">Total: </span>
-                      <span className="text-sm font-bold text-amber-600">
+                      <IndianRupee className="h-4 w-4" style={{ color: 'var(--foreground-tertiary)' }} />
+                      <span
+                        className="text-sm themed-transition"
+                        style={{ color: 'var(--foreground-secondary)' }}
+                      >
+                        Total:{' '}
+                      </span>
+                      <span
+                        className="text-sm font-bold themed-transition"
+                        style={{ color: 'var(--gold)' }}
+                      >
                         {formatCurrency(quote.total)}
                       </span>
                     </div>
@@ -613,39 +821,76 @@ const QuoteView: React.FC = () => {
             </div>
 
             {/* Items Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Package className="h-4 w-4 text-amber-500" />
+            <div
+              className="rounded-xl p-5 themed-transition"
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-card)',
+              }}
+            >
+              <h3
+                className="text-sm font-semibold uppercase tracking-wider mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Package className="h-4 w-4" style={{ color: 'var(--gold)' }} />
                 Items
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
+                  <thead
+                    className="themed-transition"
+                    style={{ background: 'var(--surface-hover)' }}
+                  >
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th
+                        className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Item
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th
+                        className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Purity
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                      <th
+                        className="px-3 py-2 text-right text-xs font-medium uppercase themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Wt(g)
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                      <th
+                        className="px-3 py-2 text-right text-xs font-medium uppercase themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Qty
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                      <th
+                        className="px-3 py-2 text-right text-xs font-medium uppercase themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Rate
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                      <th
+                        className="px-3 py-2 text-right text-xs font-medium uppercase themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Making
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                      <th
+                        className="px-3 py-2 text-right text-xs font-medium uppercase themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      >
                         Total
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody
+                    className="divide-y themed-transition"
+                    style={{ borderColor: 'var(--border)' }}
+                  >
                     {quote.items.map((item, index) => {
                       const total =
                         item.total ||
@@ -654,29 +899,53 @@ const QuoteView: React.FC = () => {
                       return (
                         <tr key={item.id || index}>
                           <td className="px-3 py-2">
-                            <p className="font-medium text-gray-900">
+                            <p
+                              className="font-medium themed-transition"
+                              style={{ color: 'var(--foreground)' }}
+                            >
                               {item.itemName}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p
+                              className="text-xs themed-transition"
+                              style={{ color: 'var(--foreground-secondary)' }}
+                            >
                               {item.category}
                             </p>
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-600">
+                          <td
+                            className="px-3 py-2 text-sm themed-transition"
+                            style={{ color: 'var(--foreground-secondary)' }}
+                          >
                             {item.purity}
                           </td>
-                          <td className="px-3 py-2 text-right text-sm text-gray-600">
+                          <td
+                            className="px-3 py-2 text-right text-sm themed-transition"
+                            style={{ color: 'var(--foreground-secondary)' }}
+                          >
                             {item.weight?.toFixed(2) || "0.00"}
                           </td>
-                          <td className="px-3 py-2 text-right text-sm text-gray-600">
+                          <td
+                            className="px-3 py-2 text-right text-sm themed-transition"
+                            style={{ color: 'var(--foreground-secondary)' }}
+                          >
                             {item.quantity}
                           </td>
-                          <td className="px-3 py-2 text-right text-sm text-gray-600">
+                          <td
+                            className="px-3 py-2 text-right text-sm themed-transition"
+                            style={{ color: 'var(--foreground-secondary)' }}
+                          >
                             {formatCurrency(item.unitPrice)}
                           </td>
-                          <td className="px-3 py-2 text-right text-sm text-gray-600">
+                          <td
+                            className="px-3 py-2 text-right text-sm themed-transition"
+                            style={{ color: 'var(--foreground-secondary)' }}
+                          >
                             {formatCurrency(item.makingCharges)}
                           </td>
-                          <td className="px-3 py-2 text-right font-medium text-gray-900">
+                          <td
+                            className="px-3 py-2 text-right font-medium themed-transition"
+                            style={{ color: 'var(--foreground)' }}
+                          >
                             {formatCurrency(total)}
                           </td>
                         </tr>
@@ -691,67 +960,143 @@ const QuoteView: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2 space-y-4">
                 {quote.notes && (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                  <div
+                    className="rounded-xl p-5 themed-transition"
+                    style={{
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      boxShadow: 'var(--shadow-card)',
+                    }}
+                  >
+                    <h4
+                      className="text-sm font-semibold mb-2 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       Notes
                     </h4>
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                    <p
+                      className="text-sm whitespace-pre-wrap themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       {quote.notes}
                     </p>
                   </div>
                 )}
                 {quote.termsAndConditions && (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                  <div
+                    className="rounded-xl p-5 themed-transition"
+                    style={{
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      boxShadow: 'var(--shadow-card)',
+                    }}
+                  >
+                    <h4
+                      className="text-sm font-semibold mb-2 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       Terms & Conditions
                     </h4>
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                    <p
+                      className="text-sm whitespace-pre-wrap themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       {quote.termsAndConditions}
                     </p>
                   </div>
                 )}
               </div>
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
+              <div
+                className="rounded-xl p-5 themed-transition"
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-card)',
+                }}
+              >
+                <h4
+                  className="text-sm font-semibold uppercase tracking-wider mb-4 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Summary
                 </h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Subtotal</span>
-                    <span className="font-medium">
+                    <span
+                      className="themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
+                      Subtotal
+                    </span>
+                    <span
+                      className="font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       {formatCurrency(quote.subtotal)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Tax</span>
-                    <span className="font-medium">
+                    <span
+                      className="themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
+                      Tax
+                    </span>
+                    <span
+                      className="font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       {formatCurrency(quote.tax)}
                     </span>
                   </div>
                   {quote.discount > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Discount</span>
-                      <span className="text-red-500">
+                      <span
+                        className="themed-transition"
+                        style={{ color: 'var(--foreground-secondary)' }}
+                      >
+                        Discount
+                      </span>
+                      <span style={{ color: 'var(--error)' }}>
                         -{formatCurrency(quote.discount)}
                       </span>
                     </div>
                   )}
                   {quote.shippingCharge > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Shipping</span>
-                      <span className="font-medium">
+                      <span
+                        className="themed-transition"
+                        style={{ color: 'var(--foreground-secondary)' }}
+                      >
+                        Shipping
+                      </span>
+                      <span
+                        className="font-medium themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
                         {formatCurrency(quote.shippingCharge)}
                       </span>
                     </div>
                   )}
-                  <div className="border-t pt-2 mt-2 flex justify-between text-base font-bold">
-                    <span>Total</span>
-                    <span className="text-amber-600">
+                  <div
+                    className="pt-2 mt-2 flex justify-between text-base font-bold themed-transition"
+                    style={{ borderTop: '1px solid var(--border)' }}
+                  >
+                    <span
+                      className="themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      Total
+                    </span>
+                    <span style={{ color: 'var(--gold)' }}>
                       {formatCurrency(quote.total)}
                     </span>
                   </div>
                   {quote.amountInWords && (
-                    <p className="text-xs text-gray-500 text-right">
+                    <p
+                      className="text-xs text-right themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
                       {quote.amountInWords}
                     </p>
                   )}

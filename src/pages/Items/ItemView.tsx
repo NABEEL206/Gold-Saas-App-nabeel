@@ -52,17 +52,37 @@ type ItemStatus = 'active' | 'inactive' | 'out_of_stock' | 'low_stock';
 // Status Badge Component
 const StatusBadge: React.FC<{ status: ItemStatus }> = ({ status }) => {
   const statusConfig = {
-    active: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Active' },
-    inactive: { color: 'bg-gray-100 text-gray-700', icon: XCircle, label: 'Inactive' },
-    out_of_stock: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Out of Stock' },
-    low_stock: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Low Stock' },
+    active: { icon: CheckCircle, label: 'Active' },
+    inactive: { icon: XCircle, label: 'Inactive' },
+    out_of_stock: { icon: AlertCircle, label: 'Out of Stock' },
+    low_stock: { icon: Clock, label: 'Low Stock' },
   };
   
   const config = statusConfig[status as keyof typeof statusConfig];
   const Icon = config.icon;
+
+  const getStatusColors = () => {
+    switch (status) {
+      case 'active':
+        return { bg: 'var(--success)', text: 'white' };
+      case 'inactive':
+        return { bg: 'var(--text-muted)', text: 'white' };
+      case 'out_of_stock':
+        return { bg: 'var(--danger)', text: 'white' };
+      case 'low_stock':
+        return { bg: 'var(--warning)', text: 'white' };
+      default:
+        return { bg: 'var(--text-muted)', text: 'white' };
+    }
+  };
+
+  const colors = getStatusColors();
   
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
+    <span
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium themed-transition"
+      style={{ background: colors.bg, color: colors.text }}
+    >
       <Icon className="h-4 w-4" />
       {config.label}
     </span>
@@ -77,11 +97,26 @@ const InfoCard: React.FC<{
   className?: string;
 }> = ({ title, icon: Icon, children, className = '' }) => {
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${className}`}>
-      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50/50">
+    <div
+      className={`rounded-xl overflow-hidden themed-transition ${className}`}
+      style={{
+        background: 'var(--card)',
+        border: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
+    >
+      <div
+        className="px-4 py-3 themed-transition"
+        style={{
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--hover-bg)',
+        }}
+      >
         <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 text-amber-500" />
-          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+          <Icon className="h-4 w-4" style={{ color: 'var(--gold)' }} />
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            {title}
+          </h3>
         </div>
       </div>
       <div className="px-4 py-4">{children}</div>
@@ -99,10 +134,19 @@ const DetailRow: React.FC<{
   return (
     <div className={`flex items-start py-2 ${className}`}>
       <div className="flex items-center gap-2 w-1/2">
-        {Icon && <Icon className="h-4 w-4 text-gray-400 flex-shrink-0" />}
-        <span className="text-sm text-gray-600">{label}</span>
+        {Icon && (
+          <Icon
+            className="h-4 w-4 flex-shrink-0 themed-transition"
+            style={{ color: 'var(--text-muted)' }}
+          />
+        )}
+        <span className="text-sm themed-transition" style={{ color: 'var(--text-secondary)' }}>
+          {label}
+        </span>
       </div>
-      <div className="w-1/2 text-sm text-gray-900 font-medium">{value}</div>
+      <div className="w-1/2 text-sm font-medium themed-transition" style={{ color: 'var(--text)' }}>
+        {value}
+      </div>
     </div>
   );
 };
@@ -114,27 +158,44 @@ const ImageGallery: React.FC<{ images: string[]; itemName: string }> = ({ images
 
   if (!images || images.length === 0) {
     return (
-      <div className="bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 p-8 text-center">
-        <ImageIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-        <p className="text-sm text-gray-500">No images available</p>
+      <div
+        className="rounded-lg border-2 border-dashed p-8 text-center themed-transition"
+        style={{
+          borderColor: 'var(--border)',
+          background: 'var(--hover-bg)',
+        }}
+      >
+        <ImageIcon
+          className="h-12 w-12 mx-auto mb-2 themed-transition"
+          style={{ color: 'var(--text-muted)' }}
+        />
+        <p className="text-sm themed-transition" style={{ color: 'var(--text-secondary)' }}>
+          No images available
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <div 
-        className="relative bg-gray-100 rounded-lg overflow-hidden group cursor-pointer"
+      <div
+        className="relative rounded-lg overflow-hidden group cursor-pointer themed-transition"
+        style={{ background: 'var(--hover-bg)' }}
         onClick={() => setIsFullscreen(!isFullscreen)}
       >
         <img
           src={images[selectedImage]}
           alt={`${itemName} - Image ${selectedImage + 1}`}
-          className="w-full h-64 object-contain bg-white"
+          className="w-full h-64 object-contain"
+          style={{ background: 'var(--card)' }}
         />
         <button
-          onClick={(e) => { e.stopPropagation(); setIsFullscreen(!isFullscreen); }}
-          className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsFullscreen(!isFullscreen);
+          }}
+          className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ background: 'rgba(0,0,0,0.5)', color: 'white' }}
         >
           {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
@@ -144,23 +205,47 @@ const ImageGallery: React.FC<{ images: string[]; itemName: string }> = ({ images
           <button
             key={index}
             onClick={() => setSelectedImage(index)}
-            className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
-              selectedImage === index ? 'border-amber-500' : 'border-gray-200 hover:border-gray-300'
-            }`}
+            className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors"
+            style={{
+              borderColor: selectedImage === index ? 'var(--gold)' : 'var(--border)',
+            }}
           >
             <img src={img} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
           </button>
         ))}
       </div>
       {isFullscreen && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setIsFullscreen(false)}>
-          <button onClick={() => setIsFullscreen(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.9)' }}
+          onClick={() => setIsFullscreen(false)}
+        >
+          <button
+            onClick={() => setIsFullscreen(false)}
+            className="absolute top-4 right-4 transition-colors"
+            style={{ color: 'white' }}
+          >
             <XCircle className="h-8 w-8" />
           </button>
-          <img src={images[selectedImage]} alt={`${itemName} - Fullscreen`} className="max-h-[90vh] max-w-[90vw] object-contain" onClick={(e) => e.stopPropagation()} />
+          <img
+            src={images[selectedImage]}
+            alt={`${itemName} - Fullscreen`}
+            className="max-h-[90vh] max-w-[90vw] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
             {images.map((_, index) => (
-              <button key={index} onClick={(e) => { e.stopPropagation(); setSelectedImage(index); }} className={`w-2 h-2 rounded-full transition-colors ${selectedImage === index ? 'bg-white' : 'bg-white/50'}`} />
+              <button
+                key={index}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedImage(index);
+                }}
+                className="w-2 h-2 rounded-full transition-colors"
+                style={{
+                  background: selectedImage === index ? 'white' : 'rgba(255,255,255,0.5)',
+                }}
+              />
             ))}
           </div>
         </div>
@@ -176,11 +261,11 @@ const ItemView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { loading, item, error, fetchItem, deleteItem, updateStatus } = useItemDetails();
   
-  const { 
-    success, 
-    error: showError, 
-    warning, 
-    withConfirmation, 
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
     withLoading,
     isOpen: modalOpen,
     options: modalOptions,
@@ -208,7 +293,7 @@ const ItemView: React.FC = () => {
 
   const handleDelete = useCallback(async () => {
     if (!item) return;
-    
+
     await withConfirmation(
       {
         title: 'Delete Item',
@@ -233,7 +318,7 @@ const ItemView: React.FC = () => {
 
   const handleStatusToggle = useCallback(async () => {
     if (!item) return;
-    
+
     const newStatus = item.status === 'active' ? 'inactive' : 'active';
     setStatusUpdateLoading(true);
     try {
@@ -334,12 +419,29 @@ const ItemView: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-300 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-gray-900">Item Not Found</h3>
-          <p className="text-sm text-gray-500 mt-1">{error || 'The item you are looking for does not exist.'}</p>
+          <AlertCircle
+            className="h-12 w-12 mx-auto mb-3 themed-transition"
+            style={{ color: 'var(--text-muted)' }}
+          />
+          <h3 className="text-lg font-semibold themed-transition" style={{ color: 'var(--text)' }}>
+            Item Not Found
+          </h3>
+          <p className="text-sm mt-1 themed-transition" style={{ color: 'var(--text-secondary)' }}>
+            {error || 'The item you are looking for does not exist.'}
+          </p>
           <button
             onClick={() => navigate('/items')}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Items
@@ -350,28 +452,49 @@ const ItemView: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen print:p-4">
+    <div
+      className="p-6 min-h-screen print:p-4 themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6 print:mb-4">
           <div className="flex items-start gap-3">
             <button
               onClick={() => navigate('/items')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors print:hidden"
+              className="p-2 rounded-lg transition-colors print:hidden themed-transition"
+              style={{
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--hover-bg)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
+              <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-bold text-gray-900">{item.itemName}</h1>
+                <h1 className="text-2xl font-bold themed-transition" style={{ color: 'var(--text)' }}>
+                  {item.itemName}
+                </h1>
                 <StatusBadge status={item.status} />
               </div>
               <div className="flex items-center gap-3 mt-1 flex-wrap">
-                <p className="text-sm text-gray-500">Code: {item.itemCode}</p>
+                <p className="text-sm themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                  Code: {item.itemCode}
+                </p>
                 {item.category && (
                   <>
-                    <span className="text-xs text-gray-400">•</span>
-                    <p className="text-sm text-gray-500">Category: {item.category}</p>
+                    <span className="text-xs themed-transition" style={{ color: 'var(--text-muted)' }}>
+                      •
+                    </span>
+                    <p className="text-sm themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                      Category: {item.category}
+                    </p>
                   </>
                 )}
               </div>
@@ -382,39 +505,75 @@ const ItemView: React.FC = () => {
           </div>
         </div>
 
-        {/* Main Content - All sections remain the same as original */}
+        {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:gap-4">
           <div className="lg:col-span-1 space-y-4">
             <ImageGallery images={item.images || []} itemName={item.itemName} />
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <Info className="h-4 w-4 text-amber-500" />
+
+            {/* Quick Info Card */}
+            <div
+              className="rounded-xl p-4 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h4
+                className="text-sm font-semibold mb-3 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--text)' }}
+              >
+                <Info className="h-4 w-4" style={{ color: 'var(--gold)' }} />
                 Quick Info
               </h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Status</span>
+                  <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                    Status
+                  </span>
                   <StatusBadge status={item.status} />
                 </div>
                 {item.openingStock !== undefined && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Stock</span>
-                    <span className={`font-medium ${item.openingStock <= (item.reorderLevel || 0) ? 'text-red-600' : 'text-gray-900'}`}>
+                    <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                      Stock
+                    </span>
+                    <span
+                      className="font-medium themed-transition"
+                      style={{
+                        color:
+                          item.openingStock <= (item.reorderLevel || 0)
+                            ? 'var(--danger)'
+                            : 'var(--text)',
+                      }}
+                    >
                       {item.openingStock} {item.unit || ''}
-                      {item.openingStock <= (item.reorderLevel || 0) && <span className="ml-1 text-xs text-red-500">(Low)</span>}
+                      {item.openingStock <= (item.reorderLevel || 0) && (
+                        <span className="ml-1 text-xs" style={{ color: 'var(--danger)' }}>
+                          (Low)
+                        </span>
+                      )}
                     </span>
                   </div>
                 )}
                 {item.sellingPrice !== undefined && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Selling Price</span>
-                    <span className="font-medium text-gray-900">{item.currency || 'INR'} {item.sellingPrice.toLocaleString()}</span>
+                    <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                      Selling Price
+                    </span>
+                    <span className="font-medium themed-transition" style={{ color: 'var(--text)' }}>
+                      {item.currency || 'INR'} {item.sellingPrice.toLocaleString()}
+                    </span>
                   </div>
                 )}
                 {item.createdAt && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Created</span>
-                    <span className="text-gray-900">{new Date(item.createdAt).toLocaleDateString()}</span>
+                    <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                      Created
+                    </span>
+                    <span className="themed-transition" style={{ color: 'var(--text)' }}>
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
                 )}
               </div>
@@ -422,7 +581,17 @@ const ItemView: React.FC = () => {
           </div>
 
           <div className="lg:col-span-2 space-y-4">
-            <button onClick={() => setShowAllDetails(!showAllDetails)} className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 print:hidden">
+            <button
+              onClick={() => setShowAllDetails(!showAllDetails)}
+              className="inline-flex items-center gap-2 text-sm print:hidden themed-transition"
+              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--text)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+            >
               {showAllDetails ? 'Show Less' : 'Show All Details'}
             </button>
 
@@ -449,9 +618,29 @@ const ItemView: React.FC = () => {
             {(item.grossWeight || item.netWeight || item.stoneWeight) && (
               <InfoCard title="Weight & Dimensions" icon={Scale}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
-                  <DetailRow label="Gross Weight" value={item.grossWeight ? `${item.grossWeight} ${item.unit || 'g'}` : '-'} icon={Weight} />
-                  <DetailRow label="Net Weight" value={item.netWeight ? `${item.netWeight} ${item.unit || 'g'}` : '-'} icon={Weight} />
-                  <DetailRow label="Stone Weight" value={item.stoneWeight ? `${item.stoneWeight} ${item.unit || 'g'}` : '-'} icon={Weight} />
+                  <DetailRow
+                    label="Gross Weight"
+                    value={
+                      item.grossWeight
+                        ? `${item.grossWeight} ${item.unit || 'g'}`
+                        : '-'
+                    }
+                    icon={Weight}
+                  />
+                  <DetailRow
+                    label="Net Weight"
+                    value={item.netWeight ? `${item.netWeight} ${item.unit || 'g'}` : '-'}
+                    icon={Weight}
+                  />
+                  <DetailRow
+                    label="Stone Weight"
+                    value={
+                      item.stoneWeight
+                        ? `${item.stoneWeight} ${item.unit || 'g'}`
+                        : '-'
+                    }
+                    icon={Weight}
+                  />
                   <DetailRow label="Unit" value={item.unit || '-'} />
                 </div>
               </InfoCard>
@@ -460,8 +649,16 @@ const ItemView: React.FC = () => {
             {(item.diamondPieces || item.caratWeight) && (
               <InfoCard title="Diamond Information" icon={Sparkles}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                  <DetailRow label="Diamond Pieces" value={item.diamondPieces || '0'} icon={Grid} />
-                  <DetailRow label="Carat Weight" value={item.caratWeight ? `${item.caratWeight} ct` : '-'} icon={Weight} />
+                  <DetailRow
+                    label="Diamond Pieces"
+                    value={item.diamondPieces || '0'}
+                    icon={Grid}
+                  />
+                  <DetailRow
+                    label="Carat Weight"
+                    value={item.caratWeight ? `${item.caratWeight} ct` : '-'}
+                    icon={Weight}
+                  />
                 </div>
               </InfoCard>
             )}
@@ -469,11 +666,43 @@ const ItemView: React.FC = () => {
             {(item.sellingPrice || item.mrp || item.goldRate) && (
               <InfoCard title="Pricing Information" icon={DollarSign}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                  <DetailRow label="Selling Price" value={item.sellingPrice ? `${item.currency || 'INR'} ${item.sellingPrice.toLocaleString()}` : '-'} icon={DollarSign} />
-                  <DetailRow label="MRP" value={item.mrp ? `${item.currency || 'INR'} ${item.mrp.toLocaleString()}` : '-'} icon={Tag} />
-                  <DetailRow label="Gold Rate" value={item.goldRate ? `${item.currency || 'INR'} ${item.goldRate.toLocaleString()}` : '-'} icon={DollarSign} />
+                  <DetailRow
+                    label="Selling Price"
+                    value={
+                      item.sellingPrice
+                        ? `${item.currency || 'INR'} ${item.sellingPrice.toLocaleString()}`
+                        : '-'
+                    }
+                    icon={DollarSign}
+                  />
+                  <DetailRow
+                    label="MRP"
+                    value={
+                      item.mrp
+                        ? `${item.currency || 'INR'} ${item.mrp.toLocaleString()}`
+                        : '-'
+                    }
+                    icon={Tag}
+                  />
+                  <DetailRow
+                    label="Gold Rate"
+                    value={
+                      item.goldRate
+                        ? `${item.currency || 'INR'} ${item.goldRate.toLocaleString()}`
+                        : '-'
+                    }
+                    icon={DollarSign}
+                  />
                   {item.mcType && (
-                    <DetailRow label="Making Charge" value={typeof item.mcType === 'string' && item.mcType === 'fixed' ? `${item.currency || 'INR'} ${item.mcValue || 0}` : `${item.mcValue || 0}%`} icon={DollarSign} />
+                    <DetailRow
+                      label="Making Charge"
+                      value={
+                        typeof item.mcType === 'string' && item.mcType === 'fixed'
+                          ? `${item.currency || 'INR'} ${item.mcValue || 0}`
+                          : `${item.mcValue || 0}%`
+                      }
+                      icon={DollarSign}
+                    />
                   )}
                 </div>
               </InfoCard>
@@ -482,32 +711,82 @@ const ItemView: React.FC = () => {
             {(item.openingStock !== undefined || item.hsnCode || item.gstPercentage) && (
               <InfoCard title="Inventory & Tax" icon={ShoppingCart}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                  <DetailRow label="Opening Stock" value={item.openingStock !== undefined ? `${item.openingStock} ${item.unit || ''}` : '-'} icon={Package} />
-                  <DetailRow label="Reorder Level" value={item.reorderLevel !== undefined ? `${item.reorderLevel} ${item.unit || ''}` : '-'} icon={AlertCircle} />
+                  <DetailRow
+                    label="Opening Stock"
+                    value={
+                      item.openingStock !== undefined
+                        ? `${item.openingStock} ${item.unit || ''}`
+                        : '-'
+                    }
+                    icon={Package}
+                  />
+                  <DetailRow
+                    label="Reorder Level"
+                    value={
+                      item.reorderLevel !== undefined
+                        ? `${item.reorderLevel} ${item.unit || ''}`
+                        : '-'
+                    }
+                    icon={AlertCircle}
+                  />
                   <DetailRow label="HSN Code" value={item.hsnCode || '-'} icon={Hash} />
-                  <DetailRow label="GST %" value={item.gstPercentage ? `${item.gstPercentage}%` : '-'} icon={Tag} />
+                  <DetailRow
+                    label="GST %"
+                    value={item.gstPercentage ? `${item.gstPercentage}%` : '-'}
+                    icon={Tag}
+                  />
                 </div>
               </InfoCard>
             )}
 
             {item.description && (
               <InfoCard title="Description" icon={Info}>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.description}</p>
+                <p className="text-sm whitespace-pre-wrap themed-transition" style={{ color: 'var(--text)' }}>
+                  {item.description}
+                </p>
               </InfoCard>
             )}
 
             <InfoCard title="Additional Information" icon={Info}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                {item.createdAt && <DetailRow label="Created At" value={new Date(item.createdAt).toLocaleString()} icon={Calendar} />}
-                {item.updatedAt && <DetailRow label="Last Updated" value={new Date(item.updatedAt).toLocaleString()} icon={Calendar} />}
-                {item.createdBy && <DetailRow label="Created By" value={item.createdBy} icon={User} />}
+                {item.createdAt && (
+                  <DetailRow
+                    label="Created At"
+                    value={new Date(item.createdAt).toLocaleString()}
+                    icon={Calendar}
+                  />
+                )}
+                {item.updatedAt && (
+                  <DetailRow
+                    label="Last Updated"
+                    value={new Date(item.updatedAt).toLocaleString()}
+                    icon={Calendar}
+                  />
+                )}
+                {item.createdBy && (
+                  <DetailRow label="Created By" value={item.createdBy} icon={User} />
+                )}
               </div>
             </InfoCard>
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-200 print:hidden">
-          <button onClick={() => navigate('/items')} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">
+        {/* Footer */}
+        <div
+          className="mt-6 flex flex-wrap items-center justify-between gap-3 pt-4 print:hidden"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
+          <button
+            onClick={() => navigate('/items')}
+            className="px-4 py-2 text-sm transition-colors themed-transition"
+            style={{ color: 'var(--text-secondary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--text)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
+          >
             Back to Items
           </button>
         </div>

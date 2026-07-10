@@ -28,16 +28,22 @@ import type { InventoryAdjustment } from '../../types/inventory/InventoryAdjustm
 // Status Badge Component
 const StatusBadge: React.FC<{ status: InventoryAdjustment['status'] }> = ({ status }) => {
   const statusConfig = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: FileText, label: 'Draft' },
-    pending: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Pending' },
-    adjusted: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Adjusted' },
+    draft: { icon: FileText, label: 'Draft' },
+    pending: { icon: Clock, label: 'Pending' },
+    adjusted: { icon: CheckCircle, label: 'Adjusted' },
   };
   
   const config = statusConfig[status as keyof typeof statusConfig];
   
   if (!config) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+      <span
+        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+        style={{
+          background: 'var(--surface-hover)',
+          color: 'var(--foreground-secondary)',
+        }}
+      >
         <FileText className="h-3 w-3" />
         {status || 'Unknown'}
       </span>
@@ -45,9 +51,30 @@ const StatusBadge: React.FC<{ status: InventoryAdjustment['status'] }> = ({ stat
   }
   
   const Icon = config.icon;
+
+  const getStatusStyles = () => {
+    switch (status) {
+      case 'draft':
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-secondary)' };
+      case 'pending':
+        return { bg: 'var(--warning-light)', color: 'var(--warning)' };
+      case 'adjusted':
+        return { bg: 'var(--success-light)', color: 'var(--success)' };
+      default:
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-secondary)' };
+    }
+  };
+
+  const styles = getStatusStyles();
   
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: styles.bg,
+        color: styles.color,
+      }}
+    >
       <Icon className="h-3 w-3" />
       {config.label}
     </span>
@@ -57,16 +84,37 @@ const StatusBadge: React.FC<{ status: InventoryAdjustment['status'] }> = ({ stat
 // Type Badge Component
 const TypeBadge: React.FC<{ type: InventoryAdjustment['type'] }> = ({ type }) => {
   const typeConfig = {
-    quantity: { color: 'bg-blue-100 text-blue-700', icon: Layers, label: 'Quantity' },
-    weight: { color: 'bg-purple-100 text-purple-700', icon: Layers, label: 'Weight' },
-    value: { color: 'bg-amber-100 text-amber-700', icon: Layers, label: 'Value' },
+    quantity: { icon: Layers, label: 'Quantity' },
+    weight: { icon: Layers, label: 'Weight' },
+    value: { icon: Layers, label: 'Value' },
   };
   
   const config = typeConfig[type];
   const Icon = config.icon;
+
+  const getTypeStyles = () => {
+    switch (type) {
+      case 'quantity':
+        return { bg: 'var(--info-light)', color: 'var(--info)' };
+      case 'weight':
+        return { bg: 'var(--primary-light)', color: 'var(--primary)' };
+      case 'value':
+        return { bg: 'var(--warning-light)', color: 'var(--warning)' };
+      default:
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-secondary)' };
+    }
+  };
+
+  const styles = getTypeStyles();
   
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: styles.bg,
+        color: styles.color,
+      }}
+    >
       <Icon className="h-3 w-3" />
       {config.label}
     </span>
@@ -274,13 +322,23 @@ const InventoryAdjustments: React.FC = () => {
     {
       key: 'date',
       header: 'Date',
-      render: (item) => <span className="text-sm text-gray-600">{formatDate(item.date)}</span>,
+      render: (item) => (
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {formatDate(item.date)}
+        </span>
+      ),
     },
     {
       key: 'reason',
       header: 'Reason',
       render: (item) => (
-        <span className="text-sm text-gray-600 max-w-xs truncate block">
+        <span
+          className="text-sm max-w-xs truncate block themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
           {item.reason || item.notes || '-'}
         </span>
       ),
@@ -298,7 +356,14 @@ const InventoryAdjustments: React.FC = () => {
     {
       key: 'createdAt',
       header: 'Created',
-      render: (item) => <span className="text-sm text-gray-600">{formatDateTime(item.createdAt)}</span>,
+      render: (item) => (
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {formatDateTime(item.createdAt)}
+        </span>
+      ),
     },
   ];
 
@@ -306,13 +371,13 @@ const InventoryAdjustments: React.FC = () => {
   const headerDropdownItems = [
     {
       label: 'Export as PDF',
-      icon: exportLoading === 'pdf' ? <LoadingSpinner size="sm" /> : <File className="h-4 w-4 text-red-500" />,
+      icon: exportLoading === 'pdf' ? <LoadingSpinner size="sm" /> : <File className="h-4 w-4" style={{ color: 'var(--error)' }} />,
       onClick: () => handleExportWithLoading('pdf'),
       disabled: exportLoading !== null,
     },
     {
       label: 'Export as Excel',
-      icon: exportLoading === 'excel' ? <LoadingSpinner size="sm" /> : <FileSpreadsheet className="h-4 w-4 text-green-500" />,
+      icon: exportLoading === 'excel' ? <LoadingSpinner size="sm" /> : <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />,
       onClick: () => handleExportWithLoading('excel'),
       disabled: exportLoading !== null,
     },
@@ -327,18 +392,44 @@ const InventoryAdjustments: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Page Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory Adjustments</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage inventory adjustments and corrections</p>
+          <h1
+            className="text-2xl font-bold themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            Inventory Adjustments
+          </h1>
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            Manage inventory adjustments and corrections
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleRefreshWithLoading}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
           >
             {refreshLoading ? <LoadingSpinner size="sm" /> : <RefreshCw className="h-4 w-4" />}
             Refresh
@@ -346,7 +437,17 @@ const InventoryAdjustments: React.FC = () => {
 
           <button
             onClick={() => navigate('/inventory/adjustments/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Adjustment
@@ -356,7 +457,22 @@ const InventoryAdjustments: React.FC = () => {
             <button
               onClick={handleBulkDeleteWithConfirm}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.background = 'var(--error-light)';
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--error-light)';
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? <LoadingSpinner size="sm" /> : <Trash className="h-4 w-4" />}
               Delete Selected ({selectedItems.length})
@@ -369,7 +485,7 @@ const InventoryAdjustments: React.FC = () => {
             position="right"
             onImport={handleImportWithLoading}
             importLabel="Import Adjustments"
-            importIcon={importLoading ? <LoadingSpinner size="sm" /> : <Upload className="h-4 w-4 text-blue-500" />}
+            importIcon={importLoading ? <LoadingSpinner size="sm" /> : <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />}
             importAccept=".csv,.xlsx,.xls"
             importMultiple={true}
           />
@@ -377,27 +493,66 @@ const InventoryAdjustments: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-card)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search Adjustment No / Reason..."
                 value={filters.searchQuery}
                 onChange={(e) => { setFilters({ ...filters, searchQuery: e.target.value }); setCurrentPage(1); }}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.status}
               onChange={(e) => { setFilters({ ...filters, status: e.target.value as InventoryAdjustment['status'] | 'all' }); setCurrentPage(1); }}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
@@ -407,11 +562,27 @@ const InventoryAdjustments: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Layers className="h-4 w-4 text-gray-400" />
+            <Layers
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.type}
               onChange={(e) => { setFilters({ ...filters, type: e.target.value as InventoryAdjustment['type'] | 'all' }); setCurrentPage(1); }}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="all">All Types</option>
               <option value="quantity">Quantity</option>
@@ -421,19 +592,53 @@ const InventoryAdjustments: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-400" />
+            <Calendar
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <input
               type="date"
               value={filters.dateRange.start}
               onChange={(e) => { setFilters({ ...filters, dateRange: { ...filters.dateRange, start: e.target.value } }); setCurrentPage(1); }}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
-            <span className="text-gray-400">to</span>
+            <span
+              className="text-sm themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            >
+              to
+            </span>
             <input
               type="date"
               value={filters.dateRange.end}
               onChange={(e) => { setFilters({ ...filters, dateRange: { ...filters.dateRange, end: e.target.value } }); setCurrentPage(1); }}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
           </div>
         </div>
@@ -449,7 +654,7 @@ const InventoryAdjustments: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => item.id}
         emptyMessage="No adjustments found"
-        emptyIcon={<FileText className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<FileText className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={handleRowClick}
         pagination={{
           currentPage,

@@ -58,20 +58,26 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={handleOverlayClick}
     >
-      <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
+      <div
+        className="rounded-xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200 themed-transition"
+        style={{ background: 'var(--card)', boxShadow: 'var(--shadow-lg)' }}
+      >
         <div className="text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-50 mb-4">
+          <div
+            className="mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4"
+            style={{ background: 'var(--hover-bg)' }}
+          >
             <AlertTriangle className={`h-6 w-6 ${variantColors[variant]}`} />
           </div>
 
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text)' }}>
             {title}
           </h3>
 
-          <p className="text-sm text-gray-500 mb-6">
+          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
             {message}
           </p>
 
@@ -80,7 +86,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{ color: 'var(--text)', border: '1px solid var(--border)', background: 'var(--card)' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--card)'}
             >
               {cancelText}
             </button>

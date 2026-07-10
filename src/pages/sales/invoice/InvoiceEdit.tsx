@@ -344,14 +344,43 @@ export const InvoiceEdit: React.FC = () => {
   // Error state
   if (pageError) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-md mx-auto">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-700 mb-2">Invoice Not Found</h3>
-          <p className="text-sm text-red-600">{pageError}</p>
+      <div
+        className="p-6 min-h-screen themed-transition"
+        style={{ background: 'var(--background)' }}
+      >
+        <div
+          className="rounded-lg p-6 text-center max-w-md mx-auto themed-transition"
+          style={{
+            background: 'var(--error-light)',
+            border: '1px solid var(--error)',
+          }}
+        >
+          <AlertCircle
+            className="h-12 w-12 mx-auto mb-3"
+            style={{ color: 'var(--error)' }}
+          />
+          <h3
+            className="text-lg font-semibold mb-2"
+            style={{ color: 'var(--error)' }}
+          >
+            Invoice Not Found
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--error)' }}>
+            {pageError}
+          </p>
           <button
             onClick={() => navigate('/sales/invoices', { replace: true })}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--error)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
           >
             Go Back to Invoices
           </button>
@@ -361,24 +390,47 @@ export const InvoiceEdit: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className="min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancelClick}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{ background: 'transparent', color: 'var(--foreground-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center">
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                style={{ background: 'var(--primary)' }}
+              >
                 <Receipt className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Edit Invoice</h1>
-                <p className="text-sm text-gray-500">Update invoice details</p>
+                <h1
+                  className="text-2xl font-semibold themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Edit Invoice
+                </h1>
+                <p
+                  className="text-sm themed-transition"
+                  style={{ color: 'var(--foreground-secondary)' }}
+                >
+                  Update invoice details
+                </p>
               </div>
             </div>
           </div>
@@ -386,14 +438,33 @@ export const InvoiceEdit: React.FC = () => {
             <button
               type="button"
               onClick={handleCancelClick}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{ color: 'var(--foreground-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
             <button
               onClick={onSubmit}
               disabled={isSaving}
-              className="px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSaving) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {isSaving ? (
                 <>
@@ -431,12 +502,21 @@ export const InvoiceEdit: React.FC = () => {
 
         <form onSubmit={onSubmit}>
           {/* Customer & Invoice Details */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
+          <div
+            className="rounded-lg border p-5 mb-4 themed-transition"
+            style={{
+              background: 'var(--surface)',
+              borderColor: 'var(--border)',
+            }}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               {/* Customer Name */}
               <div className="lg:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Customer <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Customer <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <SearchableDropdown
                   options={MOCK_CUSTOMERS}
@@ -450,17 +530,25 @@ export const InvoiceEdit: React.FC = () => {
                   resetSearchOnOpen={true}
                 />
                 {formErrors.customerId && (
-                  <p className="mt-1 text-xs text-red-500">{formErrors.customerId}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {formErrors.customerId}
+                  </p>
                 )}
                 {formData.customerName && (
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
                     {formData.customerEmail && (
-                      <span className="flex items-center gap-1">
+                      <span
+                        className="flex items-center gap-1 themed-transition"
+                        style={{ color: 'var(--foreground-secondary)' }}
+                      >
                         <Mail className="h-3 w-3" /> {formData.customerEmail}
                       </span>
                     )}
                     {formData.customerPhone && (
-                      <span className="flex items-center gap-1">
+                      <span
+                        className="flex items-center gap-1 themed-transition"
+                        style={{ color: 'var(--foreground-secondary)' }}
+                      >
                         <Phone className="h-3 w-3" /> {formData.customerPhone}
                       </span>
                     )}
@@ -470,15 +558,28 @@ export const InvoiceEdit: React.FC = () => {
 
               {/* Invoice # - Read-only in edit */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Invoice#
                 </label>
-                <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2.5 bg-gray-50">
-                  <Hash className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                <div
+                  className="flex items-center border rounded-lg px-3 py-2.5 themed-transition"
+                  style={{
+                    borderColor: 'var(--border)',
+                    background: 'var(--surface-hover)',
+                  }}
+                >
+                  <Hash
+                    className="h-4 w-4 mr-2 flex-shrink-0"
+                    style={{ color: 'var(--foreground-tertiary)' }}
+                  />
                   <input
                     type="text"
                     value={formData.invoiceNo || 'INV-000005'}
-                    className="flex-1 outline-none text-sm bg-transparent text-gray-600 cursor-not-allowed"
+                    className="flex-1 outline-none text-sm bg-transparent cursor-not-allowed themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
                     readOnly
                     disabled
                   />
@@ -487,37 +588,77 @@ export const InvoiceEdit: React.FC = () => {
 
               {/* Invoice Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Invoice Date <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Invoice Date <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
-                <div className={`flex items-center border rounded-lg px-3 py-2.5 focus-within:border-amber-400 transition-all ${
-                  formErrors.date ? 'border-red-400' : 'border-gray-300'
-                }`}>
-                  <Calendar className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                <div
+                  className={`flex items-center border rounded-lg px-3 py-2.5 transition-all themed-transition ${
+                    formErrors.date ? 'border-error' : 'border-border'
+                  }`}
+                  style={{
+                    borderColor: formErrors.date ? 'var(--error)' : 'var(--border)',
+                    background: 'var(--surface)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = formErrors.date ? 'var(--error)' : 'var(--border)';
+                  }}
+                >
+                  <Calendar
+                    className="h-4 w-4 mr-2 flex-shrink-0"
+                    style={{ color: 'var(--foreground-tertiary)' }}
+                  />
                   <input
                     type="date"
                     value={formData.date}
                     onChange={(e) => updateFormData('date', e.target.value)}
-                    className="flex-1 outline-none text-sm bg-transparent text-gray-900"
+                    className="flex-1 outline-none text-sm bg-transparent themed-transition"
+                    style={{ color: 'var(--foreground)' }}
                   />
                 </div>
                 {formErrors.date && (
-                  <p className="mt-1 text-xs text-red-500">{formErrors.date}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {formErrors.date}
+                  </p>
                 )}
               </div>
 
               {/* Due Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Due Date
                 </label>
-                <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2.5 focus-within:border-amber-400 transition-all">
-                  <Clock className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                <div
+                  className="flex items-center border rounded-lg px-3 py-2.5 transition-all themed-transition"
+                  style={{
+                    borderColor: 'var(--border)',
+                    background: 'var(--surface)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                  }}
+                >
+                  <Clock
+                    className="h-4 w-4 mr-2 flex-shrink-0"
+                    style={{ color: 'var(--foreground-tertiary)' }}
+                  />
                   <input
                     type="date"
                     value={formData.dueDate}
                     onChange={(e) => updateFormData('dueDate', e.target.value)}
-                    className="flex-1 outline-none text-sm bg-transparent text-gray-900"
+                    className="flex-1 outline-none text-sm bg-transparent themed-transition"
+                    style={{ color: 'var(--foreground)' }}
                   />
                 </div>
               </div>
@@ -525,16 +666,36 @@ export const InvoiceEdit: React.FC = () => {
           </div>
 
           {/* Payment Terms */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
+          <div
+            className="rounded-lg border p-5 mb-4 themed-transition"
+            style={{
+              background: 'var(--surface)',
+              borderColor: 'var(--border)',
+            }}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Payment Terms
                 </label>
                 <select
                   value={formData.paymentTerms || 'Net 15'}
                   onChange={(e) => updateFormData('paymentTerms', e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 bg-white"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-1 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                  }}
                 >
                   <option value="Net 15">Net 15</option>
                   <option value="Net 30">Net 30</option>
@@ -546,16 +707,37 @@ export const InvoiceEdit: React.FC = () => {
                 <button
                   type="button"
                   onClick={toggleOldGold}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors themed-transition ${
                     showOldGold 
-                      ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' 
-                      : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-dashed border-amber-300'
+                      ? 'bg-primary-light text-primary hover:bg-primary-light/80'
+                      : 'border border-dashed border-primary text-primary hover:bg-primary-light/50'
                   }`}
+                  style={{
+                    background: showOldGold ? 'var(--primary-light)' : 'transparent',
+                    color: 'var(--primary)',
+                    borderColor: 'var(--primary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!showOldGold) {
+                      e.currentTarget.style.background = 'var(--primary-light)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!showOldGold) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
                 >
                   <RotateCcw className="h-4 w-4" />
                   {showOldGold ? 'Hide Old Gold Exchange' : 'Add Old Gold Exchange'}
                   {oldGoldItems.length > 0 && !showOldGold && (
-                    <span className="ml-1 px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full text-xs">
+                    <span
+                      className="ml-1 px-2 py-0.5 rounded-full text-xs themed-transition"
+                      style={{
+                        background: 'var(--primary)',
+                        color: 'white',
+                      }}
+                    >
                       {oldGoldItems.length}
                     </span>
                   )}
@@ -607,15 +789,30 @@ export const InvoiceEdit: React.FC = () => {
           {/* Old Gold Total Summary (when collapsed) */}
           {!showOldGold && oldGoldItems.length > 0 && (
             <div className="mt-2 mb-4 flex justify-end">
-              <div className="inline-flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
-                <RotateCcw className="h-4 w-4 text-amber-600" />
-                <span className="text-sm text-amber-700">
+              <div
+                className="inline-flex items-center gap-3 border rounded-lg px-4 py-2 themed-transition"
+                style={{
+                  background: 'var(--primary-light)',
+                  borderColor: 'var(--primary)',
+                }}
+              >
+                <RotateCcw className="h-4 w-4" style={{ color: 'var(--primary)' }} />
+                <span className="text-sm" style={{ color: 'var(--primary)' }}>
                   Old Gold Exchange: <span className="font-bold">{formatCurrency(oldGoldTotal)}</span>
                 </span>
-                <span className="text-xs text-amber-500">({oldGoldItems.length} items)</span>
+                <span className="text-xs" style={{ color: 'var(--primary)' }}>
+                  ({oldGoldItems.length} items)
+                </span>
                 <button
                   onClick={toggleOldGold}
-                  className="text-xs text-amber-600 hover:text-amber-800 underline"
+                  className="text-xs underline transition-colors"
+                  style={{ color: 'var(--primary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   Show
                 </button>
@@ -624,82 +821,177 @@ export const InvoiceEdit: React.FC = () => {
           )}
 
           {/* Customer Notes */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 mt-4">
+          <div
+            className="rounded-lg border p-5 mt-4 themed-transition"
+            style={{
+              background: 'var(--surface)',
+              borderColor: 'var(--border)',
+            }}
+          >
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                <FileText className="h-4 w-4 text-amber-600" />
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center themed-transition"
+                style={{ background: 'var(--primary-light)' }}
+              >
+                <FileText className="h-4 w-4" style={{ color: 'var(--primary)' }} />
               </div>
-              <span className="text-sm font-semibold text-gray-700">Customer Notes</span>
+              <span
+                className="text-sm font-semibold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Customer Notes
+              </span>
             </div>
             <textarea
               value={formData.notes}
               onChange={(e) => updateFormData('notes', e.target.value)}
               rows={3}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 transition-all resize-none text-gray-900"
+              className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none transition-all resize-none themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+              }}
               placeholder="Thank you for your business."
             />
           </div>
 
           {/* Terms & Conditions */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 mt-4">
+          <div
+            className="rounded-lg border p-5 mt-4 themed-transition"
+            style={{
+              background: 'var(--surface)',
+              borderColor: 'var(--border)',
+            }}
+          >
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                <FileText className="h-4 w-4 text-amber-600" />
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center themed-transition"
+                style={{ background: 'var(--primary-light)' }}
+              >
+                <FileText className="h-4 w-4" style={{ color: 'var(--primary)' }} />
               </div>
-              <span className="text-sm font-semibold text-gray-700">Terms & Conditions</span>
+              <span
+                className="text-sm font-semibold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Terms & Conditions
+              </span>
             </div>
             <textarea
               value={formData.termsAndConditions}
               onChange={(e) => updateFormData('termsAndConditions', e.target.value)}
               rows={3}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 transition-all resize-none text-gray-900"
+              className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none transition-all resize-none themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+              }}
               placeholder="Enter the terms and conditions..."
             />
           </div>
 
           {/* Grand Total Display */}
           {items.length > 0 && (
-            <div className="mt-4 bg-white rounded-lg border border-gray-200 p-5">
+            <div
+              className="mt-4 rounded-lg border p-5 themed-transition"
+              style={{
+                background: 'var(--surface)',
+                borderColor: 'var(--border)',
+              }}
+            >
               <div className="flex justify-end">
                 <div className="w-80 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Subtotal</span>
-                    <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
+                    <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                      Subtotal
+                    </span>
+                    <span
+                      className="font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {formatCurrency(totals.subtotal)}
+                    </span>
                   </div>
                   {totals.totalDiscount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Discount</span>
-                      <span className="font-medium text-green-600">-{formatCurrency(totals.totalDiscount)}</span>
+                      <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                        Discount
+                      </span>
+                      <span className="font-medium" style={{ color: 'var(--success)' }}>
+                        -{formatCurrency(totals.totalDiscount)}
+                      </span>
                     </div>
                   )}
                   {totals.taxAmount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Tax</span>
-                      <span className="font-medium">{formatCurrency(totals.taxAmount)}</span>
+                      <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                        Tax
+                      </span>
+                      <span
+                        className="font-medium themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
+                        {formatCurrency(totals.taxAmount)}
+                      </span>
                     </div>
                   )}
                   {totals.oldGoldTotal > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-amber-600">Old Gold Exchange</span>
-                      <span className="font-medium text-amber-600">-{formatCurrency(totals.oldGoldTotal)}</span>
+                      <span className="themed-transition" style={{ color: 'var(--primary)' }}>
+                        Old Gold Exchange
+                      </span>
+                      <span className="font-medium" style={{ color: 'var(--primary)' }}>
+                        -{formatCurrency(totals.oldGoldTotal)}
+                      </span>
                     </div>
                   )}
                   {formData.additionalCharges && formData.additionalCharges.length > 0 && (
                     formData.additionalCharges.map((charge: any, idx: number) => (
                       <div key={idx} className="flex justify-between text-sm">
-                        <span className="text-gray-500">{charge.label}</span>
-                        <span className="font-medium">+{formatCurrency(charge.value || 0)}</span>
+                        <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                          {charge.label}
+                        </span>
+                        <span
+                          className="font-medium themed-transition"
+                          style={{ color: 'var(--foreground)' }}
+                        >
+                          +{formatCurrency(charge.value || 0)}
+                        </span>
                       </div>
                     ))
                   )}
-                  <div className="border-t border-gray-200 pt-2">
+                  <div
+                    className="pt-2 themed-transition"
+                    style={{ borderTop: '1px solid var(--border)' }}
+                  >
                     <div className="flex justify-between text-base font-bold">
-                      <span className="text-gray-800">Grand Total</span>
-                      <span className="text-amber-600">{formatCurrency(totals.netTotal)}</span>
+                      <span className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                        Grand Total
+                      </span>
+                      <span style={{ color: 'var(--gold)' }}>
+                        {formatCurrency(totals.netTotal)}
+                      </span>
                     </div>
                   </div>
                   {/* Item count */}
-                  <div className="text-xs text-gray-400 text-right">
+                  <div
+                    className="text-xs text-right themed-transition"
+                    style={{ color: 'var(--foreground-tertiary)' }}
+                  >
                     Total Items: {totalItems} | Old Gold Items: {oldGoldItems.length}
                   </div>
                 </div>

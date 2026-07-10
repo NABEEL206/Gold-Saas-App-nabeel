@@ -28,12 +28,32 @@ import type { Customer } from '../../../types/customer/CustomerTypes';
 // Status Badge
 const StatusBadge: React.FC<{ status: Customer['status'] }> = ({ status }) => {
   const config = {
-    active: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Active' },
-    inactive: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Inactive' },
+    active: { icon: CheckCircle, label: 'Active' },
+    inactive: { icon: Clock, label: 'Inactive' },
   };
-  const { color, icon: Icon, label } = config[status];
+  const { icon: Icon, label } = config[status];
+
+  const getStatusStyles = () => {
+    switch (status) {
+      case 'active':
+        return { bg: 'var(--success-light)', color: 'var(--success)' };
+      case 'inactive':
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-secondary)' };
+      default:
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-secondary)' };
+    }
+  };
+
+  const styles = getStatusStyles();
+
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: styles.bg,
+        color: styles.color,
+      }}
+    >
       <Icon className="h-3 w-3" />
       {label}
     </span>
@@ -43,14 +63,38 @@ const StatusBadge: React.FC<{ status: Customer['status'] }> = ({ status }) => {
 // Type Badge
 const TypeBadge: React.FC<{ type: Customer['customerType'] }> = ({ type }) => {
   const config = {
-    individual: { color: 'bg-blue-100 text-blue-700', icon: User, label: 'Individual' },
-    business: { color: 'bg-purple-100 text-purple-700', icon: Building2, label: 'Business' },
-    government: { color: 'bg-amber-100 text-amber-700', icon: Building2, label: 'Government' },
-    'non-profit': { color: 'bg-green-100 text-green-700', icon: Building2, label: 'Non-Profit' },
+    individual: { icon: User, label: 'Individual' },
+    business: { icon: Building2, label: 'Business' },
+    government: { icon: Building2, label: 'Government' },
+    'non-profit': { icon: Building2, label: 'Non-Profit' },
   };
-  const { color, icon: Icon, label } = config[type];
+  const { icon: Icon, label } = config[type];
+
+  const getTypeStyles = () => {
+    switch (type) {
+      case 'individual':
+        return { bg: 'var(--info-light)', color: 'var(--info)' };
+      case 'business':
+        return { bg: 'var(--primary-light)', color: 'var(--primary)' };
+      case 'government':
+        return { bg: 'var(--warning-light)', color: 'var(--warning)' };
+      case 'non-profit':
+        return { bg: 'var(--success-light)', color: 'var(--success)' };
+      default:
+        return { bg: 'var(--surface-hover)', color: 'var(--foreground-secondary)' };
+    }
+  };
+
+  const styles = getTypeStyles();
+
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: styles.bg,
+        color: styles.color,
+      }}
+    >
       <Icon className="h-3 w-3" />
       {label}
     </span>
@@ -212,7 +256,12 @@ const Customers: React.FC = () => {
       key: 'customerCode',
       header: 'Code',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">{item.customerCode}</span>
+        <span
+          className="text-sm font-medium themed-transition"
+          style={{ color: 'var(--foreground)' }}
+        >
+          {item.customerCode}
+        </span>
       ),
     },
     {
@@ -220,8 +269,18 @@ const Customers: React.FC = () => {
       header: 'Customer',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{item.displayName}</p>
-          <p className="text-xs text-gray-500">{item.email || item.mobileNumber}</p>
+          <p
+            className="text-sm font-medium themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.displayName}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.email || item.mobileNumber}
+          </p>
         </div>
       ),
     },
@@ -234,14 +293,22 @@ const Customers: React.FC = () => {
       key: 'mobileNumber',
       header: 'Mobile',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.mobileNumber}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.mobileNumber}
+        </span>
       ),
     },
     {
       key: 'city',
       header: 'Location',
       render: (item) => (
-        <span className="text-sm text-gray-600">
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
           {[item.city, item.state].filter(Boolean).join(', ') || '—'}
         </span>
       ),
@@ -259,7 +326,7 @@ const Customers: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportAction('pdf'),
       disabled: exportLoading,
@@ -269,7 +336,7 @@ const Customers: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportAction('excel'),
       disabled: exportLoading,
@@ -285,12 +352,23 @@ const Customers: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1
+            className="text-2xl font-bold themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            Customers
+          </h1>
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
             {stats ? `${stats.totalCustomers} total customers • ${stats.active} active` : 'Manage your customer database'}
           </p>
         </div>
@@ -298,7 +376,20 @@ const Customers: React.FC = () => {
           <button
             onClick={handleRefreshClick}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
             title="Refresh customer list"
           >
             {refreshLoading ? (
@@ -311,7 +402,17 @@ const Customers: React.FC = () => {
 
           <button
             onClick={handleCreateNew}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             <span>New Customer</span>
@@ -321,7 +422,20 @@ const Customers: React.FC = () => {
             <button
               onClick={handleBulkDeleteAction}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -341,7 +455,7 @@ const Customers: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -351,27 +465,66 @@ const Customers: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-card)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by name, code, email, mobile..."
                 value={filters.searchQuery}
                 onChange={handleSearchChange}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.customerType}
               onChange={handleTypeFilterChange}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="all">All Types</option>
               <option value="individual">Individual</option>
@@ -382,11 +535,27 @@ const Customers: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.status}
               onChange={handleStatusFilterChange}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -406,7 +575,7 @@ const Customers: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => item.id}
         emptyMessage="No customers found"
-        emptyIcon={<Users className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<Users className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage,

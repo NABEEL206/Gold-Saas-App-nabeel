@@ -123,33 +123,70 @@ const InventoryAdjustmentCreate: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/inventory/adjustments')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 rounded-lg transition-colors themed-transition"
+            style={{ background: 'transparent' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--hover-bg)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
+            <ArrowLeft className="h-5 w-5 themed-transition" style={{ color: 'var(--text-secondary)' }} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Create Inventory Adjustment</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Adjust inventory quantities, weights, or values</p>
+            <h1 className="text-2xl font-bold themed-transition" style={{ color: 'var(--text)' }}>
+              Create Inventory Adjustment
+            </h1>
+            <p className="text-sm mt-0.5 themed-transition" style={{ color: 'var(--text-secondary)' }}>
+              Adjust inventory quantities, weights, or values
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => navigate('/inventory/adjustments')}
-            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors themed-transition"
+            style={{
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border)',
+              background: 'transparent',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--hover-bg)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={saving || selectedItems.length === 0}
-            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              if (!saving && selectedItems.length > 0) {
+                e.currentTarget.style.background = 'var(--primary-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             {saving ? <LoadingSpinner size="sm" /> : <Save className="h-4 w-4" />}
             Save Adjustment
@@ -159,10 +196,16 @@ const InventoryAdjustmentCreate: React.FC = () => {
 
       {/* Error Summary */}
       {errors.submit && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+        <div
+          className="mb-6 p-4 rounded-lg flex items-start gap-3 themed-transition"
+          style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid var(--danger)',
+          }}
+        >
+          <AlertCircle className="h-5 w-5 mt-0.5" style={{ color: 'var(--danger)' }} />
           <div>
-            <p className="text-sm text-red-700">{errors.submit}</p>
+            <p className="text-sm" style={{ color: 'var(--danger)' }}>{errors.submit}</p>
           </div>
         </div>
       )}
@@ -172,12 +215,21 @@ const InventoryAdjustmentCreate: React.FC = () => {
           {/* Main Form - Left 2/3 */}
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h2 className="text-lg font-semibold mb-4 themed-transition" style={{ color: 'var(--text)' }}>
+                Basic Information
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Adjustment Type <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium mb-1.5 themed-transition" style={{ color: 'var(--text)' }}>
+                    Adjustment Type <span style={{ color: 'var(--danger)' }}>*</span>
                   </label>
                   <div className="flex gap-2">
                     {['quantity', 'weight', 'value'].map((type) => (
@@ -185,11 +237,26 @@ const InventoryAdjustmentCreate: React.FC = () => {
                         key={type}
                         type="button"
                         onClick={() => handleFormChange('type', type)}
-                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-2 themed-transition ${
                           formData.type === type
                             ? 'border-amber-500 bg-amber-50 text-amber-700'
-                            : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                            : 'hover:bg-gray-50 text-gray-600'
                         }`}
+                        style={{
+                          borderColor: formData.type === type ? 'var(--primary)' : 'var(--border)',
+                          background: formData.type === type ? 'var(--primary-light)' : 'transparent',
+                          color: formData.type === type ? 'var(--primary)' : 'var(--text-secondary)',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (formData.type !== type) {
+                            e.currentTarget.style.background = 'var(--hover-bg)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (formData.type !== type) {
+                            e.currentTarget.style.background = 'transparent';
+                          }
+                        }}
                       >
                         {getTypeIcon(type)}
                         {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -199,36 +266,68 @@ const InventoryAdjustmentCreate: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Date <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium mb-1.5 themed-transition" style={{ color: 'var(--text)' }}>
+                    Date <span style={{ color: 'var(--danger)' }}>*</span>
                   </label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Calendar
+                      className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                      style={{ color: 'var(--text-muted)' }}
+                    />
                     <input
                       type="date"
                       value={formData.date}
                       onChange={(e) => handleFormChange('date', e.target.value)}
-                      className={`w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                        errors.date ? 'border-red-500' : 'border-gray-200'
+                      className={`w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition ${
+                        errors.date ? 'border-red-500' : 'border'
                       }`}
+                      style={{
+                        border: errors.date ? '1px solid var(--danger)' : '1px solid var(--border)',
+                        background: 'var(--card)',
+                        color: 'var(--text)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = errors.date ? 'var(--danger)' : 'var(--border)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                     {errors.date && (
-                      <p className="mt-1 text-xs text-red-500">{errors.date}</p>
+                      <p className="mt-1 text-xs" style={{ color: 'var(--danger)' }}>{errors.date}</p>
                     )}
                   </div>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium mb-1.5 themed-transition" style={{ color: 'var(--text)' }}>
                     Notes
                   </label>
                   <div className="relative">
-                    <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <FileText
+                      className="absolute left-3 top-3 h-4 w-4 themed-transition"
+                      style={{ color: 'var(--text-muted)' }}
+                    />
                     <textarea
                       value={formData.notes}
                       onChange={(e) => handleFormChange('notes', e.target.value)}
                       placeholder="Optional notes..."
-                      className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                      className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition"
+                      style={{
+                        border: '1px solid var(--border)',
+                        background: 'var(--card)',
+                        color: 'var(--text)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       rows={2}
                     />
                   </div>
@@ -237,9 +336,18 @@ const InventoryAdjustmentCreate: React.FC = () => {
             </div>
 
             {/* Items Selection */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Items</h2>
+                <h2 className="text-lg font-semibold themed-transition" style={{ color: 'var(--text)' }}>
+                  Items
+                </h2>
                 <div className="w-64">
                   <SearchableDropdown
                     options={itemOptions}
@@ -257,46 +365,91 @@ const InventoryAdjustmentCreate: React.FC = () => {
               </div>
 
               {errors.items && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-500" />
-                  <span className="text-sm text-red-700">{errors.items}</span>
+                <div
+                  className="mb-4 p-3 rounded-lg flex items-center gap-2 themed-transition"
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid var(--danger)',
+                  }}
+                >
+                  <AlertCircle className="h-4 w-4" style={{ color: 'var(--danger)' }} />
+                  <span className="text-sm" style={{ color: 'var(--danger)' }}>{errors.items}</span>
                 </div>
               )}
 
               {/* Selected Items List */}
               {selectedItems.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-                  <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                <div
+                  className="text-center py-8 border-2 border-dashed rounded-lg themed-transition"
+                  style={{
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <Package
+                    className="h-12 w-12 mx-auto mb-2 themed-transition"
+                    style={{ color: 'var(--text-muted)' }}
+                  />
                   <p>No items added yet</p>
-                  <p className="text-sm">Search and select items from the dropdown above</p>
+                  <p className="text-sm themed-transition" style={{ color: 'var(--text-muted)' }}>
+                    Search and select items from the dropdown above
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
+                    <thead
+                      className="themed-transition"
+                      style={{ background: 'var(--hover-bg)' }}
+                    >
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Previous</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Adjusted</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Difference</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition" style={{ color: 'var(--text-muted)' }}>
+                          Item
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition" style={{ color: 'var(--text-muted)' }}>
+                          Previous
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition" style={{ color: 'var(--text-muted)' }}>
+                          Adjusted
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition" style={{ color: 'var(--text-muted)' }}>
+                          Difference
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition" style={{ color: 'var(--text-muted)' }}>
+                          Reason
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-medium uppercase themed-transition" style={{ color: 'var(--text-muted)' }}>
+                          Action
+                        </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody
+                      className="divide-y themed-transition"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
                       {selectedItems.map((item, index) => {
                         const diff = item.difference || 0;
                         const isError = errors[`item_${index}`];
                         
                         return (
-                          <tr key={item.itemId} className={isError ? 'bg-red-50' : ''}>
+                          <tr
+                            key={item.itemId}
+                            className="themed-transition"
+                            style={{
+                              background: isError ? 'rgba(239, 68, 68, 0.05)' : 'transparent',
+                            }}
+                          >
                             <td className="px-3 py-2">
                               <div>
-                                <p className="font-medium text-gray-900">{item.itemName}</p>
-                                <p className="text-xs text-gray-500">{item.itemCode}</p>
+                                <p className="font-medium themed-transition" style={{ color: 'var(--text)' }}>
+                                  {item.itemName}
+                                </p>
+                                <p className="text-xs themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                                  {item.itemCode}
+                                </p>
                               </div>
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-2 themed-transition" style={{ color: 'var(--text)' }}>
                               {formData.type === 'quantity' && item.previousQuantity}
                               {formData.type === 'weight' && item.previousWeight}
                               {formData.type === 'value' && item.previousValue}
@@ -316,17 +469,39 @@ const InventoryAdjustmentCreate: React.FC = () => {
                                                 'adjustedValue';
                                   handleItemChange(item.itemId, field, value);
                                 }}
-                                className={`w-24 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                                  isError ? 'border-red-500' : 'border-gray-200'
+                                className={`w-24 px-2 py-1 rounded text-sm focus:outline-none focus:ring-2 themed-transition ${
+                                  isError ? 'border-red-500' : 'border'
                                 }`}
+                                style={{
+                                  border: isError ? '1px solid var(--danger)' : '1px solid var(--border)',
+                                  background: 'var(--card)',
+                                  color: 'var(--text)',
+                                }}
+                                onFocus={(e) => {
+                                  e.currentTarget.style.borderColor = 'var(--primary)';
+                                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                                }}
+                                onBlur={(e) => {
+                                  e.currentTarget.style.borderColor = isError ? 'var(--danger)' : 'var(--border)';
+                                  e.currentTarget.style.boxShadow = 'none';
+                                }}
                               />
                             </td>
                             <td className="px-3 py-2">
-                              <span className={`font-medium ${diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                              <span
+                                className={`font-medium ${
+                                  diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : ''
+                                }`}
+                                style={{
+                                  color: diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--danger)' : 'var(--text-muted)',
+                                }}
+                              >
                                 {diff > 0 ? '+' : ''}{diff}
                               </span>
                               {isError && (
-                                <p className="text-xs text-red-500">{errors[`item_${index}`]}</p>
+                                <p className="text-xs" style={{ color: 'var(--danger)' }}>
+                                  {errors[`item_${index}`]}
+                                </p>
                               )}
                             </td>
                             <td className="px-3 py-2">
@@ -335,14 +510,34 @@ const InventoryAdjustmentCreate: React.FC = () => {
                                 value={item.reason || ''}
                                 onChange={(e) => handleItemChange(item.itemId, 'reason', e.target.value)}
                                 placeholder="Reason..."
-                                className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-2 themed-transition"
+                                style={{
+                                  border: '1px solid var(--border)',
+                                  background: 'var(--card)',
+                                  color: 'var(--text)',
+                                }}
+                                onFocus={(e) => {
+                                  e.currentTarget.style.borderColor = 'var(--primary)';
+                                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                                }}
+                                onBlur={(e) => {
+                                  e.currentTarget.style.borderColor = 'var(--border)';
+                                  e.currentTarget.style.boxShadow = 'none';
+                                }}
                               />
                             </td>
                             <td className="px-3 py-2 text-right">
                               <button
                                 type="button"
                                 onClick={() => handleRemoveItem(item.itemId)}
-                                className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                className="p-1 rounded-lg transition-colors"
+                                style={{ color: 'var(--danger)' }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'transparent';
+                                }}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -360,35 +555,70 @@ const InventoryAdjustmentCreate: React.FC = () => {
           {/* Sidebar - Right 1/3 */}
           <div className="space-y-6">
             {/* Summary Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Summary</h3>
+            <div
+              className="rounded-xl p-6 sticky top-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-sm font-semibold uppercase tracking-wider mb-4 themed-transition"
+                style={{ color: 'var(--text)' }}
+              >
+                Summary
+              </h3>
               
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Total Items</span>
-                  <span className="font-medium text-gray-900">{totals.itemCount}</span>
+                  <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                    Total Items
+                  </span>
+                  <span className="font-medium themed-transition" style={{ color: 'var(--text)' }}>
+                    {totals.itemCount}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Total {formData.type === 'quantity' ? 'Quantity' : formData.type === 'weight' ? 'Weight' : 'Value'}</span>
-                  <span className="font-medium text-gray-900">
+                  <span className="themed-transition" style={{ color: 'var(--text-secondary)' }}>
+                    Total {formData.type === 'quantity' ? 'Quantity' : formData.type === 'weight' ? 'Weight' : 'Value'}
+                  </span>
+                  <span className="font-medium themed-transition" style={{ color: 'var(--text)' }}>
                     {formData.type === 'quantity' && totals.totalValue}
                     {formData.type === 'weight' && `${totals.totalValue} kg`}
                     {formData.type === 'value' && `₹${totals.totalValue}`}
                   </span>
                 </div>
                 
-                <div className="border-t border-gray-200 pt-3">
+                <div
+                  className="pt-3 themed-transition"
+                  style={{ borderTop: '1px solid var(--border)' }}
+                >
                   <div className="flex justify-between text-sm">
-                    <span className="text-green-600">Total Gain</span>
-                    <span className="font-medium text-green-600">+{totals.totalGain}</span>
+                    <span style={{ color: 'var(--success)' }}>Total Gain</span>
+                    <span className="font-medium" style={{ color: 'var(--success)' }}>
+                      +{totals.totalGain}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-red-600">Total Loss</span>
-                    <span className="font-medium text-red-600">-{totals.totalLoss}</span>
+                    <span style={{ color: 'var(--danger)' }}>Total Loss</span>
+                    <span className="font-medium" style={{ color: 'var(--danger)' }}>
+                      -{totals.totalLoss}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-sm font-medium pt-1 border-t border-gray-200 mt-1">
-                    <span className="text-gray-700">Net Change</span>
-                    <span className={totals.netChange >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  <div
+                    className="flex justify-between text-sm font-medium pt-1 mt-1 themed-transition"
+                    style={{ borderTop: '1px solid var(--border)' }}
+                  >
+                    <span className="themed-transition" style={{ color: 'var(--text)' }}>
+                      Net Change
+                    </span>
+                    <span
+                      className="themed-transition"
+                      style={{
+                        color: totals.netChange >= 0 ? 'var(--success)' : 'var(--danger)',
+                      }}
+                    >
                       {totals.netChange >= 0 ? '+' : ''}{totals.netChange}
                     </span>
                   </div>
@@ -396,9 +626,15 @@ const InventoryAdjustmentCreate: React.FC = () => {
               </div>
 
               {selectedItems.length > 0 && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-start gap-2">
-                  <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-blue-700">
+                <div
+                  className="mt-4 p-3 rounded-lg flex items-start gap-2 themed-transition"
+                  style={{
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid var(--info)',
+                  }}
+                >
+                  <Info className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--info)' }} />
+                  <p className="text-xs" style={{ color: 'var(--info)' }}>
                     {totals.netChange > 0 ? 
                       `This adjustment will increase inventory by ${totals.netChange} units` :
                       totals.netChange < 0 ?

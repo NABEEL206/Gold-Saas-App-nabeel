@@ -323,34 +323,83 @@ const QuoteCreate: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <button onClick={handleCancelClick} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
+            <button
+              onClick={handleCancelClick}
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{ background: 'transparent' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <ArrowLeft
+                className="h-5 w-5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Gem className="h-6 w-6 text-amber-500" />
+              <h1
+                className="text-2xl font-bold flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Gem className="h-6 w-6" style={{ color: 'var(--gold)' }} />
                 Create New Quote
               </h1>
-              <p className="text-sm text-gray-500 mt-0.5">Create a new jewelry quote for a customer</p>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                Create a new jewelry quote for a customer
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleSubmit('draft')}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--surface)';
+              }}
             >
               <Save className="h-4 w-4" />Save as Draft
             </button>
             <button
               onClick={() => handleSubmit('sent')}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {saving ? <LoadingSpinner size="sm" /> : <Send className="h-4 w-4" />}Create & Send
             </button>
@@ -377,13 +426,29 @@ const QuoteCreate: React.FC = () => {
         )}
 
         {/* Customer Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <User className="h-4 w-4 text-amber-500" />Customer Information
+        <div
+          className="rounded-xl p-6 mb-6 themed-transition"
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-card)',
+          }}
+        >
+          <h3
+            className="text-sm font-semibold uppercase tracking-wider mb-4 flex items-center gap-2 themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            <User className="h-4 w-4" style={{ color: 'var(--gold)' }} />
+            Customer Information
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Customer Name *</label>
+              <label
+                className="block text-sm font-medium mb-1.5 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Customer Name *
+              </label>
               <SearchableDropdown
                 options={MOCK_CUSTOMERS}
                 value={formData.customerId}
@@ -396,51 +461,125 @@ const QuoteCreate: React.FC = () => {
                 resetSearchOnOpen={true}
               />
               {validationErrors.customerId && (
-                <p className="mt-1 text-xs text-red-500">{validationErrors.customerId}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.customerId}
+                </p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <label
+                className="block text-sm font-medium mb-1.5 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Email
+              </label>
               <input
                 type="email"
                 value={formData.customerEmail}
                 onChange={(e) => handleInputChange('customerEmail', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="customer@email.com"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone *</label>
+              <label
+                className="block text-sm font-medium mb-1.5 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Phone *
+              </label>
               <input
                 type="tel"
                 value={formData.customerPhone}
                 onChange={(e) => handleInputChange('customerPhone', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  validationErrors.customerPhone ? 'border-red-500' : 'border-gray-200'
-                }`}
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: validationErrors.customerPhone ? '1px solid var(--error)' : '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = validationErrors.customerPhone ? 'var(--error)' : 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter phone number"
               />
               {validationErrors.customerPhone && (
-                <p className="mt-1 text-xs text-red-500">{validationErrors.customerPhone}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.customerPhone}
+                </p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">GST Number</label>
+              <label
+                className="block text-sm font-medium mb-1.5 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                GST Number
+              </label>
               <input
                 type="text"
                 value={formData.customerGst}
                 onChange={(e) => handleInputChange('customerGst', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="GSTIN"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
+              <label
+                className="block text-sm font-medium mb-1.5 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Address
+              </label>
               <input
                 type="text"
                 value={formData.customerAddress}
                 onChange={(e) => handleInputChange('customerAddress', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Customer address"
               />
             </div>
@@ -448,32 +587,79 @@ const QuoteCreate: React.FC = () => {
         </div>
 
         {/* Quote Details */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-amber-500" />Quote Details
+        <div
+          className="rounded-xl p-6 mb-6 themed-transition"
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-card)',
+          }}
+        >
+          <h3
+            className="text-sm font-semibold uppercase tracking-wider mb-4 flex items-center gap-2 themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            <Calendar className="h-4 w-4" style={{ color: 'var(--gold)' }} />
+            Quote Details
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Date *</label>
+              <label
+                className="block text-sm font-medium mb-1.5 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Date *
+              </label>
               <input
                 type="date"
                 value={formData.date}
                 onChange={(e) => handleInputChange('date', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  validationErrors.date ? 'border-red-500' : 'border-gray-200'
-                }`}
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: validationErrors.date ? '1px solid var(--error)' : '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = validationErrors.date ? 'var(--error)' : 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
               {validationErrors.date && (
-                <p className="mt-1 text-xs text-red-500">{validationErrors.date}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.date}
+                </p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Valid Until</label>
+              <label
+                className="block text-sm font-medium mb-1.5 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Valid Until
+              </label>
               <input
                 type="date"
                 value={formData.validUntil}
                 onChange={(e) => handleInputChange('validUntil', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
@@ -506,42 +692,102 @@ const QuoteCreate: React.FC = () => {
           errors={validationErrors}
         />
         {validationErrors.items && (
-          <p className="mt-1 text-xs text-red-500">{validationErrors.items}</p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+            {validationErrors.items}
+          </p>
         )}
 
         {/* Notes & Terms */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-amber-500" />Notes
+          <div
+            className="rounded-xl p-6 themed-transition"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-card)',
+            }}
+          >
+            <h4
+              className="text-sm font-semibold mb-3 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <FileText className="h-4 w-4" style={{ color: 'var(--gold)' }} />
+              Notes
             </h4>
             <textarea
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               placeholder="Any additional notes..."
             />
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-amber-500" />Terms & Conditions
+          <div
+            className="rounded-xl p-6 themed-transition"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-card)',
+            }}
+          >
+            <h4
+              className="text-sm font-semibold mb-3 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <FileText className="h-4 w-4" style={{ color: 'var(--gold)' }} />
+              Terms & Conditions
             </h4>
             <textarea
               value={formData.termsAndConditions}
               onChange={(e) => handleInputChange('termsAndConditions', e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               placeholder="Terms and conditions..."
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-200">
+        <div
+          className="mt-6 flex flex-wrap items-center justify-between gap-3 pt-4 themed-transition"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
           <button
             onClick={handleCancelClick}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+            className="px-4 py-2 text-sm transition-colors themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--foreground)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--foreground-secondary)';
+            }}
           >
             Cancel
           </button>
@@ -549,14 +795,39 @@ const QuoteCreate: React.FC = () => {
             <button
               onClick={() => handleSubmit('draft')}
               disabled={saving}
-              className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--surface)';
+              }}
             >
               Save as Draft
             </button>
             <button
               onClick={() => handleSubmit('sent')}
               disabled={saving}
-              className="px-4 py-2 text-sm text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {saving ? <LoadingSpinner size="sm" /> : <Send className="h-4 w-4" />}
               Create & Send

@@ -223,14 +223,40 @@ const InventoryAdjustmentEdit: React.FC = () => {
 
   if (!adjustment) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div
+        className="p-6 flex items-center justify-center min-h-[400px] themed-transition"
+        style={{ background: 'var(--background)' }}
+      >
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-300 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-gray-900">Adjustment Not Found</h3>
-          <p className="text-sm text-gray-500 mt-1">The adjustment you are trying to edit does not exist.</p>
+          <AlertCircle
+            className="h-12 w-12 mx-auto mb-3 themed-transition"
+            style={{ color: 'var(--text-muted)' }}
+          />
+          <h3
+            className="text-lg font-semibold themed-transition"
+            style={{ color: 'var(--text)' }}
+          >
+            Adjustment Not Found
+          </h3>
+          <p
+            className="text-sm mt-1 themed-transition"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            The adjustment you are trying to edit does not exist.
+          </p>
           <button
             onClick={() => navigate('/inventory/adjustments')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Adjustments
           </button>
@@ -241,16 +267,40 @@ const InventoryAdjustmentEdit: React.FC = () => {
 
   if (!isEditable) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div
+        className="p-6 flex items-center justify-center min-h-[400px] themed-transition"
+        style={{ background: 'var(--background)' }}
+      >
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-yellow-300 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-gray-900">Cannot Edit</h3>
-          <p className="text-sm text-gray-500 mt-1">
-            This adjustment is in <strong>{adjustment.status}</strong> status and cannot be edited.
+          <AlertCircle
+            className="h-12 w-12 mx-auto mb-3 themed-transition"
+            style={{ color: 'var(--warning)' }}
+          />
+          <h3
+            className="text-lg font-semibold themed-transition"
+            style={{ color: 'var(--text)' }}
+          >
+            Cannot Edit
+          </h3>
+          <p
+            className="text-sm mt-1 themed-transition"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            This adjustment is in <strong style={{ color: 'var(--text)' }}>{adjustment.status}</strong> status and cannot be edited.
           </p>
           <button
             onClick={() => navigate(`/inventory/adjustments/${id}`)}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             View Adjustment
           </button>
@@ -260,27 +310,60 @@ const InventoryAdjustmentEdit: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{ background: 'transparent' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Go back"
             >
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
+              <ArrowLeft
+                className="h-5 w-5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              />
             </button>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-900">Edit Adjustment</h1>
-                <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
+                <h1
+                  className="text-2xl font-bold themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Edit Adjustment
+                </h1>
+                <span
+                  className="px-3 py-1 text-xs font-medium rounded-full themed-transition"
+                  style={{
+                    background: 'var(--surface-hover)',
+                    color: 'var(--foreground-secondary)',
+                  }}
+                >
                   {adjustment.adjustmentNo}
                 </span>
               </div>
-              <p className="text-sm text-gray-500 mt-0.5">
-                Status: <span className="font-medium capitalize">{adjustment.status}</span>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                Status:{' '}
+                <span
+                  className="font-medium capitalize themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  {adjustment.status}
+                </span>
               </p>
             </div>
           </div>
@@ -290,7 +373,16 @@ const InventoryAdjustmentEdit: React.FC = () => {
               type="button"
               onClick={handleRefreshWithWarning}
               disabled={refreshing}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 rounded-lg transition-colors disabled:opacity-50 themed-transition"
+              style={{ color: 'var(--foreground-secondary)' }}
+              onMouseEnter={(e) => {
+                if (!refreshing) {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Refresh data"
             >
               <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -300,7 +392,14 @@ const InventoryAdjustmentEdit: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResetForm}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
                 title="Reset changes"
               >
                 Reset
@@ -311,7 +410,20 @@ const InventoryAdjustmentEdit: React.FC = () => {
               type="button"
               onClick={handleDelete}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--surface)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  e.currentTarget.style.background = 'var(--error-light)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--surface)';
+              }}
             >
               <Trash2 className="h-4 w-4" />
               Delete
@@ -321,7 +433,20 @@ const InventoryAdjustmentEdit: React.FC = () => {
               type="button"
               onClick={handleCancel}
               disabled={saving}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                border: '1px solid var(--border)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
@@ -329,7 +454,19 @@ const InventoryAdjustmentEdit: React.FC = () => {
             <button
               onClick={handleSubmit}
               disabled={saving || selectedItems.length === 0 || refreshing}
-              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving && selectedItems.length > 0 && !refreshing) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {saving ? <LoadingSpinner size="sm" /> : <Save className="h-4 w-4" />}
               {saving ? 'Saving...' : 'Update Adjustment'}
@@ -339,11 +476,28 @@ const InventoryAdjustmentEdit: React.FC = () => {
 
         {/* Error Summary */}
         {Object.keys(errors).length > 0 && Object.keys(errors).some(key => key !== 'load') && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+          <div
+            className="mb-6 p-4 rounded-lg flex items-start gap-3 themed-transition"
+            style={{
+              background: 'var(--error-light)',
+              border: '1px solid var(--error)',
+            }}
+          >
+            <AlertCircle
+              className="h-5 w-5 mt-0.5 flex-shrink-0"
+              style={{ color: 'var(--error)' }}
+            />
             <div>
-              <p className="text-sm font-medium text-red-800">Please fix the following errors:</p>
-              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
+              <p
+                className="text-sm font-medium"
+                style={{ color: 'var(--error)' }}
+              >
+                Please fix the following errors:
+              </p>
+              <ul
+                className="mt-1 text-sm list-disc list-inside"
+                style={{ color: 'var(--error)' }}
+              >
                 {Object.entries(errors)
                   .filter(([key]) => key !== 'load')
                   .map(([key, value]) => (
@@ -356,13 +510,31 @@ const InventoryAdjustmentEdit: React.FC = () => {
 
         {/* Load Error */}
         {errors.load && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+          <div
+            className="mb-6 p-4 rounded-lg flex items-start gap-3 themed-transition"
+            style={{
+              background: 'var(--error-light)',
+              border: '1px solid var(--error)',
+            }}
+          >
+            <AlertCircle
+              className="h-5 w-5 mt-0.5 flex-shrink-0"
+              style={{ color: 'var(--error)' }}
+            />
             <div className="flex-1">
-              <p className="text-sm text-red-700">{errors.load}</p>
+              <p className="text-sm" style={{ color: 'var(--error)' }}>
+                {errors.load}
+              </p>
               <button
                 onClick={handleRefreshWithWarning}
-                className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
+                className="mt-2 text-sm font-medium flex items-center gap-1 transition-colors"
+                style={{ color: 'var(--error)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
               >
                 <RefreshCw className="h-4 w-4" />
                 Try Again
@@ -376,12 +548,27 @@ const InventoryAdjustmentEdit: React.FC = () => {
             {/* Main Form - Left 2/3 */}
             <div className="lg:col-span-2 space-y-6">
               {/* Basic Information */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
+              <div
+                className="rounded-xl p-6 themed-transition"
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-card)',
+                }}
+              >
+                <h2
+                  className="text-lg font-semibold mb-4 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Basic Information
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Adjustment Type <span className="text-red-500">*</span>
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      Adjustment Type <span style={{ color: 'var(--error)' }}>*</span>
                     </label>
                     <div className="flex gap-2">
                       {['quantity', 'weight', 'value'].map((type) => (
@@ -389,11 +576,22 @@ const InventoryAdjustmentEdit: React.FC = () => {
                           key={type}
                           type="button"
                           onClick={() => handleFormChange('type', type)}
-                          className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                            formData.type === type
-                              ? 'border-amber-500 bg-amber-50 text-amber-700'
-                              : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                          }`}
+                          className="flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-2 themed-transition"
+                          style={{
+                            borderColor: formData.type === type ? 'var(--primary)' : 'var(--border)',
+                            background: formData.type === type ? 'var(--primary-light)' : 'transparent',
+                            color: formData.type === type ? 'var(--primary)' : 'var(--foreground-secondary)',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (formData.type !== type) {
+                              e.currentTarget.style.background = 'var(--surface-hover)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (formData.type !== type) {
+                              e.currentTarget.style.background = 'transparent';
+                            }
+                          }}
                         >
                           {getTypeIcon(type)}
                           {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -403,52 +601,109 @@ const InventoryAdjustmentEdit: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Date <span className="text-red-500">*</span>
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      Date <span style={{ color: 'var(--error)' }}>*</span>
                     </label>
                     <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Calendar
+                        className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      />
                       <input
                         type="date"
                         value={formData.date}
                         onChange={(e) => handleFormChange('date', e.target.value)}
-                        className={`w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                          errors.date ? 'border-red-500' : 'border-gray-200'
-                        }`}
+                        className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                        style={{
+                          border: errors.date ? '1px solid var(--error)' : '1px solid var(--border)',
+                          background: 'var(--surface)',
+                          color: 'var(--foreground)',
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--primary)';
+                          e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = errors.date ? 'var(--error)' : 'var(--border)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
                       />
                       {errors.date && (
-                        <p className="mt-1 text-xs text-red-500">{errors.date}</p>
+                        <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                          {errors.date}
+                        </p>
                       )}
                     </div>
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       Reason
                     </label>
                     <div className="relative">
-                      <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <FileText
+                        className="absolute left-3 top-3 h-4 w-4 themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      />
                       <textarea
                         value={formData.reason || ''}
                         onChange={(e) => handleFormChange('reason', e.target.value)}
                         placeholder="Reason for adjustment..."
-                        className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                        className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition"
+                        style={{
+                          border: '1px solid var(--border)',
+                          background: 'var(--surface)',
+                          color: 'var(--foreground)',
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--primary)';
+                          e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--border)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
                         rows={2}
                       />
                     </div>
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       Notes
                     </label>
                     <div className="relative">
-                      <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <FileText
+                        className="absolute left-3 top-3 h-4 w-4 themed-transition"
+                        style={{ color: 'var(--foreground-tertiary)' }}
+                      />
                       <textarea
                         value={formData.notes || ''}
                         onChange={(e) => handleFormChange('notes', e.target.value)}
                         placeholder="Optional notes..."
-                        className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                        className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition"
+                        style={{
+                          border: '1px solid var(--border)',
+                          background: 'var(--surface)',
+                          color: 'var(--foreground)',
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--primary)';
+                          e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--border)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
                         rows={2}
                       />
                     </div>
@@ -457,9 +712,21 @@ const InventoryAdjustmentEdit: React.FC = () => {
               </div>
 
               {/* Items Selection */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div
+                className="rounded-xl p-6 themed-transition"
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-card)',
+                }}
+              >
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Items</h2>
+                  <h2
+                    className="text-lg font-semibold themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    Items
+                  </h2>
                   <div className="w-64">
                     <SearchableDropdown
                       options={itemOptions}
@@ -477,47 +744,132 @@ const InventoryAdjustmentEdit: React.FC = () => {
                 </div>
 
                 {errors.items && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-red-500" />
-                    <span className="text-sm text-red-700">{errors.items}</span>
+                  <div
+                    className="mb-4 p-3 rounded-lg flex items-center gap-2 themed-transition"
+                    style={{
+                      background: 'var(--error-light)',
+                      border: '1px solid var(--error)',
+                    }}
+                  >
+                    <AlertCircle
+                      className="h-4 w-4 flex-shrink-0"
+                      style={{ color: 'var(--error)' }}
+                    />
+                    <span className="text-sm" style={{ color: 'var(--error)' }}>
+                      {errors.items}
+                    </span>
                   </div>
                 )}
 
                 {/* Selected Items List */}
                 {selectedItems.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-                    <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <div
+                    className="text-center py-8 border-2 border-dashed rounded-lg themed-transition"
+                    style={{
+                      borderColor: 'var(--border)',
+                      color: 'var(--foreground-secondary)',
+                    }}
+                  >
+                    <Package
+                      className="h-12 w-12 mx-auto mb-2 themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    />
                     <p>No items added yet</p>
-                    <p className="text-sm">Search and select items from the dropdown above</p>
+                    <p
+                      className="text-sm themed-transition"
+                      style={{ color: 'var(--foreground-tertiary)' }}
+                    >
+                      Search and select items from the dropdown above
+                    </p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50">
+                      <thead
+                        className="themed-transition"
+                        style={{ background: 'var(--surface-hover)' }}
+                      >
                         <tr>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Previous</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Adjusted</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">New</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Difference</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
+                          <th
+                            className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition"
+                            style={{ color: 'var(--foreground-tertiary)' }}
+                          >
+                            Item
+                          </th>
+                          <th
+                            className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition"
+                            style={{ color: 'var(--foreground-tertiary)' }}
+                          >
+                            Previous
+                          </th>
+                          <th
+                            className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition"
+                            style={{ color: 'var(--foreground-tertiary)' }}
+                          >
+                            Adjusted
+                          </th>
+                          <th
+                            className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition"
+                            style={{ color: 'var(--foreground-tertiary)' }}
+                          >
+                            New
+                          </th>
+                          <th
+                            className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition"
+                            style={{ color: 'var(--foreground-tertiary)' }}
+                          >
+                            Difference
+                          </th>
+                          <th
+                            className="px-3 py-2 text-left text-xs font-medium uppercase themed-transition"
+                            style={{ color: 'var(--foreground-tertiary)' }}
+                          >
+                            Reason
+                          </th>
+                          <th
+                            className="px-3 py-2 text-right text-xs font-medium uppercase themed-transition"
+                            style={{ color: 'var(--foreground-tertiary)' }}
+                          >
+                            Action
+                          </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody
+                        className="divide-y themed-transition"
+                        style={{ borderColor: 'var(--border)' }}
+                      >
                         {selectedItems.map((item: any, index: number) => {
                           const diff = item.difference || 0;
                           const isError = errors[`item_${index}`];
                           
                           return (
-                            <tr key={item.itemId} className={isError ? 'bg-red-50' : ''}>
+                            <tr
+                              key={item.itemId}
+                              className="themed-transition"
+                              style={{
+                                background: isError ? 'var(--error-light)' : 'transparent',
+                              }}
+                            >
                               <td className="px-3 py-2">
                                 <div>
-                                  <p className="font-medium text-gray-900">{item.itemName}</p>
-                                  <p className="text-xs text-gray-500">{item.itemCode}</p>
+                                  <p
+                                    className="font-medium themed-transition"
+                                    style={{ color: 'var(--foreground)' }}
+                                  >
+                                    {item.itemName}
+                                  </p>
+                                  <p
+                                    className="text-xs themed-transition"
+                                    style={{ color: 'var(--foreground-secondary)' }}
+                                  >
+                                    {item.itemCode}
+                                  </p>
                                 </div>
                               </td>
-                              <td className="px-3 py-2 text-sm text-gray-600">
+                              <td
+                                className="px-3 py-2 text-sm themed-transition"
+                                style={{ color: 'var(--foreground-secondary)' }}
+                              >
                                 {formData.type === 'quantity' && item.previousQuantity}
                                 {formData.type === 'weight' && `${item.previousWeight} kg`}
                                 {formData.type === 'value' && `₹${item.previousValue}`}
@@ -537,23 +889,44 @@ const InventoryAdjustmentEdit: React.FC = () => {
                                                   'adjustedValue';
                                     handleItemChange(item.itemId, field, value);
                                   }}
-                                  className={`w-24 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                                    isError ? 'border-red-500' : 'border-gray-200'
-                                  }`}
+                                  className="w-24 px-2 py-1 rounded text-sm focus:outline-none focus:ring-2 themed-transition"
+                                  style={{
+                                    border: isError ? '1px solid var(--error)' : '1px solid var(--border)',
+                                    background: 'var(--surface)',
+                                    color: 'var(--foreground)',
+                                  }}
+                                  onFocus={(e) => {
+                                    e.currentTarget.style.borderColor = 'var(--primary)';
+                                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                                  }}
+                                  onBlur={(e) => {
+                                    e.currentTarget.style.borderColor = isError ? 'var(--error)' : 'var(--border)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                  }}
                                   step="0.01"
                                 />
                               </td>
-                              <td className="px-3 py-2 text-sm font-medium">
+                              <td
+                                className="px-3 py-2 text-sm font-medium themed-transition"
+                                style={{ color: 'var(--foreground)' }}
+                              >
                                 {formData.type === 'quantity' && item.newQuantity}
                                 {formData.type === 'weight' && `${item.newWeight} kg`}
                                 {formData.type === 'value' && `₹${item.newValue}`}
                               </td>
                               <td className="px-3 py-2">
-                                <span className={`font-medium ${diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                                <span
+                                  className="font-medium"
+                                  style={{
+                                    color: diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--error)' : 'var(--foreground-tertiary)',
+                                  }}
+                                >
                                   {diff > 0 ? '+' : ''}{diff}
                                 </span>
                                 {isError && (
-                                  <p className="text-xs text-red-500">{errors[`item_${index}`]}</p>
+                                  <p className="text-xs" style={{ color: 'var(--error)' }}>
+                                    {errors[`item_${index}`]}
+                                  </p>
                                 )}
                               </td>
                               <td className="px-3 py-2">
@@ -562,14 +935,34 @@ const InventoryAdjustmentEdit: React.FC = () => {
                                   value={item.reason || ''}
                                   onChange={(e) => handleItemChange(item.itemId, 'reason', e.target.value)}
                                   placeholder="Reason..."
-                                  className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                  className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-2 themed-transition"
+                                  style={{
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--surface)',
+                                    color: 'var(--foreground)',
+                                  }}
+                                  onFocus={(e) => {
+                                    e.currentTarget.style.borderColor = 'var(--primary)';
+                                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                                  }}
+                                  onBlur={(e) => {
+                                    e.currentTarget.style.borderColor = 'var(--border)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                  }}
                                 />
                               </td>
                               <td className="px-3 py-2 text-right">
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveItem(item.itemId)}
-                                  className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  className="p-1 rounded-lg transition-colors"
+                                  style={{ color: 'var(--error)' }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'var(--error-light)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                  }}
                                 >
                                   <X className="h-4 w-4" />
                                 </button>
@@ -587,35 +980,86 @@ const InventoryAdjustmentEdit: React.FC = () => {
             {/* Sidebar - Right 1/3 */}
             <div className="space-y-6">
               {/* Summary Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Summary</h3>
+              <div
+                className="rounded-xl p-6 sticky top-6 themed-transition"
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-card)',
+                }}
+              >
+                <h3
+                  className="text-sm font-semibold uppercase tracking-wider mb-4 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Summary
+                </h3>
                 
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Total Items</span>
-                    <span className="font-medium text-gray-900">{totals.itemCount}</span>
+                    <span
+                      className="themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
+                      Total Items
+                    </span>
+                    <span
+                      className="font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {totals.itemCount}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Total {formData.type === 'quantity' ? 'Quantity' : formData.type === 'weight' ? 'Weight' : 'Value'}</span>
-                    <span className="font-medium text-gray-900">
+                    <span
+                      className="themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
+                      Total{' '}
+                      {formData.type === 'quantity' ? 'Quantity' : formData.type === 'weight' ? 'Weight' : 'Value'}
+                    </span>
+                    <span
+                      className="font-medium themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       {formData.type === 'quantity' && totals.totalValue}
                       {formData.type === 'weight' && `${totals.totalValue} kg`}
                       {formData.type === 'value' && `₹${totals.totalValue}`}
                     </span>
                   </div>
                   
-                  <div className="border-t border-gray-200 pt-3">
+                  <div
+                    className="pt-3 themed-transition"
+                    style={{ borderTop: '1px solid var(--border)' }}
+                  >
                     <div className="flex justify-between text-sm">
-                      <span className="text-green-600">Total Gain</span>
-                      <span className="font-medium text-green-600">+{totals.totalGain}</span>
+                      <span style={{ color: 'var(--success)' }}>Total Gain</span>
+                      <span className="font-medium" style={{ color: 'var(--success)' }}>
+                        +{totals.totalGain}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-red-600">Total Loss</span>
-                      <span className="font-medium text-red-600">-{totals.totalLoss}</span>
+                      <span style={{ color: 'var(--error)' }}>Total Loss</span>
+                      <span className="font-medium" style={{ color: 'var(--error)' }}>
+                        -{totals.totalLoss}
+                      </span>
                     </div>
-                    <div className="flex justify-between text-sm font-medium pt-1 border-t border-gray-200 mt-1">
-                      <span className="text-gray-700">Net Change</span>
-                      <span className={totals.netChange >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    <div
+                      className="flex justify-between text-sm font-medium pt-1 mt-1 themed-transition"
+                      style={{ borderTop: '1px solid var(--border)' }}
+                    >
+                      <span
+                        className="themed-transition"
+                        style={{ color: 'var(--foreground)' }}
+                      >
+                        Net Change
+                      </span>
+                      <span
+                        className="themed-transition"
+                        style={{
+                          color: totals.netChange >= 0 ? 'var(--success)' : 'var(--error)',
+                        }}
+                      >
                         {totals.netChange >= 0 ? '+' : ''}{totals.netChange}
                       </span>
                     </div>
@@ -623,9 +1067,18 @@ const InventoryAdjustmentEdit: React.FC = () => {
                 </div>
 
                 {selectedItems.length > 0 && (
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-start gap-2">
-                    <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-blue-700">
+                  <div
+                    className="mt-4 p-3 rounded-lg flex items-start gap-2 themed-transition"
+                    style={{
+                      background: 'var(--info-light)',
+                      border: '1px solid var(--info)',
+                    }}
+                  >
+                    <Info
+                      className="h-4 w-4 mt-0.5 flex-shrink-0"
+                      style={{ color: 'var(--info)' }}
+                    />
+                    <p className="text-xs" style={{ color: 'var(--info)' }}>
                       {totals.netChange > 0 ? 
                         `This adjustment will increase inventory by ${totals.netChange} units` :
                         totals.netChange < 0 ?
@@ -637,9 +1090,18 @@ const InventoryAdjustmentEdit: React.FC = () => {
                 )}
 
                 {/* Warning for non-draft status */}
-                <div className="mt-4 p-3 bg-yellow-50 rounded-lg flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-yellow-700">
+                <div
+                  className="mt-4 p-3 rounded-lg flex items-start gap-2 themed-transition"
+                  style={{
+                    background: 'var(--warning-light)',
+                    border: '1px solid var(--warning)',
+                  }}
+                >
+                  <AlertCircle
+                    className="h-4 w-4 mt-0.5 flex-shrink-0"
+                    style={{ color: 'var(--warning)' }}
+                  />
+                  <p className="text-xs" style={{ color: 'var(--warning)' }}>
                     Only draft adjustments can be edited. Once approved, changes cannot be modified.
                   </p>
                 </div>

@@ -219,23 +219,54 @@ export const CustomerCreate: React.FC = () => {
   const hasErrors = Object.keys(errors).length > 0;
   const errorCount = getErrorCount(errors);
 
-  // Get country label for display
+  // Helper function to get input border color - ALWAYS check errors state
+  const getInputBorderColor = (fieldName: string): string => {
+    return errors[fieldName] ? 'var(--error)' : 'var(--border)';
+  };
+
+  // Helper function to get input border width
+  const getInputBorderWidth = (fieldName: string): string => {
+    return errors[fieldName] ? '2px' : '1px';
+  };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="w-full">
         {/* Header with Save button on right */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
               onClick={handleCancelClick}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{ background: 'transparent' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
+              <ArrowLeft
+                className="h-5 w-5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Create Customer</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Add a new customer to your database</p>
+              <h1
+                className="text-2xl font-bold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Create Customer
+              </h1>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                Add a new customer to your database
+              </p>
             </div>
           </div>
           
@@ -243,7 +274,19 @@ export const CustomerCreate: React.FC = () => {
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="px-6 py-2.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            className="px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed themed-transition shadow-sm"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              if (!saving) {
+                e.currentTarget.style.background = 'var(--primary-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             {saving ? (
               <>
@@ -279,17 +322,31 @@ export const CustomerCreate: React.FC = () => {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-xl shadow-sm themed-transition"
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-card)',
+          }}
+        >
           <div className="p-6 space-y-6">
             {/* Personal Information */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <User className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <User className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Personal Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     Salutation
                   </label>
                   <SearchableDropdown
@@ -306,32 +363,66 @@ export const CustomerCreate: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     First Name
                   </label>
                   <input
                     type="text"
                     value={formData.firstName}
                     onChange={(e) => handleInputChange('firstName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('firstName')} solid ${getInputBorderColor('firstName')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('firstName');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('firstName');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="Enter first name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Last Name <span className="text-red-500">*</span>
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    Last Name <span style={{ color: 'var(--error)' }}>*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.lastName}
                     onChange={(e) => handleInputChange('lastName', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.lastName ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('lastName')} solid ${getInputBorderColor('lastName')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('lastName');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('lastName');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="Enter last name"
                   />
                   {errors.lastName && (
-                    <p className="mt-1 text-xs text-red-500">{errors.lastName}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.lastName}
+                    </p>
                   )}
                 </div>
               </div>
@@ -339,14 +430,20 @@ export const CustomerCreate: React.FC = () => {
 
             {/* Customer Details */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Building2 className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Customer Details
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Customer Type <span className="text-red-500">*</span>
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    Customer Type <span style={{ color: 'var(--error)' }}>*</span>
                   </label>
                   <SearchableDropdown
                     options={customerTypeOptions}
@@ -362,20 +459,37 @@ export const CustomerCreate: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Display Name <span className="text-red-500">*</span>
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    Display Name <span style={{ color: 'var(--error)' }}>*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.displayName}
                     onChange={(e) => handleInputChange('displayName', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.displayName ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('displayName')} solid ${getInputBorderColor('displayName')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('displayName');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('displayName');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="Enter display name"
                   />
                   {errors.displayName && (
-                    <p className="mt-1 text-xs text-red-500">{errors.displayName}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.displayName}
+                    </p>
                   )}
                 </div>
               </div>
@@ -383,58 +497,112 @@ export const CustomerCreate: React.FC = () => {
 
             {/* Contact Information */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Mail className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Mail className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Contact Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    <Mail className="h-4 w-4 inline mr-1" />
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    <Mail className="h-4 w-4 inline mr-1" style={{ color: 'var(--foreground-tertiary)' }} />
                     Email Address
                   </label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.email ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('email')} solid ${getInputBorderColor('email')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('email');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('email');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="customer@email.com"
                   />
                   {errors.email && (
-                    <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.email}
+                    </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    <Phone className="h-4 w-4 inline mr-1" />
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    <Phone className="h-4 w-4 inline mr-1" style={{ color: 'var(--foreground-tertiary)' }} />
                     Work Phone
                   </label>
                   <input
                     type="text"
                     value={formData.workPhone}
                     onChange={(e) => handleInputChange('workPhone', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('workPhone')} solid ${getInputBorderColor('workPhone')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('workPhone');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('workPhone');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="022-1234567"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    <Phone className="h-4 w-4 inline mr-1" />
-                    Mobile Number <span className="text-red-500">*</span>
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    <Phone className="h-4 w-4 inline mr-1" style={{ color: 'var(--foreground-tertiary)' }} />
+                    Mobile Number <span style={{ color: 'var(--error)' }}>*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.mobileNumber}
                     onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.mobileNumber ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('mobileNumber')} solid ${getInputBorderColor('mobileNumber')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('mobileNumber');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('mobileNumber');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="9876543210"
                   />
                   {errors.mobileNumber && (
-                    <p className="mt-1 text-xs text-red-500">{errors.mobileNumber}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.mobileNumber}
+                    </p>
                   )}
                 </div>
               </div>
@@ -442,62 +610,136 @@ export const CustomerCreate: React.FC = () => {
 
             {/* Address */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <MapPin className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Address
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     Billing Address
                   </label>
                   <textarea
                     value={formData.billingAddress}
                     onChange={(e) => handleInputChange('billingAddress', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('billingAddress')} solid ${getInputBorderColor('billingAddress')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('billingAddress');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('billingAddress');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     rows={2}
                     placeholder="Enter billing address"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       City
                     </label>
                     <input
                       type="text"
                       value={formData.city}
                       onChange={(e) => handleInputChange('city', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                      style={{
+                        border: `${getInputBorderWidth('city')} solid ${getInputBorderColor('city')}`,
+                        background: 'var(--background)',
+                        color: 'var(--foreground)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = getInputBorderColor('city');
+                        e.currentTarget.style.borderWidth = getInputBorderWidth('city');
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       placeholder="Enter city"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       State
                     </label>
                     <input
                       type="text"
                       value={formData.state}
                       onChange={(e) => handleInputChange('state', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                      style={{
+                        border: `${getInputBorderWidth('state')} solid ${getInputBorderColor('state')}`,
+                        background: 'var(--background)',
+                        color: 'var(--foreground)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = getInputBorderColor('state');
+                        e.currentTarget.style.borderWidth = getInputBorderWidth('state');
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       placeholder="Enter state"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       Pincode
                     </label>
                     <input
                       type="text"
                       value={formData.pincode}
                       onChange={(e) => handleInputChange('pincode', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                      style={{
+                        border: `${getInputBorderWidth('pincode')} solid ${getInputBorderColor('pincode')}`,
+                        background: 'var(--background)',
+                        color: 'var(--foreground)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = getInputBorderColor('pincode');
+                        e.currentTarget.style.borderWidth = getInputBorderWidth('pincode');
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       placeholder="Enter pincode"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label
+                      className="block text-sm font-medium mb-1.5 themed-transition"
+                      style={{ color: 'var(--foreground)' }}
+                    >
                       Country
                     </label>
                     <SearchableDropdown
@@ -519,67 +761,138 @@ export const CustomerCreate: React.FC = () => {
 
             {/* Financial & Tax Information */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <CreditCard className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Financial & Tax Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     Opening Balance
                   </label>
                   <input
                     type="number"
                     value={formData.openingBalance}
                     onChange={(e) => handleInputChange('openingBalance', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('openingBalance')} solid ${getInputBorderColor('openingBalance')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('openingBalance');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('openingBalance');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     Credit Limit
                   </label>
                   <input
                     type="number"
                     value={formData.creditLimit}
                     onChange={(e) => handleInputChange('creditLimit', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('creditLimit')} solid ${getInputBorderColor('creditLimit')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('creditLimit');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('creditLimit');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     GST Number
                   </label>
                   <input
                     type="text"
                     value={formData.gstNumber}
                     onChange={(e) => handleInputChange('gstNumber', e.target.value.toUpperCase())}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.gstNumber ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('gstNumber')} solid ${getInputBorderColor('gstNumber')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('gstNumber');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('gstNumber');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="22AAAAA0000A1Z1"
                   />
                   {errors.gstNumber && (
-                    <p className="mt-1 text-xs text-red-500">{errors.gstNumber}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.gstNumber}
+                    </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label
+                    className="block text-sm font-medium mb-1.5 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     PAN Number
                   </label>
                   <input
                     type="text"
                     value={formData.panNumber}
                     onChange={(e) => handleInputChange('panNumber', e.target.value.toUpperCase())}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.panNumber ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `${getInputBorderWidth('panNumber')} solid ${getInputBorderColor('panNumber')}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = getInputBorderColor('panNumber');
+                      e.currentTarget.style.borderWidth = getInputBorderWidth('panNumber');
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                     placeholder="ABCDE1234F"
                   />
                   {errors.panNumber && (
-                    <p className="mt-1 text-xs text-red-500">{errors.panNumber}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                      {errors.panNumber}
+                    </p>
                   )}
                 </div>
               </div>
@@ -587,14 +900,31 @@ export const CustomerCreate: React.FC = () => {
 
             {/* Notes */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <FileText className="h-5 w-5" style={{ color: 'var(--gold)' }} />
                 Notes
               </h2>
               <textarea
                 value={formData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition"
+                style={{
+                  border: `${getInputBorderWidth('notes')} solid ${getInputBorderColor('notes')}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = getInputBorderColor('notes');
+                  e.currentTarget.style.borderWidth = getInputBorderWidth('notes');
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 rows={3}
                 placeholder="Add any additional notes about the customer..."
               />
