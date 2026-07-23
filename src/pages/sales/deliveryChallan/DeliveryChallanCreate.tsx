@@ -30,7 +30,11 @@ import {
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
-// Mock customer data for dropdown
+// ============================================================
+// MOCK DATA - Can be moved to a separate config file
+// ============================================================
+
+// Customer data - Single source of truth
 const MOCK_CUSTOMERS: DropdownOption[] = [
   { value: 'CUST-001', label: 'Rajesh Jewelers', group: 'Regular' },
   { value: 'CUST-002', label: 'Priya Gold House', group: 'Regular' },
@@ -39,7 +43,46 @@ const MOCK_CUSTOMERS: DropdownOption[] = [
   { value: 'CUST-005', label: 'Vikram Gems', group: 'Corporate' },
 ];
 
-// Mock product suggestions
+// Customer details lookup - Single source of truth
+const CUSTOMER_DETAILS: Record<string, any> = {
+  'CUST-001': { 
+    name: 'Rajesh Jewelers', 
+    email: 'rajesh@jewelers.com', 
+    phone: '+91-98765-43210', 
+    address: '123, Jewelry Market, Mumbai', 
+    gst: '22AAAAA0000A1Z5' 
+  },
+  'CUST-002': { 
+    name: 'Priya Gold House', 
+    email: 'priya@goldhouse.com', 
+    phone: '+91-98765-43211', 
+    address: '45, Gold Street, Chennai', 
+    gst: '22BBBBB0000B1Z5' 
+  },
+  'CUST-003': { 
+    name: 'Amit Diamond Co.', 
+    email: 'amit@diamond.com', 
+    phone: '+91-98765-43212', 
+    address: '789, Diamond Plaza, Surat', 
+    gst: '22CCCCC0000C1Z5' 
+  },
+  'CUST-004': { 
+    name: 'Sneha Jewellery', 
+    email: 'sneha@jewellery.com', 
+    phone: '+91-98765-43213', 
+    address: '321, Jewel Lane, Jaipur', 
+    gst: '22DDDDD0000D1Z5' 
+  },
+  'CUST-005': { 
+    name: 'Vikram Gems', 
+    email: 'vikram@gems.com', 
+    phone: '+91-98765-43214', 
+    address: '654, Gem Tower, Mumbai', 
+    gst: '22EEEEE0000E1Z5' 
+  },
+};
+
+// Product suggestions - Single source of truth
 const MOCK_PRODUCTS = [
   { id: '1', name: 'Gold Ring', code: 'GR-001', category: 'Ring', purity: '22K', price: 7500, description: '22K Gold Ring with diamond', unit: 'Pcs' },
   { id: '2', name: 'Gold Chain', code: 'GC-001', category: 'Chain', purity: '22K', price: 4500, description: '22K Gold Chain with pendant', unit: 'Pcs' },
@@ -106,15 +149,7 @@ const DeliveryChallanCreate: React.FC = () => {
 
   // Handle customer selection from dropdown
   const handleCustomerSelect = useCallback((selectedOption: DropdownOption) => {
-    const customerDetails: Record<string, any> = {
-      'CUST-001': { name: 'Rajesh Jewelers', email: 'rajesh@jewelers.com', phone: '+91-98765-43210', address: '123, Jewelry Market, Mumbai', gst: '22AAAAA0000A1Z5' },
-      'CUST-002': { name: 'Priya Gold House', email: 'priya@goldhouse.com', phone: '+91-98765-43211', address: '45, Gold Street, Chennai', gst: '22BBBBB0000B1Z5' },
-      'CUST-003': { name: 'Amit Diamond Co.', email: 'amit@diamond.com', phone: '+91-98765-43212', address: '789, Diamond Plaza, Surat', gst: '22CCCCC0000C1Z5' },
-      'CUST-004': { name: 'Sneha Jewellery', email: 'sneha@jewellery.com', phone: '+91-98765-43213', address: '321, Jewel Lane, Jaipur', gst: '22DDDDD0000D1Z5' },
-      'CUST-005': { name: 'Vikram Gems', email: 'vikram@gems.com', phone: '+91-98765-43214', address: '654, Gem Tower, Mumbai', gst: '22EEEEE0000E1Z5' },
-    };
-
-    const details = customerDetails[selectedOption.value] || null;
+    const details = CUSTOMER_DETAILS[selectedOption.value] || null;
     if (details) {
       updateFormData('customerId', selectedOption.value);
       updateFormData('customerName', details.name || selectedOption.label);
@@ -218,36 +253,79 @@ const DeliveryChallanCreate: React.FC = () => {
   const hasErrors = Object.keys(validationErrors).length > 0 || Object.keys(hookErrors).length > 0;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
-                <Truck className="h-6 w-6 text-amber-500" />
+              <h1
+                className="text-2xl font-semibold flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Truck className="h-6 w-6" style={{ color: 'var(--gold)' }} />
                 Create Delivery Challan
               </h1>
-              <p className="text-sm text-gray-500">Create a new delivery challan</p>
+              <p
+                className="text-sm themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                Create a new delivery challan
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
             <button
               onClick={handleFormSubmit}
               disabled={savingForm}
-              className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!savingForm) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {savingForm ? (
                 <LoadingSpinner size="sm" />
@@ -282,66 +360,137 @@ const DeliveryChallanCreate: React.FC = () => {
 
         <form onSubmit={handleFormSubmit} className="space-y-6">
           {/* Basic Information */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <FileText className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Basic Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Challan Number <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Challan Number <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.challanNumber}
                   onChange={(e) => updateFormData('challanNumber', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-gray-900"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${validationErrors.challanNumber ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = validationErrors.challanNumber ? 'var(--error)' : 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter challan number"
                 />
                 {validationErrors.challanNumber && (
-                  <p className="mt-1 text-xs text-red-500">{validationErrors.challanNumber}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {validationErrors.challanNumber}
+                  </p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Challan Date <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Challan Date <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <input
                   type="date"
                   value={formData.challanDate}
                   onChange={(e) => updateFormData('challanDate', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    validationErrors.challanDate ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${validationErrors.challanDate ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = validationErrors.challanDate ? 'var(--error)' : 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
                 {validationErrors.challanDate && (
-                  <p className="mt-1 text-xs text-red-500">{validationErrors.challanDate}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {validationErrors.challanDate}
+                  </p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Expected Delivery Date
                 </label>
                 <input
                   type="date"
                   value={formData.deliveryDate}
                   onChange={(e) => updateFormData('deliveryDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
               </div>
             </div>
           </div>
 
           {/* Customer Section - Using SearchableDropdown */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <Users className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Customer Details
             </h2>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select Customer <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Select Customer <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <SearchableDropdown
                 options={MOCK_CUSTOMERS}
@@ -355,33 +504,57 @@ const DeliveryChallanCreate: React.FC = () => {
                 resetSearchOnOpen={true}
               />
               {validationErrors.customerId && (
-                <p className="mt-1 text-xs text-red-500">{validationErrors.customerId}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.customerId}
+                </p>
               )}
             </div>
 
             {formData.customerName && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50 rounded-lg">
+              <div
+                className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg themed-transition"
+                style={{
+                  background: 'var(--primary-light)',
+                }}
+              >
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{formData.customerName}</p>
+                  <p
+                    className="text-sm font-medium themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    {formData.customerName}
+                  </p>
                   {formData.customerEmail && (
-                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                    <p
+                      className="text-sm flex items-center gap-2 mt-1 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       <Mail className="h-4 w-4" /> {formData.customerEmail}
                     </p>
                   )}
                   {formData.customerPhone && (
-                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                    <p
+                      className="text-sm flex items-center gap-2 mt-1 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       <Phone className="h-4 w-4" /> {formData.customerPhone}
                     </p>
                   )}
                 </div>
                 <div>
                   {formData.customerGst && (
-                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                    <p
+                      className="text-sm flex items-center gap-2 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       <FileText className="h-4 w-4" /> GST: {formData.customerGst}
                     </p>
                   )}
                   {formData.customerAddress && (
-                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                    <p
+                      className="text-sm flex items-center gap-2 mt-1 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       <Building2 className="h-4 w-4" /> {formData.customerAddress}
                     </p>
                   )}
@@ -391,26 +564,51 @@ const DeliveryChallanCreate: React.FC = () => {
           </div>
 
           {/* Delivery Address */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <MapPin className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Delivery Address
             </h2>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Delivery Address <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Delivery Address <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <textarea
                 value={formData.deliveryAddress}
                 onChange={(e) => updateFormData('deliveryAddress', e.target.value)}
                 rows={3}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  validationErrors.deliveryAddress ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${validationErrors.deliveryAddress ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = validationErrors.deliveryAddress ? 'var(--error)' : 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter delivery address..."
               />
               {validationErrors.deliveryAddress && (
-                <p className="mt-1 text-xs text-red-500">{validationErrors.deliveryAddress}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.deliveryAddress}
+                </p>
               )}
             </div>
           </div>
@@ -442,67 +640,179 @@ const DeliveryChallanCreate: React.FC = () => {
             addButtonAtBottom={true}
           />
           {validationErrors.items && (
-            <p className="mt-1 text-xs text-red-500">{validationErrors.items}</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+              {validationErrors.items}
+            </p>
           )}
 
           {/* Transport Details */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <TruckIcon className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <TruckIcon className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Transport Details
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Transporter Name</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Transporter Name
+                </label>
                 <input
                   type="text"
                   value={formData.transporterName}
                   onChange={(e) => updateFormData('transporterName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter transporter name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Number</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Vehicle Number
+                </label>
                 <input
                   type="text"
                   value={formData.vehicleNumber}
                   onChange={(e) => updateFormData('vehicleNumber', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter vehicle number"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">LR Number</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  LR Number
+                </label>
                 <input
                   type="text"
                   value={formData.lrNumber}
                   onChange={(e) => updateFormData('lrNumber', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter LR number"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">LR Date</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  LR Date
+                </label>
                 <input
                   type="date"
                   value={formData.lrDate}
                   onChange={(e) => updateFormData('lrDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
               </div>
             </div>
           </div>
 
           {/* Payment Terms */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Terms</h2>
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              Payment Terms
+            </h2>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Payment Terms
+              </label>
               <select
                 value={formData.paymentTerms}
                 onChange={(e) => updateFormData('paymentTerms', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               >
                 <option value="Net 7">Net 7</option>
                 <option value="Net 15">Net 15</option>
@@ -516,25 +826,67 @@ const DeliveryChallanCreate: React.FC = () => {
           </div>
 
           {/* Notes & Terms */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Notes
+                </label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => updateFormData('notes', e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter any notes..."
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Terms & Conditions</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Terms & Conditions
+                </label>
                 <textarea
                   value={formData.termsAndConditions}
                   onChange={(e) => updateFormData('termsAndConditions', e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter terms and conditions..."
                 />
               </div>
@@ -544,8 +896,16 @@ const DeliveryChallanCreate: React.FC = () => {
       </div>
 
       {savingForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div
+            className="rounded-lg p-8 flex flex-col items-center themed-transition"
+            style={{
+              background: 'var(--card)',
+            }}
+          >
             <LoadingSpinner size="lg" />
           </div>
         </div>

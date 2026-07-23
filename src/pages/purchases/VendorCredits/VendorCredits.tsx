@@ -1,6 +1,5 @@
 // src/pages/purchases/VendorCredits/VendorCredits.tsx
-
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -26,6 +25,8 @@ import type { VendorCredit } from '../../../types/VendorCredits/VendorCreditsTyp
 import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ReusableTable from '../../../components/common/ReusableTable';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import { 
   VENDOR_CREDIT_STATUSES, 
@@ -34,21 +35,66 @@ import {
   VENDOR_CREDIT_REASON_LABELS
 } from '../../../types/VendorCredits/VendorCreditsType';
 
-// Status Badge
+// ============================================================
+// STATUS CONFIGURATION - Single source of truth
+// ============================================================
+
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  draft: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-secondary)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Draft',
+  },
+  pending: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    icon: <AlertCircle className="h-3 w-3" />,
+    label: 'Pending',
+  },
+  approved: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Approved',
+  },
+  used: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Used',
+  },
+  cancelled: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    icon: <XCircle className="h-3 w-3" />,
+    label: 'Cancelled',
+  },
+  expired: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-tertiary)',
+    icon: <AlertCircle className="h-3 w-3" />,
+    label: 'Expired',
+  },
+};
+
+// Status Badge Component
 const StatusBadge: React.FC<{ status: VendorCredit['status'] }> = ({ status }) => {
-  const config = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Draft' },
-    pending: { color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle, label: 'Pending' },
-    approved: { color: 'bg-blue-100 text-blue-700', icon: CheckCircle, label: 'Approved' },
-    used: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Used' },
-    cancelled: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Cancelled' },
-    expired: { color: 'bg-gray-100 text-gray-500', icon: AlertCircle, label: 'Expired' },
-  };
-  const defaultConfig = { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
-  const { color, icon: Icon, label } = config[status] || defaultConfig;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
@@ -69,115 +115,205 @@ const VendorCredits: React.FC = () => {
     fetchCredits,
   } = useVendorCredits({ page: 1, limit: 10 });
 
+  // Use the toast and confirm hook
+  const {
+    success,
+    error: showError,
+    warning,
+    withConfirmation,
+    withLoading,
+    isOpen: modalOpen,
+    options: modalOptions,
+    isLoading: modalLoading,
+    handleConfirm: onModalConfirm,
+    handleCancel: onModalCancel,
+  } = useToastAndConfirm();
+
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [creditToDelete, setCreditToDelete] = useState<VendorCredit | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
-  const handleView = (credit: VendorCredit) => {
+  const handleView = useCallback((credit: VendorCredit) => {
     navigate(`/purchases/vendor-credits/${credit.id}`);
-  };
+  }, [navigate]);
 
-  const handleEdit = (credit: VendorCredit) => {
+  const handleEdit = useCallback((credit: VendorCredit) => {
     navigate(`/purchases/vendor-credits/${credit.id}/edit`);
-  };
+  }, [navigate]);
 
-  const handleDeleteClick = (credit: VendorCredit) => {
-    setCreditToDelete(credit);
-    setShowDeleteModal(true);
-  };
+  // Single delete handler using confirmation modal
+  const handleDeleteClick = useCallback(async (credit: VendorCredit) => {
+    const creditId = String(credit.id);
 
-  const handleDeleteConfirm = async () => {
-    if (creditToDelete) {
-      try {
-        await deleteCredit(creditToDelete.id);
-        setShowDeleteModal(false);
-        setCreditToDelete(null);
-      } catch (error) {
-        console.error('Error deleting vendor credit:', error);
-      }
-    }
-  };
-
-  const handleBulkDeleteAction = async () => {
-    if (selectedItems.length === 0) return;
-    if (window.confirm(`Delete ${selectedItems.length} vendor credits?`)) {
-      setBulkDeleteLoading(true);
-      try {
-        for (const id of selectedItems) {
-          await deleteCredit(id);
+    await withConfirmation(
+      {
+        title: 'Delete Vendor Credit',
+        message: `Are you sure you want to delete "${credit.creditNumber}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(creditId);
+        try {
+          await deleteCredit(credit.id);
+          setSelectedItems(prev => prev.filter(item => item !== creditId));
+          success(`Vendor credit "${credit.creditNumber}" deleted successfully.`);
+        } catch (error) {
+          console.error('Error deleting vendor credit:', error);
+          showError('Failed to delete vendor credit. Please try again.');
+        } finally {
+          setDeleteLoading(null);
         }
-        setSelectedItems([]);
-      } finally {
-        setBulkDeleteLoading(false);
       }
-    }
-  };
+    );
+  }, [withConfirmation, deleteCredit, success, showError]);
 
-  const handleExportAction = async (format: 'excel' | 'pdf') => {
+  // Bulk delete handler using confirmation modal
+  const handleBulkDeleteAction = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      showError('Please select at least one vendor credit to delete.');
+      return;
+    }
+
+    await withConfirmation(
+      {
+        title: 'Delete Vendor Credits',
+        message: `Are you sure you want to delete ${selectedItems.length} vendor credit(s)? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setBulkDeleteLoading(true);
+        try {
+          for (const id of selectedItems) {
+            await deleteCredit(id);
+          }
+          success(`${selectedItems.length} vendor credit(s) deleted successfully.`);
+          setSelectedItems([]);
+        } catch (error) {
+          console.error('Error deleting vendor credits:', error);
+          showError('Failed to delete vendor credits. Please try again.');
+        } finally {
+          setBulkDeleteLoading(false);
+        }
+      }
+    );
+  }, [selectedItems, withConfirmation, deleteCredit, success, showError]);
+
+  const handleExportAction = useCallback(async (format: 'excel' | 'pdf') => {
     setExportLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log(`Exporting vendor credits as ${format}`);
+      success(`Vendor credits exported as ${format.toUpperCase()} successfully.`);
+    } catch (error) {
+      showError(`Failed to export as ${format.toUpperCase()}. Please try again.`);
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [success, showError]);
 
-  const handleImportAction = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       setImportLoading(true);
       try {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('Importing files:', files);
         await fetchCredits();
+        success('Vendor credits imported successfully.');
+      } catch (error) {
+        showError('Failed to import vendor credits. Please check the file format.');
       } finally {
         setImportLoading(false);
+        event.target.value = '';
       }
     }
-  };
+  }, [fetchCredits, success, showError]);
 
-  const handleRefreshClick = async () => {
+  const handleRefreshClick = useCallback(async () => {
     setRefreshLoading(true);
     try {
       await fetchCredits();
+      success('Vendor credits list refreshed successfully.');
+    } catch (error) {
+      showError('Failed to refresh vendor credits list. Please try again.');
     } finally {
       setRefreshLoading(false);
     }
-  };
+  }, [fetchCredits, success, showError]);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedItems.length === credits.length) {
       setSelectedItems([]);
     } else {
       setSelectedItems(credits.map(item => String(item.id)));
     }
-  };
+  }, [selectedItems.length, credits]);
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = useCallback((id: string) => {
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
-  };
+  }, []);
+
+  // Show error toast when error changes
+  React.useEffect(() => {
+    if (error) {
+      showError(error);
+    }
+  }, [error, showError]);
 
   // Format currency in Rupees
   const formatCurrency = (amount: number): string => {
     return `₹${amount.toFixed(2)}`;
   };
 
-  // Columns - NO progress section
+  // Row dropdown items
+  const getRowDropdownItems = (credit: VendorCredit) => [
+    {
+      label: 'View Details',
+      icon: <DollarSign className="h-4 w-4" style={{ color: 'var(--info)' }} />,
+      onClick: () => handleView(credit),
+    },
+    {
+      label: 'Edit Credit',
+      icon: <FileText className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
+      onClick: () => handleEdit(credit),
+    },
+    {
+      label: deleteLoading === String(credit.id) ? 'Deleting...' : 'Delete',
+      icon: deleteLoading === String(credit.id) ? (
+        <LoadingSpinner size="sm" />
+      ) : (
+        <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />
+      ),
+      onClick: () => handleDeleteClick(credit),
+      danger: true,
+      disabled: deleteLoading === String(credit.id),
+    },
+  ];
+
+  // Columns
   const columns: TableColumn<VendorCredit>[] = [
     {
       key: 'creditNumber',
       header: 'Credit #',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{item.creditNumber}</p>
-          <p className="text-xs text-gray-500">{new Date(item.creditDate).toLocaleDateString()}</p>
+          <p
+            className="text-sm font-medium themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.creditNumber}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {new Date(item.creditDate).toLocaleDateString()}
+          </p>
         </div>
       ),
     },
@@ -186,11 +322,19 @@ const VendorCredits: React.FC = () => {
       header: 'Vendor',
       render: (item) => (
         <div>
-          <p className="text-sm text-gray-900 flex items-center gap-1">
-            <Building2 className="h-3 w-3 text-gray-400" />
+          <p
+            className="text-sm flex items-center gap-1 themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            <Building2 className="h-3 w-3" style={{ color: 'var(--foreground-tertiary)' }} />
             {item.vendorName || 'N/A'}
           </p>
-          <p className="text-xs text-gray-500">{item.billNumber || 'No bill'}</p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.billNumber || 'No bill'}
+          </p>
         </div>
       ),
     },
@@ -198,7 +342,10 @@ const VendorCredits: React.FC = () => {
       key: 'totalAmount',
       header: 'Amount',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">
+        <span
+          className="text-sm font-medium themed-transition"
+          style={{ color: 'var(--gold)' }}
+        >
           {formatCurrency(item.totalAmount)}
         </span>
       ),
@@ -208,10 +355,16 @@ const VendorCredits: React.FC = () => {
       header: 'Used / Balance',
       render: (item) => (
         <div>
-          <div className="text-sm text-gray-900">
+          <div
+            className="text-sm themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
             Used: {formatCurrency(item.usedAmount || 0)}
           </div>
-          <div className="text-xs text-gray-500">
+          <div
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
             Balance: {formatCurrency(item.balanceAmount || 0)}
           </div>
         </div>
@@ -221,7 +374,10 @@ const VendorCredits: React.FC = () => {
       key: 'reason',
       header: 'Reason',
       render: (item) => (
-        <span className="text-sm text-gray-600">
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
           {VENDOR_CREDIT_REASON_LABELS[item.reason] || item.reason}
         </span>
       ),
@@ -240,7 +396,7 @@ const VendorCredits: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportAction('pdf'),
       disabled: exportLoading,
@@ -250,7 +406,7 @@ const VendorCredits: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportAction('excel'),
       disabled: exportLoading,
@@ -266,44 +422,89 @@ const VendorCredits: React.FC = () => {
     );
   }
 
-  // Show refresh loading spinner
-  if (refreshLoading) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Refreshing vendor credits..." />
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Vendor Credits</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage vendor credit notes</p>
+          <h1
+            className="text-2xl font-bold themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            Vendor Credits
+          </h1>
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            Manage vendor credit notes
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh Button */}
           <button
             onClick={handleRefreshClick}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
           >
             <RefreshCw className={`h-4 w-4 ${refreshLoading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+
+          {/* New Credit Button */}
           <button
             onClick={() => navigate('/purchases/vendor-credits/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Credit
           </button>
+
+          {/* Bulk Delete Button */}
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteAction}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -313,6 +514,8 @@ const VendorCredits: React.FC = () => {
               Delete ({selectedItems.length})
             </button>
           )}
+
+          {/* More Options Dropdown */}
           <ThreeDotDropdown
             items={headerDropdownItems}
             position="right"
@@ -322,7 +525,7 @@ const VendorCredits: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -332,26 +535,68 @@ const VendorCredits: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search Input */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by credit #, vendor..."
                 value={filters.search || ''}
                 onChange={(e) => updateFilters({ search: e.target.value })}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.status || ''}
               onChange={(e) => updateFilters({ status: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Status</option>
               {VENDOR_CREDIT_STATUSES.map(status => (
@@ -361,12 +606,30 @@ const VendorCredits: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Reason Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.reason || ''}
               onChange={(e) => updateFilters({ reason: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Reasons</option>
               {VENDOR_CREDIT_REASONS.map(reason => (
@@ -381,12 +644,19 @@ const VendorCredits: React.FC = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+        <div
+          className="mb-4 p-4 rounded-lg themed-transition"
+          style={{
+            background: 'var(--error-light)',
+            border: '1px solid var(--error)',
+            color: 'var(--error)',
+          }}
+        >
           {error}
         </div>
       )}
 
-      {/* Table - NO progress section */}
+      {/* Table */}
       <ReusableTable
         data={credits}
         columns={columns}
@@ -396,50 +666,29 @@ const VendorCredits: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => String(item.id)}
         emptyMessage="No vendor credits found"
-        emptyIcon={<TrendingDown className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<TrendingDown className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage: pagination.page,
           totalPages: pagination.totalPages,
           totalItems: pagination.total,
-          startIndex: (pagination.page - 1) * pagination.limit,
-          endIndex: pagination.page * pagination.limit,
           onPageChange: changePage,
           itemsPerPage: pagination.limit,
         }}
       />
 
-      {/* Delete Modal */}
-      {showDeleteModal && creditToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-full">
-                <Trash className="h-6 w-6 text-red-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">Delete Vendor Credit</h2>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete vendor credit "<span className="font-medium">{creditToDelete.creditNumber}</span>"? 
-              This action cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        onClose={onModalCancel}
+        onConfirm={onModalConfirm}
+        title={modalOptions?.title}
+        message={modalOptions?.message ?? ''}
+        confirmText={modalOptions?.confirmText}
+        cancelText={modalOptions?.cancelText}
+        variant={modalOptions?.variant}
+        isLoading={modalLoading}
+      />
     </div>
   );
 };

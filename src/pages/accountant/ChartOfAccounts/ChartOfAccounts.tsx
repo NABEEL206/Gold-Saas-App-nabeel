@@ -1,5 +1,4 @@
 // src/pages/accountant/ChartOfAccounts/ChartOfAccounts.tsx
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -29,40 +28,95 @@ import {
   ACCOUNT_TYPE_BADGE_COLORS,
 } from '../../../types/ChartOfAccounts/ChartOfAccountsType';
 
-// Type Badge
-const TypeBadge: React.FC<{ type: ChartOfAccount['type'] }> = ({ type }) => {
-  const color = ACCOUNT_TYPE_BADGE_COLORS[type] || 'bg-gray-100 text-gray-700';
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {ACCOUNT_TYPE_LABELS[type] || type}
-    </span>
-  );
+// ============================================================
+// CONFIGURATIONS - Single source of truth
+// ============================================================
+
+// Account Type Configuration
+const ACCOUNT_TYPE_CONFIG: Record<
+  string,
+  { bg: string; color: string; label: string }
+> = {
+  asset: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    label: 'Asset',
+  },
+  liability: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    label: 'Liability',
+  },
+  equity: {
+    bg: 'var(--primary-light)',
+    color: 'var(--primary)',
+    label: 'Equity',
+  },
+  revenue: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    label: 'Revenue',
+  },
+  expense: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    label: 'Expense',
+  },
 };
 
-// Status Badge
+// Status Badge Component
 const StatusBadge: React.FC<{ isActive: boolean }> = ({ isActive }) => {
-  return isActive ? (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-      <CheckCircle className="h-3 w-3" />
-      Active
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-      <XCircle className="h-3 w-3" />
-      Inactive
+  const config = isActive 
+    ? { bg: 'var(--success-light)', color: 'var(--success)', icon: <CheckCircle className="h-3 w-3" />, label: 'Active' }
+    : { bg: 'var(--error-light)', color: 'var(--error)', icon: <XCircle className="h-3 w-3" />, label: 'Inactive' };
+  
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: config.bg,
+        color: config.color,
+      }}
+    >
+      {config.icon}
+      {config.label}
     </span>
   );
 };
 
-// System Badge
-const SystemBadge: React.FC<{ isSystemAccount: boolean }> = ({ isSystemAccount }) => {
-  return isSystemAccount ? (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-      System
+// Type Badge Component
+const TypeBadge: React.FC<{ type: ChartOfAccount['type'] }> = ({ type }) => {
+  const config = ACCOUNT_TYPE_CONFIG[type] || ACCOUNT_TYPE_CONFIG.asset;
+  const { bg, color, label } = config;
+  
+  return (
+    <span
+      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {label}
     </span>
-  ) : (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-      Custom
+  );
+};
+
+// System Badge Component
+const SystemBadge: React.FC<{ isSystemAccount: boolean }> = ({ isSystemAccount }) => {
+  const config = isSystemAccount
+    ? { bg: 'var(--info-light)', color: 'var(--info)', label: 'System' }
+    : { bg: 'var(--primary-light)', color: 'var(--primary)', label: 'Custom' };
+  
+  return (
+    <span
+      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: config.bg,
+        color: config.color,
+      }}
+    >
+      {config.label}
     </span>
   );
 };
@@ -107,8 +161,32 @@ const ChartOfAccounts: React.FC = () => {
     navigate(`/accountant/chart-of-accounts/${account.id}`);
   }, [navigate]);
 
-
   // Single delete handler using confirmation modal
+  const handleDeleteClick = useCallback(async (account: ChartOfAccount) => {
+    const accountId = String(account.id);
+
+    await withConfirmation(
+      {
+        title: 'Delete Account',
+        message: `Are you sure you want to delete "${account.code} - ${account.name}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(accountId);
+        try {
+          await deleteAccount(account.id);
+          setSelectedItems(prev => prev.filter(item => item !== accountId));
+          success(`Account "${account.code} - ${account.name}" deleted successfully.`);
+        } catch (error) {
+          console.error('Error deleting account:', error);
+          showError('Failed to delete account. Please try again.');
+        } finally {
+          setDeleteLoading(null);
+        }
+      }
+    );
+  }, [withConfirmation, deleteAccount, success, showError]);
 
   // Bulk delete handler using confirmation modal
   const handleBulkDeleteAction = useCallback(async () => {
@@ -204,13 +282,38 @@ const ChartOfAccounts: React.FC = () => {
     }
   }, [error, showError]);
 
-  // Columns - NO actions column
+  // Row dropdown items
+  const getRowDropdownItems = (account: ChartOfAccount) => [
+    {
+      label: 'View Details',
+      icon: <BookOpen className="h-4 w-4" style={{ color: 'var(--info)' }} />,
+      onClick: () => handleView(account),
+    },
+    {
+      label: deleteLoading === String(account.id) ? 'Deleting...' : 'Delete',
+      icon: deleteLoading === String(account.id) ? (
+        <LoadingSpinner size="sm" />
+      ) : (
+        <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />
+      ),
+      onClick: () => handleDeleteClick(account),
+      danger: true,
+      disabled: deleteLoading === String(account.id),
+    },
+  ];
+
+  // Columns
   const columns: TableColumn<ChartOfAccount>[] = [
     {
       key: 'code',
       header: 'Code',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">{item.code}</span>
+        <span
+          className="text-sm font-medium themed-transition"
+          style={{ color: 'var(--foreground)' }}
+        >
+          {item.code}
+        </span>
       ),
     },
     {
@@ -218,8 +321,18 @@ const ChartOfAccounts: React.FC = () => {
       header: 'Account Name',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{item.name}</p>
-          <p className="text-xs text-gray-500">{item.category}</p>
+          <p
+            className="text-sm font-medium themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.name}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.category}
+          </p>
         </div>
       ),
     },
@@ -232,7 +345,12 @@ const ChartOfAccounts: React.FC = () => {
       key: 'subCategory',
       header: 'Sub Category',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.subCategory || '-'}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.subCategory || '-'}
+        </span>
       ),
     },
     {
@@ -254,7 +372,7 @@ const ChartOfAccounts: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportAction('pdf'),
       disabled: exportLoading,
@@ -264,7 +382,7 @@ const ChartOfAccounts: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportAction('excel'),
       disabled: exportLoading,
@@ -281,21 +399,46 @@ const ChartOfAccounts: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-amber-500" />
+          <h1
+            className="text-2xl font-bold flex items-center gap-2 themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            <BookOpen className="h-6 w-6" style={{ color: 'var(--gold)' }} />
             Chart of Accounts
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your chart of accounts</p>
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            Manage your chart of accounts
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh Button */}
           <button
             onClick={handleRefreshClick}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
@@ -304,18 +447,45 @@ const ChartOfAccounts: React.FC = () => {
             )}
             Refresh
           </button>
+
+          {/* New Account Button */}
           <button
             onClick={() => navigate('/accountant/chart-of-accounts/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Account
           </button>
+
+          {/* Bulk Delete Button */}
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteAction}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -325,6 +495,8 @@ const ChartOfAccounts: React.FC = () => {
               Delete ({selectedItems.length})
             </button>
           )}
+
+          {/* More Options Dropdown */}
           <ThreeDotDropdown
             items={headerDropdownItems}
             position="right"
@@ -334,7 +506,7 @@ const ChartOfAccounts: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -344,26 +516,68 @@ const ChartOfAccounts: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search Input */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by code, name, category..."
                 value={filters.search || ''}
                 onChange={(e) => updateFilters({ search: e.target.value })}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
+
+          {/* Type Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.type || ''}
               onChange={(e) => updateFilters({ type: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Types</option>
               {ACCOUNT_TYPES.map(type => (
@@ -373,15 +587,33 @@ const ChartOfAccounts: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.isActive !== undefined ? String(filters.isActive) : ''}
               onChange={(e) => {
                 const value = e.target.value;
                 updateFilters({ isActive: value === '' ? undefined : value === 'true' });
               }}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Status</option>
               <option value="true">Active</option>
@@ -393,12 +625,19 @@ const ChartOfAccounts: React.FC = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+        <div
+          className="mb-4 p-4 rounded-lg themed-transition"
+          style={{
+            background: 'var(--error-light)',
+            border: '1px solid var(--error)',
+            color: 'var(--error)',
+          }}
+        >
           {error}
         </div>
       )}
 
-      {/* Table - NO actions column */}
+      {/* Table */}
       <ReusableTable
         data={accounts}
         columns={columns}
@@ -408,7 +647,7 @@ const ChartOfAccounts: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => String(item.id)}
         emptyMessage="No accounts found"
-        emptyIcon={<BookOpen className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<BookOpen className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage: pagination.page,
@@ -419,7 +658,7 @@ const ChartOfAccounts: React.FC = () => {
         }}
       />
 
-      {/* Confirmation Modal - Replaces the custom delete modal */}
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

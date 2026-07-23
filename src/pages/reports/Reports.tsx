@@ -1,5 +1,4 @@
 // src/pages/Reports/Reports.tsx
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -20,6 +19,10 @@ import ReportTable from '../../components/Reports/ReportTable';
 import ReportHeader from '../../components/Reports/ReportHeader';
 import { useReports } from '../../hooks/Reports/useReports';
 import type { ReportItem, ReportCategory as ReportCategoryType } from '../../types/Reports/ReportType';
+
+// ============================================================
+// CONSTANTS - Single source of truth
+// ============================================================
 
 // ─── Static Report Data ────────────────────────────────────────────
 const DEFAULT_REPORT_DATA: ReportItem[] = [
@@ -399,7 +402,10 @@ const Reports: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div
+      className="flex h-screen overflow-hidden themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* ─── Sidebar ─── */}
       <SidebarNav
         items={SIDEBAR_ITEMS}
@@ -420,17 +426,51 @@ const Reports: React.FC = () => {
 
         {/* ─── Report Table ─── */}
         <div className="flex-1 px-6 pb-6 pt-4 overflow-hidden">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-full flex flex-col">
+          <div
+            className="rounded-xl h-full flex flex-col themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
             {/* Table Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div
+              className="flex items-center justify-between px-6 py-4 themed-transition"
+              style={{ borderBottom: '1px solid var(--border)' }}
+            >
               <div className="flex items-center gap-4">
-                <h2 className="text-sm font-semibold text-gray-900">
-                  {getFolderLabel()} <span className="text-gray-400 font-normal ml-1">({filteredReports.length})</span>
+                <h2
+                  className="text-sm font-semibold themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  {getFolderLabel()}{' '}
+                  <span className="font-normal ml-1 themed-transition" style={{ color: 'var(--foreground-tertiary)' }}>
+                    ({filteredReports.length})
+                  </span>
                 </h2>
-                <button className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700">
+                <button
+                  className="flex items-center gap-1.5 text-xs transition-colors themed-transition"
+                  style={{ color: 'var(--foreground-secondary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--foreground)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--foreground-secondary)';
+                  }}
+                >
                   <span>Filter</span>
                 </button>
-                <button className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700">
+                <button
+                  className="flex items-center gap-1.5 text-xs transition-colors themed-transition"
+                  style={{ color: 'var(--foreground-secondary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--foreground)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--foreground-secondary)';
+                  }}
+                >
                   <span>Sort</span>
                 </button>
               </div>

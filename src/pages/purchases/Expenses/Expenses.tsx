@@ -1,5 +1,4 @@
 // src/pages/purchases/Expenses/Expenses.tsx
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -33,19 +32,54 @@ import {
   getErrorCount
 } from '../../../validations/expense.validation';
 
-// Status Badge
+// ============================================================
+// STATUS CONFIGURATION - Single source of truth
+// ============================================================
+
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  paid: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Paid',
+  },
+  unpaid: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Unpaid',
+  },
+  partial: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Partial',
+  },
+  overdue: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    icon: <AlertCircle className="h-3 w-3" />,
+    label: 'Overdue',
+  },
+};
+
+// Status Badge Component
 const StatusBadge: React.FC<{ status: Expense['paymentStatus'] }> = ({ status }) => {
-  const config = {
-    paid: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Paid' },
-    unpaid: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Unpaid' },
-    partial: { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Partial' },
-    overdue: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Overdue' },
-  };
-  const defaultConfig = { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
-  const { color, icon: Icon, label } = config[status as keyof typeof config] || defaultConfig;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.unpaid;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
@@ -299,8 +333,18 @@ const Expenses: React.FC = () => {
       header: 'Expense #',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{item.expenseNumber}</p>
-          <p className="text-xs text-gray-500">{item.receiptNumber || 'No receipt'}</p>
+          <p
+            className="text-sm font-medium themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.expenseNumber}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.receiptNumber || 'No receipt'}
+          </p>
         </div>
       ),
     },
@@ -308,21 +352,34 @@ const Expenses: React.FC = () => {
       key: 'vendorName',
       header: 'Vendor',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.vendorName || 'N/A'}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.vendorName || 'N/A'}
+        </span>
       ),
     },
     {
       key: 'category',
       header: 'Category',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.category}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.category}
+        </span>
       ),
     },
     {
       key: 'amount',
       header: 'Amount',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">
+        <span
+          className="text-sm font-medium themed-transition"
+          style={{ color: 'var(--gold)' }}
+        >
           {formatCurrency(item.totalAmount)}
         </span>
       ),
@@ -332,9 +389,19 @@ const Expenses: React.FC = () => {
       header: 'Date',
       render: (item) => (
         <div>
-          <span className="text-sm text-gray-600">{new Date(item.date).toLocaleDateString()}</span>
+          <span
+            className="text-sm themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {new Date(item.date).toLocaleDateString()}
+          </span>
           {item.dueDate && (
-            <span className="text-xs text-gray-400 block">Due: {new Date(item.dueDate).toLocaleDateString()}</span>
+            <span
+              className="text-xs block themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            >
+              Due: {new Date(item.dueDate).toLocaleDateString()}
+            </span>
           )}
         </div>
       ),
@@ -350,7 +417,12 @@ const Expenses: React.FC = () => {
           cheque: 'Cheque'
         };
         return (
-          <span className="text-sm text-gray-600">{methods[item.paymentMethod] || item.paymentMethod}</span>
+          <span
+            className="text-sm themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {methods[item.paymentMethod] || item.paymentMethod}
+          </span>
         );
       },
     },
@@ -368,7 +440,7 @@ const Expenses: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportAction('pdf'),
       disabled: exportLoading,
@@ -378,7 +450,7 @@ const Expenses: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportAction('excel'),
       disabled: exportLoading,
@@ -389,12 +461,12 @@ const Expenses: React.FC = () => {
   const getRowDropdownItems = (expense: Expense) => [
     {
       label: 'View Details',
-      icon: <DollarSign className="h-4 w-4 text-blue-500" />,
+      icon: <DollarSign className="h-4 w-4" style={{ color: 'var(--info)' }} />,
       onClick: () => handleView(expense),
     },
     {
       label: 'Edit Expense',
-      icon: <File className="h-4 w-4 text-green-500" />,
+      icon: <File className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
       onClick: () => handleEdit(expense),
     },
     {
@@ -402,7 +474,7 @@ const Expenses: React.FC = () => {
       icon: deleteLoading === String(expense.id) ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <Trash className="h-4 w-4 text-red-500" />
+        <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleDeleteClick(expense),
       danger: true,
@@ -434,18 +506,45 @@ const Expenses: React.FC = () => {
   const hasErrors = Object.keys(filteredErrors).length > 0;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Expenses</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your business expenses</p>
+          <h1
+            className="text-2xl font-bold themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            Expenses
+          </h1>
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            Manage your business expenses
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh Button */}
           <button
             onClick={handleRefreshClick}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
@@ -454,18 +553,45 @@ const Expenses: React.FC = () => {
             )}
             Refresh
           </button>
+
+          {/* New Expense Button */}
           <button
             onClick={() => navigate('/purchases/expenses/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Expense
           </button>
+
+          {/* Bulk Delete Button */}
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteAction}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -475,6 +601,8 @@ const Expenses: React.FC = () => {
               Delete ({selectedItems.length})
             </button>
           )}
+
+          {/* More Options Dropdown */}
           <ThreeDotDropdown
             items={headerDropdownItems}
             position="right"
@@ -484,7 +612,7 @@ const Expenses: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -510,26 +638,68 @@ const Expenses: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search Input */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by expense #, vendor, category..."
                 value={filters.search || ''}
                 onChange={(e) => updateFilters({ search: e.target.value })}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
+
+          {/* Category Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.category || ''}
               onChange={(e) => updateFilters({ category: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Categories</option>
               {EXPENSE_CATEGORIES.map(cat => (
@@ -537,12 +707,30 @@ const Expenses: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.paymentStatus || ''}
               onChange={(e) => updateFilters({ paymentStatus: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Status</option>
               <option value="paid">Paid</option>
@@ -564,7 +752,7 @@ const Expenses: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => String(item.id)}
         emptyMessage="No expenses found"
-        emptyIcon={<DollarSign className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<DollarSign className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage: pagination.page,

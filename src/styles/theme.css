@@ -6,152 +6,130 @@
    ============================================================ */
 
 :root {
-  /* ── Surfaces ─────────────────────────────────────────── */
-  --background:    #F4F5FA;   /* light lavender page bg */
-  --card:          #FFFFFF;   /* white cards */
-  --sidebar:       #FFFFFF;   /* white sidebar */
-  --header:        #FFFFFF;   /* white header */
+  /* ── Surfaces & Backgrounds ─────────────────────────── */
+  --background:      #F8F9FD;   /* Clean, ultra-light lavender-blue page background */
+  --card:            #FFFFFF;   /* Pure white container cards */
+  --sidebar:         #FFFFFF;   /* Pure white sidebar navigation */
+  --header:          #FFFFFF;   /* Pure white header bar */
 
-  /* ── Brand / Primary ─────────────────────────────────── */
-  --primary:         #7C3AED;   /* purple — active sidebar, buttons */
-  --primary-hover:   #6D28D9;   /* darker purple on hover */
-  --primary-light:   #EDE9FE;   /* very light purple bg tint */
-  --gold:            #D4AF37;   /* gold accent — prices, highlights */
-
-  /* ── Header gradient ─────────────────────────────────── */
-  /* Light header = plain white, no gradient */
-  --header-from:   #FFFFFF;
-  --header-via:    #FFFFFF;
-  --header-to:     #FFFFFF;
-  --header-bg:     #FFFFFF;
-  --header-border: #E5E7EB;
-  --header-text:   #1A1A2E;
-  --header-text-secondary: #6B7280;
-  --header-icon:   #6B7280;
-  --header-hover:  rgba(0, 0, 0, 0.05);
+  /* ── Brand / Primary / Accents ──────────────────────── */
+  --primary:         #7C3AED;   /* Core brand purple */
+  --primary-hover:   #6D28D9;   /* Deepened purple interactive hover */
+  --primary-light:   #F3E8FF;   /* Soft purple tint */
+  --gold:            #B88E2F;   /* Refined luxury gold for text & branding accents */
 
   /* ── Typography ──────────────────────────────────────── */
-  --text:           #1A1A2E;   /* near-black */
-  --text-secondary: #6B7280;   /* medium gray */
-  --text-muted:     #9CA3AF;   /* light gray */
+  --text:            #1F2937;   /* Crisp slate-black for primary readability */
+  --text-secondary:  #4B5563;   /* Slate-gray for labels and secondary details */
+  --text-muted:      #9CA3AF;   /* Light gray placeholders/subtext */
 
-  /* ── Borders ─────────────────────────────────────────── */
-  --border:        #E5E7EB;
-  --border-subtle: #F3F4F6;
+  /* ── Header Customization ────────────────────────────── */
+  --header-bg:       #FFFFFF;
+  --header-border:   #EAEBF4;   /* Soft border matching layout lines */
+  --header-text:     #1F2937;
+  --header-icon:     #6B7280;
+  --header-hover:    rgba(0, 0, 0, 0.04);
 
-  /* ── Semantic ────────────────────────────────────────── */
-  --success: #22C55E;
-  --warning: #F59E0B;
-  --danger:  #EF4444;
-  --info:    #3B82F6;
+  /* ── Borders & Separators ────────────────────────────── */
+  --border:          #ECEFF5;   /* Light, crisp structure lines */
+  --border-subtle:   #F3F4F6;
 
-  /* ── Interactive states ──────────────────────────────── */
-  --hover-bg:   rgba(124, 58, 237, 0.06);   /* subtle purple tint on hover */
-  --active-bg:  rgba(124, 58, 237, 0.12);   /* purple tint on active */
-  --focus-ring: rgba(124, 58, 237, 0.30);
+  /* ── Functional / Semantic States ────────────────────── */
+  --success:         #10B981;   /* Emerald green for positive trends/paid status */
+  --success-light:   #D1FAE5;   /* Soft green background pill */
+  --warning:         #F59E0B;   /* Amber for pending status */
+  --warning-light:   #FEF3C7;   /* Soft amber background pill */
+  --danger:          #EF4444;   /* Crimson red for low stock alerts */
+  --info:            #3B82F6;   
 
-  /* ── Sidebar item states ─────────────────────────────── */
-  /* Active: solid purple bg with white text (as in screenshot) */
-  --sidebar-active-bg:    #7C3AED;
-  --sidebar-active-text:  #FFFFFF;
-  --sidebar-active-from:  #7C3AED;
-  --sidebar-active-to:    #6D28D9;
-
-  /* Hover: soft purple tint */
-  --sidebar-hover-bg:    #EDE9FE;
+  /* ── Sidebar Component States ────────────────────────── */
+  --sidebar-text:        #4B5563;   /* Default inactive menu text */
+  --sidebar-icon:        #C5A059;   /* EXACT GOLD accent color for inactive icons */
+  --sidebar-hover-bg:    #F5F3FF;   /* Gentle lilac hover splash */
   --sidebar-hover-text:  #7C3AED;
+  
+  /* Active State ("Dashboard" item active tint) */
+  --sidebar-active-bg:   #EDE9FE;   /* Exact light pastel-purple pill background */
+  --sidebar-active-text: #7C3AED;   /* Vibrant purple active text/icon overrides */
 
-  /* Inactive text */
-  --sidebar-text:        #4B5563;
-  /* Inactive icon color — gold */
-  --sidebar-icon:        #D4AF37;
+  /* ── Interactive UI Components ───────────────────────── */
+  --hover-bg:        rgba(124, 58, 237, 0.05);
+  --active-bg:       rgba(124, 58, 237, 0.1);
+  --focus-ring:      rgba(124, 58, 237, 0.25);
 
-  /* ── Shadows ─────────────────────────────────────────── */
-  --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.06);
-  --shadow:    0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+  /* ── Elevation Shadows ───────────────────────────────── */
+  --shadow-sm:       0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  --shadow:          0 4px 12px -2px rgba(18, 18, 23, 0.05);
+  --shadow-lg:       0 12px 24px -4px rgba(18, 18, 23, 0.08);
 
-  /* ── Misc ────────────────────────────────────────────── */
-  --transition:       200ms ease;
-  --scrollbar-thumb:  #D1D5DB;
-  --scrollbar-track:  transparent;
+  /* ── Transitions ─────────────────────────────────────── */
+  --transition:      200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --scrollbar-thumb: #E1E4ED;
+  --scrollbar-track: transparent;
 }
 
 /* ============================================================
    DARK THEME
-   Exact colors from dark mode screenshot:
-   - Deep navy background
-   - Slightly lighter navy sidebar/cards
-   - Purple active state unchanged
    ============================================================ */
 html.dark {
-  /* ── Surfaces ─────────────────────────────────────────── */
-  --background:    #13131F;   /* darkest layer — page bg */
-  --card:          #1E1E30;   /* card surface */
-  --sidebar:       #1A1A2E;   /* sidebar bg */
-  --header:        #1A1A2E;   /* header bg */
+  /* ── Surfaces & Backgrounds ─────────────────────────── */
+  --background:      #09090E;   /* Deepest midnight-black background layer */
+  --card:            #12111A;   /* Distinct deep charcoal slate for elevated cards */
+  --sidebar:         #0C0B12;   /* Uniform sidebar matching the main frame dark levels */
+  --header:          #0C0B12;
 
-  /* ── Brand / Primary ─────────────────────────────────── */
-  --primary:         #8B5CF6;   /* slightly lighter purple for dark bg */
-  --primary-hover:   #7C3AED;
-  --primary-light:   rgba(139, 92, 246, 0.15);
-  --gold:            #D4AF37;
-
-  /* ── Header gradient (dark = solid dark navy, no gradient) */
-  --header-from:   #1A1A2E;
-  --header-via:    #1E1E30;
-  --header-to:     #1A1A2E;
-  --header-bg:     #1A1A2E;
-  --header-border: #2D2D45;
-  --header-text:   #F1F1F8;
-  --header-text-secondary: #A1A1AA;
-  --header-icon:   #A1A1AA;
-  --header-hover:  rgba(255, 255, 255, 0.07);
+  /* ── Brand / Primary / Accents ──────────────────────── */
+  --primary:         #9F7AEA;   /* Lighter, high-contrast neon purple for visibility */
+  --primary-hover:   #B794F4;
+  --primary-light:   rgba(159, 122, 234, 0.15);
+  --gold:            #E9C46A;   /* Brighter, glowing gold accent */
 
   /* ── Typography ──────────────────────────────────────── */
-  --text:           #F1F1F8;   /* near-white */
-  --text-secondary: #A1A1AA;   /* medium gray */
-  --text-muted:     #6B6B80;   /* dim gray */
+  --text:            #F3F4F6;   /* Highly legible near-white text */
+  --text-secondary:  #9CA3AF;   /* Soft platinum gray for details */
+  --text-muted:      #6B7280;   /* Muted charcoal for deep background labels */
 
-  /* ── Borders ─────────────────────────────────────────── */
-  --border:        #2D2D45;   /* subtle dark border */
-  --border-subtle: #252538;
+  /* ── Header Customization ────────────────────────────── */
+  --header-bg:       #0C0B12;
+  --header-border:   #1E1C26;   /* Dark structural separation borders */
+  --header-text:     #F3F4F6;
+  --header-icon:     #9CA3AF;
+  --header-hover:    rgba(255, 255, 255, 0.04);
 
-  /* ── Semantic ────────────────────────────────────────── */
-  --success: #22C55E;
-  --warning: #F59E0B;
-  --danger:  #EF4444;
-  --info:    #60A5FA;
+  /* ── Borders & Separators ────────────────────────────── */
+  --border:          #1E1B29;   /* Perfectly blends card frames into dark space */
+  --border-subtle:   #15131D;
 
-  /* ── Interactive states ──────────────────────────────── */
-  --hover-bg:   rgba(139, 92, 246, 0.08);
-  --active-bg:  rgba(139, 92, 246, 0.18);
-  --focus-ring: rgba(139, 92, 246, 0.40);
+  /* ── Functional / Semantic States ────────────────────── */
+  --success:         #10B981;   
+  --success-light:   rgba(16, 185, 129, 0.15);
+  --warning:         #F59E0B;
+  --warning-light:   rgba(245, 158, 11, 0.15);
+  --danger:          #EF4444;
 
-  /* ── Sidebar item states ─────────────────────────────── */
-  /* Active: same solid purple bg */
-  --sidebar-active-bg:    #7C3AED;
-  --sidebar-active-text:  #FFFFFF;
-  --sidebar-active-from:  #7C3AED;
-  --sidebar-active-to:    #6D28D9;
+  /* ── Sidebar Component States ────────────────────────── */
+  --sidebar-text:        #9CA3AF;
+  --sidebar-icon:        #D8A84C;   /* Radiant luxury gold for dark mode inactive icons */
+  --sidebar-hover-bg:    rgba(255, 255, 255, 0.03);
+  --sidebar-hover-text:  #FFFFFF;
+  
+  /* Active State (Dark mode "Dashboard" active tint pill) */
+  --sidebar-active-bg:   #231B37;   /* Muted rich dark-wine purple pill */
+  --sidebar-active-text: #A78BFA;   /* Clear luminous lavender-purple indicator text */
 
-  /* Hover: subtle purple tint on dark */
-  --sidebar-hover-bg:    rgba(139, 92, 246, 0.15);
-  --sidebar-hover-text:  #C4B5FD;
+  /* ── Interactive UI Components ───────────────────────── */
+  --hover-bg:        rgba(159, 122, 234, 0.08);
+  --active-bg:       rgba(159, 122, 234, 0.15);
+  --focus-ring:      rgba(159, 122, 234, 0.4);
 
-  /* Inactive text */
-  --sidebar-text:        #A1A1AA;
-  /* Inactive icon color — gold stays same in dark */
-  --sidebar-icon:        #D4AF37;
+  /* ── Elevation Shadows ───────────────────────────────── */
+  --shadow-sm:       0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow:          0 10px 30px -5px rgba(0, 0, 0, 0.6);
+  --shadow-lg:       0 20px 50px -10px rgba(0, 0, 0, 0.8);
 
-  /* ── Shadows ─────────────────────────────────────────── */
-  --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.40);
-  --shadow:    0 4px 6px -1px rgba(0,0,0,0.50), 0 2px 4px -1px rgba(0,0,0,0.30);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.60), 0 4px 6px -2px rgba(0,0,0,0.40);
-
-  /* ── Misc ────────────────────────────────────────────── */
-  --scrollbar-thumb:  #3D3D58;
-  --scrollbar-track:  transparent;
+  /* ── Transitions ─────────────────────────────────────── */
+  --scrollbar-thumb: #292638;
+  --scrollbar-track: transparent;
 }
 
 /* ============================================================

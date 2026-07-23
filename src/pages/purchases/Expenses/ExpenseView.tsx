@@ -1,5 +1,4 @@
 // src/pages/purchases/Expenses/ExpenseView.tsx
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -29,19 +28,54 @@ import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAnd
 import { validateExpenseForm, formatValidationErrors } from '../../../validations/expense.validation';
 import type { ExpenseFormData } from '../../../types/Expense/ExpenseType';
 
-// Status Badge
+// ============================================================
+// STATUS CONFIGURATION - Single source of truth
+// ============================================================
+
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  paid: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Paid',
+  },
+  unpaid: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Unpaid',
+  },
+  partial: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Partial',
+  },
+  overdue: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    icon: <AlertCircle className="h-3 w-3" />,
+    label: 'Overdue',
+  },
+};
+
+// Status Badge Component
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const config = {
-    paid: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Paid' },
-    unpaid: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Unpaid' },
-    partial: { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Partial' },
-    overdue: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Overdue' },
-  };
-  const defaultConfig = { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
-  const { color, icon: Icon, label } = config[status as keyof typeof config] || defaultConfig;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.unpaid;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
@@ -207,22 +241,22 @@ const ExpenseView: React.FC = () => {
   const dropdownItems = [
     {
       label: 'Print',
-      icon: <Printer className="h-4 w-4 text-gray-500" />,
+      icon: <Printer className="h-4 w-4" style={{ color: 'var(--foreground-secondary)' }} />,
       onClick: handlePrint,
     },
     {
       label: 'Download',
-      icon: <Download className="h-4 w-4 text-blue-500" />,
+      icon: <Download className="h-4 w-4" style={{ color: 'var(--info)' }} />,
       onClick: handleDownload,
     },
     {
       label: 'Edit Expense',
-      icon: <Edit className="h-4 w-4 text-amber-500" />,
+      icon: <Edit className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
       onClick: handleEdit,
     },
     {
       label: 'Delete Expense',
-      icon: <Trash className="h-4 w-4 text-red-500" />,
+      icon: <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />,
       onClick: handleDelete,
       danger: true,
     },
@@ -254,11 +288,23 @@ const ExpenseView: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">{error || 'Expense not found'}</p>
+          <DollarSign className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--foreground-tertiary)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            {error || 'Expense not found'}
+          </p>
           <button
             onClick={() => navigate('/purchases/expenses')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Expenses
           </button>
@@ -268,26 +314,59 @@ const ExpenseView: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/purchases/expenses')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{expense.expenseNumber}</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Expense Details</p>
+              <h1
+                className="text-2xl font-bold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                {expense.expenseNumber}
+              </h1>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                Expense Details
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--primary-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               <Edit className="h-4 w-4" />
               Edit Expense
@@ -318,20 +397,44 @@ const ExpenseView: React.FC = () => {
         {/* Status Badge */}
         <div className="mb-6">
           <StatusBadge status={expense.paymentStatus} />
-          <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+          <span
+            className="ml-2 px-3 py-1 text-sm font-medium rounded-full themed-transition"
+            style={{
+              background: 'var(--info-light)',
+              color: 'var(--info)',
+            }}
+          >
             {getPaymentMethodLabel()}
           </span>
           {expense.receiptNumber && (
-            <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-800">
+            <span
+              className="ml-2 px-3 py-1 text-sm font-medium rounded-full themed-transition"
+              style={{
+                background: 'var(--surface-hover)',
+                color: 'var(--foreground-secondary)',
+              }}
+            >
               Receipt: {expense.receiptNumber}
             </span>
           )}
           {isComplete ? (
-            <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+            <span
+              className="ml-2 px-3 py-1 text-sm font-medium rounded-full themed-transition"
+              style={{
+                background: 'var(--success-light)',
+                color: 'var(--success)',
+              }}
+            >
               Complete Record
             </span>
           ) : (
-            <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800">
+            <span
+              className="ml-2 px-3 py-1 text-sm font-medium rounded-full themed-transition"
+              style={{
+                background: 'var(--warning-light)',
+                color: 'var(--warning)',
+              }}
+            >
               Incomplete Record
             </span>
           )}
@@ -341,113 +444,217 @@ const ExpenseView: React.FC = () => {
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Expense Details */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-gray-500" />
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <FileText className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
                 Expense Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-gray-500">Vendor</label>
-                  <p className="text-gray-900 font-medium flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-gray-400" />
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Vendor
+                  </label>
+                  <p className="font-medium flex items-center gap-2 themed-transition" style={{ color: 'var(--foreground)' }}>
+                    <Building2 className="w-4 h-4" style={{ color: 'var(--foreground-tertiary)' }} />
                     {expense.vendorName || 'N/A'}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Category</label>
-                  <p className="text-gray-900">{expense.category}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Category
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {expense.category}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Sub Category</label>
-                  <p className="text-gray-900">{expense.subCategory || 'N/A'}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Sub Category
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {expense.subCategory || 'N/A'}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Expense Account</label>
-                  <p className="text-gray-900 flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-gray-400" />
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Expense Account
+                  </label>
+                  <p className="flex items-center gap-2 themed-transition" style={{ color: 'var(--foreground)' }}>
+                    <BookOpen className="w-4 h-4" style={{ color: 'var(--foreground-tertiary)' }} />
                     {getExpenseAccount()}
                   </p>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-sm text-gray-500">Description</label>
-                  <p className="text-gray-900">{expense.description || 'N/A'}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Description
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {expense.description || 'N/A'}
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Financial Details */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-gray-500" />
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <DollarSign className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
                 Financial Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <label className="text-sm text-gray-500">Amount</label>
-                  <p className="text-xl font-bold text-gray-900">{formatCurrency(expense.amount)}</p>
+                <div
+                  className="rounded-lg p-4 themed-transition"
+                  style={{
+                    background: 'var(--surface)',
+                  }}
+                >
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Amount
+                  </label>
+                  <p className="text-xl font-bold themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {formatCurrency(expense.amount)}
+                  </p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <label className="text-sm text-gray-500">Tax Amount</label>
-                  <p className="text-xl font-bold text-gray-900">{formatCurrency(expense.taxAmount || 0)}</p>
+                <div
+                  className="rounded-lg p-4 themed-transition"
+                  style={{
+                    background: 'var(--surface)',
+                  }}
+                >
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Tax Amount
+                  </label>
+                  <p className="text-xl font-bold themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {formatCurrency(expense.taxAmount || 0)}
+                  </p>
                 </div>
-                <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                  <label className="text-sm text-amber-600">Total Amount</label>
-                  <p className="text-xl font-bold text-amber-700">{formatCurrency(expense.totalAmount)}</p>
+                <div
+                  className="rounded-lg p-4 themed-transition"
+                  style={{
+                    background: 'var(--primary-light)',
+                    border: '1px solid var(--primary)',
+                  }}
+                >
+                  <label className="text-sm" style={{ color: 'var(--primary)' }}>
+                    Total Amount
+                  </label>
+                  <p className="text-xl font-bold" style={{ color: 'var(--primary)' }}>
+                    {formatCurrency(expense.totalAmount)}
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Payment Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-gray-500" />
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <CreditCard className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
                 Payment Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-gray-500">Payment Method</label>
-                  <p className="text-gray-900 flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-gray-400" />
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Payment Method
+                  </label>
+                  <p className="flex items-center gap-2 themed-transition" style={{ color: 'var(--foreground)' }}>
+                    <CreditCard className="w-4 h-4" style={{ color: 'var(--foreground-tertiary)' }} />
                     {getPaymentMethodLabel()}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Payment Status</label>
-                  <p className="text-gray-900">
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Payment Status
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
                     <StatusBadge status={expense.paymentStatus} />
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Date</label>
-                  <p className="text-gray-900 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Date
+                  </label>
+                  <p className="flex items-center gap-2 themed-transition" style={{ color: 'var(--foreground)' }}>
+                    <Calendar className="w-4 h-4" style={{ color: 'var(--foreground-tertiary)' }} />
                     {new Date(expense.date).toLocaleDateString()}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Due Date</label>
-                  <p className="text-gray-900 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Due Date
+                  </label>
+                  <p className="flex items-center gap-2 themed-transition" style={{ color: 'var(--foreground)' }}>
+                    <Calendar className="w-4 h-4" style={{ color: 'var(--foreground-tertiary)' }} />
                     {expense.dueDate ? new Date(expense.dueDate).toLocaleDateString() : 'N/A'}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Reference Number</label>
-                  <p className="text-gray-900">{expense.referenceNumber || 'N/A'}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Reference Number
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {expense.referenceNumber || 'N/A'}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Bill Number</label>
-                  <p className="text-gray-900">{expense.billNumber || 'N/A'}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Bill Number
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {expense.billNumber || 'N/A'}
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Notes */}
             {expense.notes && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Notes</h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{expense.notes}</p>
+              <div
+                className="rounded-xl p-6 themed-transition"
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
+                <h3
+                  className="text-lg font-medium mb-4 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Notes
+                </h3>
+                <p className="whitespace-pre-wrap themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                  {expense.notes}
+                </p>
               </div>
             )}
           </div>
@@ -455,34 +662,66 @@ const ExpenseView: React.FC = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Summary */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Summary</h3>
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Quick Summary
+              </h3>
               <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Expense ID</span>
-                  <span className="text-sm font-medium text-gray-900">#{expense.id}</span>
+                <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Expense ID
+                  </span>
+                  <span className="text-sm font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
+                    #{expense.id}
+                  </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Reference</span>
-                  <span className="text-sm font-medium text-gray-900">{expense.referenceNumber || 'N/A'}</span>
+                <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Reference
+                  </span>
+                  <span className="text-sm font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {expense.referenceNumber || 'N/A'}
+                  </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Total Amount</span>
-                  <span className="text-sm font-bold text-amber-600">{formatCurrency(expense.totalAmount)}</span>
+                <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Total Amount
+                  </span>
+                  <span className="text-sm font-bold" style={{ color: 'var(--gold)' }}>
+                    {formatCurrency(expense.totalAmount)}
+                  </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Expense Account</span>
-                  <span className="text-sm font-medium text-gray-900">{getExpenseAccount()}</span>
+                <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Expense Account
+                  </span>
+                  <span className="text-sm font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {getExpenseAccount()}
+                  </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Status</span>
+                <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Status
+                  </span>
                   <span className="text-sm font-medium">
                     <StatusBadge status={expense.paymentStatus} />
                   </span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="text-sm text-gray-500">Created</span>
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Created
+                  </span>
+                  <span className="text-sm font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
                     {expense.createdAt ? new Date(expense.createdAt).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
@@ -490,26 +729,69 @@ const ExpenseView: React.FC = () => {
             </div>
 
             {/* Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Actions
+              </h3>
               <div className="space-y-2">
                 <button
                   onClick={handleEdit}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--primary-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--primary)';
+                  }}
                 >
                   <Edit className="h-4 w-4" />
                   Edit Expense
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                  style={{
+                    background: 'var(--error)',
+                    color: 'white',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--error-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--error)';
+                  }}
                 >
                   <Trash className="h-4 w-4" />
                   Delete Expense
                 </button>
                 <button
                   onClick={() => navigate('/purchases/expenses')}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                  style={{
+                    color: 'var(--foreground-secondary)',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--surface-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--surface)';
+                  }}
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back to Expenses

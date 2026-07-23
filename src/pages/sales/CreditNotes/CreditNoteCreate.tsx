@@ -26,8 +26,11 @@ import {
 } from '../../../validations/creditNote.validation';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
-// ─── Static data ──────────────────────────────────────────────────────────────
+// ============================================================
+// CONSTANTS - Single source of truth
+// ============================================================
 
+// Customer data
 const DEMO_CUSTOMERS = [
   { id: '1', name: 'Rajesh Jewelers',  email: 'rajesh@jewelers.com', phone: '+91-98765-43210', gst: '22AAAAA0000A1Z5' },
   { id: '2', name: 'Priya Gold House', email: 'priya@goldhouse.com',  phone: '+91-98765-43211', gst: '22BBBBB0000B1Z5' },
@@ -35,6 +38,7 @@ const DEMO_CUSTOMERS = [
   { id: '4', name: 'Meera Jewel World',email: 'meera@jewelworld.com', phone: '+91-98765-43213', gst: '22DDDDD0000D1Z5' },
 ];
 
+// Invoice data
 const DEMO_INVOICES = [
   { id: '1', number: 'INV-000001', amount: 29500 },
   { id: '2', number: 'INV-000002', amount: 50445 },
@@ -42,6 +46,7 @@ const DEMO_INVOICES = [
   { id: '4', number: 'INV-000004', amount: 12862 },
 ];
 
+// Product/Item data
 const DEMO_ITEMS = [
   { id: '1', name: 'Gold Ring',     code: 'GR-001', purity: '22K', price: 7500, unit: 'Pcs' },
   { id: '2', name: 'Gold Chain',    code: 'GC-001', purity: '22K', price: 4500, unit: 'Pcs' },
@@ -50,8 +55,17 @@ const DEMO_ITEMS = [
   { id: '5', name: 'Gold Bracelet', code: 'GB-001', purity: '22K', price: 3800, unit: 'Pcs' },
 ];
 
-// ─── Dropdown option lists ────────────────────────────────────────────────────
+// Predefined reason options
+const REASON_OPTIONS: DropdownOption[] = [
+  { value: 'Product damaged during shipping',       label: 'Product damaged during shipping' },
+  { value: 'Quality issue - incorrect purity',      label: 'Quality issue — incorrect purity' },
+  { value: 'Customer requested cancellation',       label: 'Customer requested cancellation' },
+  { value: 'Wrong item delivered',                  label: 'Wrong item delivered' },
+  { value: 'Price mismatch',                        label: 'Price mismatch' },
+  { value: 'Other',                                 label: 'Other' },
+];
 
+// Dropdown option lists
 const CUSTOMER_OPTIONS: DropdownOption[] = DEMO_CUSTOMERS.map(c => ({
   value: c.id,
   label: c.name,
@@ -290,45 +304,6 @@ const CreditNoteCreate: React.FC = () => {
     );
   }, [hasChanges, withConfirmation, navigate]);
 
-  // Clear form handler
-  const handleClearForm = useCallback(async () => {
-    if (!hasChanges) return;
-
-    await withConfirmation(
-      {
-        title: 'Clear Form',
-        message: 'Are you sure you want to clear all entered data?',
-        confirmText: 'Clear',
-        variant: 'warning',
-      },
-      async () => {
-        setFormData({
-          customerId:     '',
-          customerName:   '',
-          customerEmail:  '',
-          customerPhone:  '',
-          customerGst:    '',
-          invoiceId:      '',
-          invoiceNumber:  '',
-          creditNoteDate: new Date().toISOString().split('T')[0],
-          reason:         '',
-          notes:          '',
-          status: 'draft' as const,
-        });
-        setItems([]);
-        setErrors({});
-        setValidationResult({
-          isValid: true,
-          errors: {},
-          itemErrors: [],
-        });
-        initialSnapshotRef.current = null;
-        setIsCustomReason(false);
-        setCustomReason('');
-        success('Form cleared successfully.');
-      }
-    );
-  }, [hasChanges, withConfirmation, success]);
 
   // ── Columns config ───────────────────────────────────────────────────────────
 
@@ -348,17 +323,6 @@ const CreditNoteCreate: React.FC = () => {
   // Check if there are any errors
   const hasErrors = Object.keys(errors).length > 0;
 
-  // ── Predefined reason options ──────────────────────────────────────────────
-
-  const REASON_OPTIONS: DropdownOption[] = [
-    { value: 'Product damaged during shipping',       label: 'Product damaged during shipping' },
-    { value: 'Quality issue - incorrect purity',      label: 'Quality issue — incorrect purity' },
-    { value: 'Customer requested cancellation',       label: 'Customer requested cancellation' },
-    { value: 'Wrong item delivered',                  label: 'Wrong item delivered' },
-    { value: 'Price mismatch',                        label: 'Price mismatch' },
-    { value: 'Other',                                 label: 'Other' },
-  ];
-
   // ── Loading guard ─────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -372,7 +336,10 @@ const CreditNoteCreate: React.FC = () => {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-6xl mx-auto">
 
         {/* ── Header ── */}
@@ -380,34 +347,56 @@ const CreditNoteCreate: React.FC = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Go back"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
-                <Receipt className="h-6 w-6 text-amber-500" />
+              <h1
+                className="text-2xl font-semibold flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Receipt className="h-6 w-6" style={{ color: 'var(--gold)' }} />
                 Create Credit Note
               </h1>
-              <p className="text-sm text-gray-500">Create a new credit note for customer</p>
+              <p
+                className="text-sm themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                Create a new credit note for customer
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {hasChanges && (
-              <button
-                type="button"
-                onClick={handleClearForm}
-                className="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Clear
-              </button>
-            )}
             <button
               type="button"
               onClick={() => handleSubmit('draft')}
               disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--surface)';
+              }}
             >
               {saving ? (
                 <LoadingSpinner size="sm" />
@@ -420,7 +409,19 @@ const CreditNoteCreate: React.FC = () => {
               type="button"
               onClick={() => handleSubmit('sent')}
               disabled={saving}
-              className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {saving ? (
                 <LoadingSpinner size="sm" />
@@ -447,9 +448,18 @@ const CreditNoteCreate: React.FC = () => {
         <form className="space-y-6">
 
           {/* ── Customer Details ── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <Users className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Customer Details
             </h2>
 
@@ -457,8 +467,11 @@ const CreditNoteCreate: React.FC = () => {
 
               {/* Customer */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Select Customer <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Select Customer <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <SearchableDropdown
                   options={CUSTOMER_OPTIONS}
@@ -471,13 +484,18 @@ const CreditNoteCreate: React.FC = () => {
                   resetSearchOnOpen
                 />
                 {errors.customerId && (
-                  <p className="mt-1 text-xs text-red-500">{errors.customerId}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {errors.customerId}
+                  </p>
                 )}
               </div>
 
               {/* Invoice */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Invoice (Optional)
                 </label>
                 <SearchableDropdown
@@ -494,26 +512,45 @@ const CreditNoteCreate: React.FC = () => {
 
               {/* Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Credit Note Date <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Credit Note Date <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <input
                   type="date"
                   value={formData.creditNoteDate}
                   onChange={(e) => handleInputChange('creditNoteDate', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.creditNoteDate ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.creditNoteDate ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = errors.creditNoteDate ? 'var(--error)' : 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
                 {errors.creditNoteDate && (
-                  <p className="mt-1 text-xs text-red-500">{errors.creditNoteDate}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {errors.creditNoteDate}
+                  </p>
                 )}
               </div>
 
               {/* Reason - With Manual Entry Option */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Reason <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Reason <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 
                 {/* Toggle between dropdown and manual entry */}
@@ -525,22 +562,30 @@ const CreditNoteCreate: React.FC = () => {
                       setFormData(prev => ({ ...prev, reason: '' }));
                       setErrors(prev => { const e = { ...prev }; delete e.reason; return e; });
                     }}
-                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                    className={`px-3 py-1 text-xs rounded-md transition-colors themed-transition ${
                       !isCustomReason 
-                        ? 'bg-amber-500 text-white' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'text-white' 
+                        : 'text-gray-600 hover:bg-gray-200'
                     }`}
+                    style={{
+                      background: !isCustomReason ? 'var(--primary)' : 'var(--surface)',
+                      color: !isCustomReason ? 'white' : 'var(--foreground-secondary)',
+                    }}
                   >
                     Select from list
                   </button>
                   <button
                     type="button"
                     onClick={handleCustomReasonToggle}
-                    className={`px-3 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
+                    className={`px-3 py-1 text-xs rounded-md transition-colors flex items-center gap-1 themed-transition ${
                       isCustomReason 
-                        ? 'bg-amber-500 text-white' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'text-white' 
+                        : 'text-gray-600 hover:bg-gray-200'
                     }`}
+                    style={{
+                      background: isCustomReason ? 'var(--primary)' : 'var(--surface)',
+                      color: isCustomReason ? 'white' : 'var(--foreground-secondary)',
+                    }}
                   >
                     <Plus className="h-3 w-3" />
                     Custom reason
@@ -565,34 +610,72 @@ const CreditNoteCreate: React.FC = () => {
                     value={customReason}
                     onChange={handleCustomReasonChange}
                     placeholder="Enter custom reason..."
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.reason ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `1px solid ${errors.reason ? 'var(--error)' : 'var(--border)'}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = errors.reason ? 'var(--error)' : 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                   />
                 )}
                 
                 {errors.reason && (
-                  <p className="mt-1 text-xs text-red-500">{errors.reason}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {errors.reason}
+                  </p>
                 )}
               </div>
             </div>
 
             {/* Customer info card */}
             {formData.customerName && (
-              <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-100">
-                <p className="font-medium text-gray-900">{formData.customerName}</p>
-                <p className="text-sm text-gray-600 mt-0.5">
+              <div
+                className="mt-4 p-4 rounded-lg themed-transition"
+                style={{
+                  background: 'var(--primary-light)',
+                  border: '1px solid var(--primary)',
+                }}
+              >
+                <p
+                  className="font-medium themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  {formData.customerName}
+                </p>
+                <p
+                  className="text-sm mt-0.5 themed-transition"
+                  style={{ color: 'var(--foreground-secondary)' }}
+                >
                   {formData.customerEmail} | {formData.customerPhone}
                 </p>
                 {formData.customerGst && (
-                  <p className="text-sm text-gray-500 mt-0.5">GST: {formData.customerGst}</p>
+                  <p
+                    className="text-sm mt-0.5 themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
+                  >
+                    GST: {formData.customerGst}
+                  </p>
                 )}
               </div>
             )}
           </div>
 
           {/* ── Items ── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <ItemSelectionTable
               items={items}
               onItemsChange={handleItemsChange}
@@ -617,21 +700,45 @@ const CreditNoteCreate: React.FC = () => {
               addButtonAtBottom
             />
             {errors.items && (
-              <p className="mt-1 text-xs text-red-500">{errors.items}</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                {errors.items}
+              </p>
             )}
           </div>
 
           {/* ── Notes ── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <FileText className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Notes
             </h2>
             <textarea
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+              className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               placeholder="Enter any additional notes..."
             />
           </div>
@@ -641,8 +748,16 @@ const CreditNoteCreate: React.FC = () => {
 
       {/* Saving Overlay */}
       {saving && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div
+            className="rounded-lg p-8 flex flex-col items-center themed-transition"
+            style={{
+              background: 'var(--card)',
+            }}
+          >
             <LoadingSpinner size="lg" />
           </div>
         </div>

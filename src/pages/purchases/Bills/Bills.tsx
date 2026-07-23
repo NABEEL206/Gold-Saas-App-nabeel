@@ -1,5 +1,4 @@
 // src/pages/purchases/Bills/Bills.tsx
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -30,22 +29,72 @@ import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAnd
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import { BILL_STATUSES, BILL_STATUS_LABELS } from '../../../types/Bill/BillTypes';
 
-// Status Badge
+// ============================================================
+// STATUS CONFIGURATION - Single source of truth
+// ============================================================
+
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  draft: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-secondary)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Draft',
+  },
+  pending: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    icon: <AlertCircle className="h-3 w-3" />,
+    label: 'Pending',
+  },
+  approved: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Approved',
+  },
+  paid: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Paid',
+  },
+  partial: {
+    bg: 'var(--primary-light)',
+    color: 'var(--primary)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Partial',
+  },
+  overdue: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    icon: <AlertCircle className="h-3 w-3" />,
+    label: 'Overdue',
+  },
+  cancelled: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-tertiary)',
+    icon: <XCircle className="h-3 w-3" />,
+    label: 'Cancelled',
+  },
+};
+
+// Status Badge Component
 const StatusBadge: React.FC<{ status: Bill['status'] }> = ({ status }) => {
-  const config = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Draft' },
-    pending: { color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle, label: 'Pending' },
-    approved: { color: 'bg-blue-100 text-blue-700', icon: CheckCircle, label: 'Approved' },
-    paid: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Paid' },
-    partial: { color: 'bg-purple-100 text-purple-700', icon: Clock, label: 'Partial' },
-    overdue: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Overdue' },
-    cancelled: { color: 'bg-gray-100 text-gray-500', icon: XCircle, label: 'Cancelled' },
-  };
-  const defaultConfig = { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
-  const { color, icon: Icon, label } = config[status] || defaultConfig;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
@@ -91,8 +140,32 @@ const Bills: React.FC = () => {
     navigate(`/purchases/bills/${bill.id}`);
   }, [navigate]);
 
-
   // Single delete handler using confirmation modal
+  const handleDeleteClick = useCallback(async (bill: Bill) => {
+    const billId = String(bill.id);
+
+    await withConfirmation(
+      {
+        title: 'Delete Bill',
+        message: `Are you sure you want to delete "${bill.billNumber}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(billId);
+        try {
+          await deleteBill(bill.id);
+          setSelectedItems(prev => prev.filter(item => item !== billId));
+          success(`Bill "${bill.billNumber}" deleted successfully.`);
+        } catch (error) {
+          console.error('Error deleting bill:', error);
+          showError('Failed to delete bill. Please try again.');
+        } finally {
+          setDeleteLoading(null);
+        }
+      }
+    );
+  }, [withConfirmation, deleteBill, success, showError]);
 
   // Bulk delete handler using confirmation modal
   const handleBulkDeleteAction = useCallback(async () => {
@@ -193,6 +266,26 @@ const Bills: React.FC = () => {
     return `₹${amount.toFixed(2)}`;
   };
 
+  // Row dropdown items
+  const getRowDropdownItems = (bill: Bill) => [
+    {
+      label: 'View Details',
+      icon: <DollarSign className="h-4 w-4" style={{ color: 'var(--info)' }} />,
+      onClick: () => handleView(bill),
+    },
+    {
+      label: deleteLoading === String(bill.id) ? 'Deleting...' : 'Delete',
+      icon: deleteLoading === String(bill.id) ? (
+        <LoadingSpinner size="sm" />
+      ) : (
+        <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />
+      ),
+      onClick: () => handleDeleteClick(bill),
+      danger: true,
+      disabled: deleteLoading === String(bill.id),
+    },
+  ];
+
   // Columns - NO actions column, NO payment progress
   const columns: TableColumn<Bill>[] = [
     {
@@ -200,8 +293,18 @@ const Bills: React.FC = () => {
       header: 'Bill #',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{item.billNumber}</p>
-          <p className="text-xs text-gray-500">{new Date(item.billDate).toLocaleDateString()}</p>
+          <p
+            className="text-sm font-medium themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.billNumber}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {new Date(item.billDate).toLocaleDateString()}
+          </p>
         </div>
       ),
     },
@@ -210,11 +313,19 @@ const Bills: React.FC = () => {
       header: 'Vendor',
       render: (item) => (
         <div>
-          <p className="text-sm text-gray-900 flex items-center gap-1">
-            <Building2 className="h-3 w-3 text-gray-400" />
+          <p
+            className="text-sm flex items-center gap-1 themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            <Building2 className="h-3 w-3" style={{ color: 'var(--foreground-tertiary)' }} />
             {item.vendorName || 'N/A'}
           </p>
-          <p className="text-xs text-gray-500">{item.vendorEmail}</p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.vendorEmail}
+          </p>
         </div>
       ),
     },
@@ -222,7 +333,10 @@ const Bills: React.FC = () => {
       key: 'totalAmount',
       header: 'Amount',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">
+        <span
+          className="text-sm font-medium themed-transition"
+          style={{ color: 'var(--gold)' }}
+        >
           {formatCurrency(item.totalAmount)}
         </span>
       ),
@@ -232,11 +346,19 @@ const Bills: React.FC = () => {
       header: 'Due Date',
       render: (item) => (
         <div>
-          <span className="text-sm text-gray-600">
+          <span
+            className="text-sm themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
             {item.dueDate ? new Date(item.dueDate).toLocaleDateString() : 'N/A'}
           </span>
           {item.status === 'overdue' && (
-            <span className="text-xs text-red-500 block">Overdue</span>
+            <span
+              className="text-xs block themed-transition"
+              style={{ color: 'var(--error)' }}
+            >
+              Overdue
+            </span>
           )}
         </div>
       ),
@@ -255,7 +377,7 @@ const Bills: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportAction('pdf'),
       disabled: exportLoading,
@@ -265,7 +387,7 @@ const Bills: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportAction('excel'),
       disabled: exportLoading,
@@ -282,18 +404,45 @@ const Bills: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bills</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your vendor bills</p>
+          <h1
+            className="text-2xl font-bold themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            Bills
+          </h1>
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            Manage your vendor bills
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh Button */}
           <button
             onClick={handleRefreshClick}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
@@ -302,18 +451,45 @@ const Bills: React.FC = () => {
             )}
             Refresh
           </button>
+
+          {/* New Bill Button */}
           <button
             onClick={() => navigate('/purchases/bills/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Bill
           </button>
+
+          {/* Bulk Delete Button */}
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteAction}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -323,6 +499,8 @@ const Bills: React.FC = () => {
               Delete ({selectedItems.length})
             </button>
           )}
+
+          {/* More Options Dropdown */}
           <ThreeDotDropdown
             items={headerDropdownItems}
             position="right"
@@ -332,7 +510,7 @@ const Bills: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -342,26 +520,68 @@ const Bills: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search Input */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by bill #, vendor..."
                 value={filters.search || ''}
                 onChange={(e) => updateFilters({ search: e.target.value })}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.status || ''}
               onChange={(e) => updateFilters({ status: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Status</option>
               {BILL_STATUSES.map(status => (
@@ -376,12 +596,19 @@ const Bills: React.FC = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+        <div
+          className="mb-4 p-4 rounded-lg themed-transition"
+          style={{
+            background: 'var(--error-light)',
+            border: '1px solid var(--error)',
+            color: 'var(--error)',
+          }}
+        >
           {error}
         </div>
       )}
 
-      {/* Table - NO actions column, NO payment progress */}
+      {/* Table */}
       <ReusableTable
         data={bills}
         columns={columns}
@@ -391,7 +618,7 @@ const Bills: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => String(item.id)}
         emptyMessage="No bills found"
-        emptyIcon={<FileText className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<FileText className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage: pagination.page,
@@ -402,7 +629,7 @@ const Bills: React.FC = () => {
         }}
       />
 
-      {/* Confirmation Modal - Replaces the custom delete modal */}
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

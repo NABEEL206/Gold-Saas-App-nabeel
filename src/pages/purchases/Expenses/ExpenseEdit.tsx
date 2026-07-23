@@ -1,5 +1,4 @@
 // src/pages/purchases/Expenses/ExpenseEdit.tsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Building2, User, Mail, Phone, AlertCircle, Plus, X } from 'lucide-react';
@@ -23,6 +22,10 @@ import {
   hasValidationErrors,
   getErrorCount
 } from '../../../validations/expense.validation';
+
+// ============================================================
+// CONSTANTS - Single source of truth
+// ============================================================
 
 // ─── Static option lists ───────────────────────────────────────────────────────
 const EXPENSE_CATEGORY_OPTIONS: DropdownOption[] = EXPENSE_CATEGORIES.map(c => ({ value: c, label: c }));
@@ -335,6 +338,19 @@ const ExpenseEdit: React.FC = () => {
     }
   };
 
+  // Combined blur handler for input fields
+  const handleInputBlur = (field: string, e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    handleFieldBlur(field);
+    e.currentTarget.style.borderColor = errors[field] ? 'var(--error)' : 'var(--border)';
+    e.currentTarget.style.boxShadow = 'none';
+  };
+
+  // Focus handler for input fields
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderColor = 'var(--primary)';
+    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+  };
+
   if (loadingExpense) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -347,11 +363,23 @@ const ExpenseEdit: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-yellow-300 mx-auto mb-3" />
-          <p className="text-gray-500">{loadError || 'Expense not found'}</p>
+          <AlertCircle className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--warning)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            {loadError || 'Expense not found'}
+          </p>
           <button
             onClick={() => navigate('/purchases/expenses')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Expenses
           </button>
@@ -361,21 +389,44 @@ const ExpenseEdit: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-5xl mx-auto">
         {/* ── Header ── */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Edit Expense</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{expense.expenseNumber}</p>
+              <h1
+                className="text-2xl font-bold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Edit Expense
+              </h1>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                {expense.expenseNumber}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -383,7 +434,17 @@ const ExpenseEdit: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResetForm}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+                style={{
+                  color: 'var(--foreground-secondary)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
                 title="Reset changes"
               >
                 Reset
@@ -392,14 +453,36 @@ const ExpenseEdit: React.FC = () => {
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
             <button
               onClick={onSubmit}
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {isSubmitting ? (
                 <>
@@ -432,16 +515,33 @@ const ExpenseEdit: React.FC = () => {
         )}
 
         {/* ── Form ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div
+          className="rounded-xl p-6 themed-transition"
+          style={{
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Basic Information
+              </h3>
             </div>
 
             {/* ── Expense type toggle ── */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Expense Type</label>
+              <label
+                className="block text-sm font-medium mb-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Expense Type
+              </label>
               <div className="flex gap-4">
                 <button
                   type="button"
@@ -451,11 +551,12 @@ const ExpenseEdit: React.FC = () => {
                     clearVendor(); 
                     clearErrors();
                   }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors ${
-                    !isVendorExpense
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors themed-transition`}
+                  style={{
+                    borderColor: !isVendorExpense ? 'var(--primary)' : 'var(--border)',
+                    background: !isVendorExpense ? 'var(--primary-light)' : 'var(--card)',
+                    color: !isVendorExpense ? 'var(--primary)' : 'var(--foreground-secondary)',
+                  }}
                 >
                   <User className="h-4 w-4" />
                   General Expense
@@ -467,11 +568,12 @@ const ExpenseEdit: React.FC = () => {
                     handleChange('isVendorExpense', true); 
                     clearErrors();
                   }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors ${
-                    isVendorExpense
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors themed-transition`}
+                  style={{
+                    borderColor: isVendorExpense ? 'var(--primary)' : 'var(--border)',
+                    background: isVendorExpense ? 'var(--primary-light)' : 'var(--card)',
+                    color: isVendorExpense ? 'var(--primary)' : 'var(--foreground-secondary)',
+                  }}
                 >
                   <Building2 className="h-4 w-4" />
                   Vendor Expense
@@ -482,8 +584,11 @@ const ExpenseEdit: React.FC = () => {
             {/* ── Vendor dropdown ── */}
             {isVendorExpense && (
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Vendor <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Vendor <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <SearchableDropdown
                   options={vendorOptions}
@@ -496,24 +601,35 @@ const ExpenseEdit: React.FC = () => {
                   resetSearchOnOpen
                 />
                 {errors.vendorId && (
-                  <p className="mt-1 text-sm text-red-500">{errors.vendorId}</p>
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.vendorId}
+                  </p>
                 )}
                 {selectedVendorInfo && (
-                  <div className="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-lg flex flex-wrap gap-4 text-sm text-gray-600">
+                  <div
+                    className="mt-3 p-3 rounded-lg flex flex-wrap gap-4 text-sm themed-transition"
+                    style={{
+                      background: 'var(--primary-light)',
+                      border: '1px solid var(--primary)',
+                      color: 'var(--foreground-secondary)',
+                    }}
+                  >
                     {selectedVendorInfo.email && (
                       <span className="flex items-center gap-1.5">
-                        <Mail className="h-3.5 w-3.5 text-amber-500" />
+                        <Mail className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} />
                         {selectedVendorInfo.email}
                       </span>
                     )}
                     {selectedVendorInfo.phone && (
                       <span className="flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5 text-amber-500" />
+                        <Phone className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} />
                         {selectedVendorInfo.phone}
                       </span>
                     )}
                     {selectedVendorInfo.address && (
-                      <span className="text-gray-500">{selectedVendorInfo.address}</span>
+                      <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                        {selectedVendorInfo.address}
+                      </span>
                     )}
                   </div>
                 )}
@@ -522,8 +638,11 @@ const ExpenseEdit: React.FC = () => {
 
             {/* Category with Manual Entry Option */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Category <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               
               {!isManualCategory ? (
@@ -540,7 +659,17 @@ const ExpenseEdit: React.FC = () => {
                   <button
                     type="button"
                     onClick={toggleManualCategory}
-                    className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1 text-sm"
+                    className="px-3 py-2 rounded-lg transition-colors flex items-center gap-1 text-sm themed-transition"
+                    style={{
+                      background: 'var(--surface)',
+                      color: 'var(--foreground-secondary)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--surface-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--surface)';
+                    }}
                     title="Add custom category"
                   >
                     <Plus className="h-4 w-4" />
@@ -555,7 +684,14 @@ const ExpenseEdit: React.FC = () => {
                         value={customCategory}
                         onChange={(e) => setCustomCategory(e.target.value)}
                         placeholder="Enter custom category..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                        style={{
+                          border: '1px solid var(--border)',
+                          background: 'var(--background)',
+                          color: 'var(--foreground)',
+                        }}
+                        onFocus={handleInputFocus}
+                        onBlur={(e) => handleInputBlur('category', e)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -566,7 +702,17 @@ const ExpenseEdit: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleManualCategoryAdd}
-                        className="px-3 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                        className="px-3 py-2 rounded-lg transition-colors themed-transition"
+                        style={{
+                          background: 'var(--primary)',
+                          color: 'white',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'var(--primary-hover)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'var(--primary)';
+                        }}
                       >
                         Update
                       </button>
@@ -575,7 +721,17 @@ const ExpenseEdit: React.FC = () => {
                   <button
                     type="button"
                     onClick={toggleManualCategory}
-                    className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                    className="px-3 py-2 rounded-lg transition-colors themed-transition"
+                    style={{
+                      background: 'var(--surface)',
+                      color: 'var(--foreground-secondary)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--surface-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--surface)';
+                    }}
                     title="Cancel manual entry"
                   >
                     <X className="h-4 w-4" />
@@ -583,28 +739,48 @@ const ExpenseEdit: React.FC = () => {
                 </div>
               )}
               
-              {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
+              {errors.category && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.category}
+                </p>
+              )}
             </div>
 
             {/* Sub Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sub Category</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Sub Category
+              </label>
               <input
                 type="text"
                 value={formData.subCategory || ''}
                 onChange={(e) => handleChange('subCategory', e.target.value)}
-                onBlur={() => handleFieldBlur('subCategory')}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.subCategory ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.subCategory ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('subCategory', e)}
                 placeholder="Enter sub category"
               />
-              {errors.subCategory && <p className="mt-1 text-sm text-red-500">{errors.subCategory}</p>}
+              {errors.subCategory && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.subCategory}
+                </p>
+              )}
             </div>
 
             {/* Expense Account */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Expense Account
               </label>
               <SearchableDropdown
@@ -617,121 +793,210 @@ const ExpenseEdit: React.FC = () => {
                 emptyStateText="No accounts found"
               />
               {errors.expenseAccount && (
-                <p className="mt-1 text-sm text-red-500">{errors.expenseAccount}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.expenseAccount}
+                </p>
               )}
-              <p className="mt-1 text-xs text-gray-500">Select the account this expense should be recorded against</p>
+              <p
+                className="mt-1 text-xs themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              >
+                Select the account this expense should be recorded against
+              </p>
             </div>
 
             {/* Amount */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Amount <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Amount <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
                 type="number"
                 step="0.01"
                 value={formData.amount || ''}
                 onChange={(e) => handleChange('amount', parseFloat(e.target.value) || 0)}
-                onBlur={() => handleFieldBlur('amount')}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.amount ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.amount ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('amount', e)}
                 placeholder="0.00"
               />
-              {errors.amount && <p className="mt-1 text-sm text-red-500">{errors.amount}</p>}
+              {errors.amount && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.amount}
+                </p>
+              )}
             </div>
 
             {/* Tax Amount */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tax Amount</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Tax Amount
+              </label>
               <input
                 type="number"
                 step="0.01"
                 value={formData.taxAmount || ''}
                 onChange={(e) => handleChange('taxAmount', parseFloat(e.target.value) || 0)}
-                onBlur={() => handleFieldBlur('taxAmount')}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.taxAmount ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.taxAmount ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('taxAmount', e)}
                 placeholder="0.00"
               />
-              {errors.taxAmount && <p className="mt-1 text-sm text-red-500">{errors.taxAmount}</p>}
+              {errors.taxAmount && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.taxAmount}
+                </p>
+              )}
             </div>
 
             {/* Total Amount */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Total Amount
+              </label>
               <input
                 type="number"
                 step="0.01"
                 value={formData.totalAmount || ''}
                 onChange={(e) => handleChange('totalAmount', parseFloat(e.target.value) || 0)}
-                onBlur={() => handleFieldBlur('totalAmount')}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.totalAmount ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.totalAmount ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('totalAmount', e)}
                 placeholder="0.00"
               />
-              {errors.totalAmount && <p className="mt-1 text-sm text-red-500">{errors.totalAmount}</p>}
+              {errors.totalAmount && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.totalAmount}
+                </p>
+              )}
             </div>
 
             {/* Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Date <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
                 type="date"
                 value={formData.date}
                 onChange={(e) => handleChange('date', e.target.value)}
-                onBlur={() => handleFieldBlur('date')}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.date ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.date ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('date', e)}
               />
-              {errors.date && <p className="mt-1 text-sm text-red-500">{errors.date}</p>}
+              {errors.date && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.date}
+                </p>
+              )}
             </div>
 
             {/* Due Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Due Date
+              </label>
               <input
                 type="date"
                 value={formData.dueDate || ''}
                 onChange={(e) => handleChange('dueDate', e.target.value)}
-                onBlur={() => handleFieldBlur('dueDate')}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.dueDate ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.dueDate ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('dueDate', e)}
               />
-              {errors.dueDate && <p className="mt-1 text-sm text-red-500">{errors.dueDate}</p>}
+              {errors.dueDate && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.dueDate}
+                </p>
+              )}
             </div>
 
             {/* Description */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Description
+              </label>
               <textarea
                 value={formData.description || ''}
                 onChange={(e) => handleChange('description', e.target.value)}
-                onBlur={() => handleFieldBlur('description')}
                 rows={3}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.description ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.description ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('description', e)}
                 placeholder="Enter description"
               />
-              {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
+              {errors.description && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.description}
+                </p>
+              )}
             </div>
 
             {/* ── Payment Information ── */}
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 mt-2">Payment Information</h3>
+              <h3
+                className="text-lg font-medium mb-4 mt-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Payment Information
+              </h3>
             </div>
 
             {/* Payment Method */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Payment Method <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Payment Method <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <SearchableDropdown
                 options={PAYMENT_METHOD_OPTIONS}
@@ -740,13 +1005,20 @@ const ExpenseEdit: React.FC = () => {
                 triggerPlaceholder="Select Payment Method"
                 placeholder="Search method..."
               />
-              {errors.paymentMethod && <p className="mt-1 text-sm text-red-500">{errors.paymentMethod}</p>}
+              {errors.paymentMethod && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.paymentMethod}
+                </p>
+              )}
             </div>
 
             {/* Payment Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Payment Status <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Payment Status <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <SearchableDropdown
                 options={PAYMENT_STATUS_OPTIONS}
@@ -755,71 +1027,127 @@ const ExpenseEdit: React.FC = () => {
                 triggerPlaceholder="Select Payment Status"
                 placeholder="Search status..."
               />
-              {errors.paymentStatus && <p className="mt-1 text-sm text-red-500">{errors.paymentStatus}</p>}
+              {errors.paymentStatus && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.paymentStatus}
+                </p>
+              )}
             </div>
 
             {/* Reference Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Reference Number</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Reference Number
+              </label>
               <input
                 type="text"
                 value={formData.referenceNumber || ''}
                 onChange={(e) => handleChange('referenceNumber', e.target.value)}
-                onBlur={() => handleFieldBlur('referenceNumber')}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.referenceNumber ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.referenceNumber ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('referenceNumber', e)}
                 placeholder="Enter reference number"
               />
-              {errors.referenceNumber && <p className="mt-1 text-sm text-red-500">{errors.referenceNumber}</p>}
+              {errors.referenceNumber && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.referenceNumber}
+                </p>
+              )}
             </div>
 
             {/* Receipt Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Receipt Number</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Receipt Number
+              </label>
               <input
                 type="text"
                 value={formData.receiptNumber || ''}
                 onChange={(e) => handleChange('receiptNumber', e.target.value)}
-                onBlur={() => handleFieldBlur('receiptNumber')}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.receiptNumber ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.receiptNumber ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('receiptNumber', e)}
                 placeholder="Enter receipt number"
               />
-              {errors.receiptNumber && <p className="mt-1 text-sm text-red-500">{errors.receiptNumber}</p>}
+              {errors.receiptNumber && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.receiptNumber}
+                </p>
+              )}
             </div>
 
             {/* Bill Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bill Number</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Bill Number
+              </label>
               <input
                 type="text"
                 value={formData.billNumber || ''}
                 onChange={(e) => handleChange('billNumber', e.target.value)}
-                onBlur={() => handleFieldBlur('billNumber')}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.billNumber ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.billNumber ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('billNumber', e)}
                 placeholder="Enter bill number"
               />
-              {errors.billNumber && <p className="mt-1 text-sm text-red-500">{errors.billNumber}</p>}
+              {errors.billNumber && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.billNumber}
+                </p>
+              )}
             </div>
 
             {/* Notes */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Notes
+              </label>
               <textarea
                 value={formData.notes || ''}
                 onChange={(e) => handleChange('notes', e.target.value)}
-                onBlur={() => handleFieldBlur('notes')}
                 rows={3}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.notes ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.notes ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('notes', e)}
                 placeholder="Enter additional notes"
               />
-              {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes}</p>}
+              {errors.notes && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.notes}
+                </p>
+              )}
             </div>
 
           </div>

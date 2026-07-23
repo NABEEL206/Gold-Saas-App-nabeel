@@ -1,5 +1,4 @@
 // src/pages/purchases/Vendors/VendorView.tsx
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -28,17 +27,42 @@ import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAnd
 import { validateVendorForm, formatValidationErrors } from '../../../validations/vendor.validation';
 import type { VendorFormData } from '../../../types/Vendor/VendorType';
 
-// Status Badge
+// ============================================================
+// STATUS CONFIGURATION - Single source of truth
+// ============================================================
+
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  active: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Active',
+  },
+  inactive: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-secondary)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Inactive',
+  },
+};
+
+// Status Badge Component
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const config = {
-    active: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Active' },
-    inactive: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Inactive' },
-  };
-  const defaultConfig = { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
-  const { color, icon: Icon, label } = config[status as keyof typeof config] || defaultConfig;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.inactive;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
@@ -235,22 +259,22 @@ const VendorView: React.FC = () => {
   const dropdownItems = [
     {
       label: 'Print',
-      icon: <Printer className="h-4 w-4 text-gray-500" />,
+      icon: <Printer className="h-4 w-4" style={{ color: 'var(--foreground-secondary)' }} />,
       onClick: handlePrint,
     },
     {
       label: 'Download',
-      icon: <Download className="h-4 w-4 text-blue-500" />,
+      icon: <Download className="h-4 w-4" style={{ color: 'var(--info)' }} />,
       onClick: handleDownload,
     },
     {
       label: 'Edit Vendor',
-      icon: <Edit className="h-4 w-4 text-amber-500" />,
+      icon: <Edit className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
       onClick: handleEdit,
     },
     {
       label: 'Delete Vendor',
-      icon: <Trash className="h-4 w-4 text-red-500" />,
+      icon: <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />,
       onClick: handleDelete,
       danger: true,
     },
@@ -268,11 +292,23 @@ const VendorView: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Building className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">{error || 'Vendor not found'}</p>
+          <Building className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--foreground-tertiary)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            {error || 'Vendor not found'}
+          </p>
           <button
             onClick={() => navigate('/purchases/vendors')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Vendors
           </button>
@@ -282,25 +318,58 @@ const VendorView: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/purchases/vendors')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 rounded-lg transition-colors themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'transparent',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--surface-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{getDisplayName}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Vendor Details</p>
+            <h1
+              className="text-2xl font-bold themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              {getDisplayName}
+            </h1>
+            <p
+              className="text-sm mt-0.5 themed-transition"
+              style={{ color: 'var(--foreground-secondary)' }}
+            >
+              Vendor Details
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleEdit}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Edit className="h-4 w-4" />
             Edit Vendor
@@ -331,12 +400,24 @@ const VendorView: React.FC = () => {
       <div className="mb-6">
         <StatusBadge status={vendor.status} />
         {isComplete && (
-          <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+          <span
+            className="ml-2 px-3 py-1 text-sm font-medium rounded-full themed-transition"
+            style={{
+              background: 'var(--success-light)',
+              color: 'var(--success)',
+            }}
+          >
             Complete Profile
           </span>
         )}
         {!isComplete && (
-          <span className="ml-2 px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800">
+          <span
+            className="ml-2 px-3 py-1 text-sm font-medium rounded-full themed-transition"
+            style={{
+              background: 'var(--warning-light)',
+              color: 'var(--warning)',
+            }}
+          >
             Incomplete Profile
           </span>
         )}
@@ -346,29 +427,50 @@ const VendorView: React.FC = () => {
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Company Info */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-              <Building className="w-5 h-5 text-gray-500" />
+          <div
+            className="rounded-xl p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            <h3
+              className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <Building className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
               Company Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-gray-500">Company Name</label>
-                <p className="text-gray-900 font-medium">{getCompanyInfo || 'N/A'}</p>
+                <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  Company Name
+                </label>
+                <p className="font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
+                  {getCompanyInfo || 'N/A'}
+                </p>
               </div>
               <div>
-                <label className="text-sm text-gray-500">Tax ID</label>
-                <p className="text-gray-900">{vendor.taxId || 'N/A'}</p>
+                <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  Tax ID
+                </label>
+                <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                  {vendor.taxId || 'N/A'}
+                </p>
               </div>
               <div>
-                <label className="text-sm text-gray-500">Website</label>
-                <p className="text-gray-900">
+                <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  Website
+                </label>
+                <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
                   {vendor.website ? (
                     <a 
                       href={vendor.website} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="text-amber-600 hover:underline"
+                      className="hover:underline themed-transition"
+                      style={{ color: 'var(--primary)' }}
                     >
                       {vendor.website}
                     </a>
@@ -376,8 +478,10 @@ const VendorView: React.FC = () => {
                 </p>
               </div>
               <div>
-                <label className="text-sm text-gray-500">Status</label>
-                <p className="text-gray-900">
+                <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  Status
+                </label>
+                <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
                   <StatusBadge status={vendor.status} />
                 </p>
               </div>
@@ -385,49 +489,69 @@ const VendorView: React.FC = () => {
           </div>
 
           {/* Contact Info */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-              <User className="w-5 h-5 text-gray-500" />
+          <div
+            className="rounded-xl p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            <h3
+              className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <User className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
               Contact Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-gray-500">Email</label>
-                <p className="text-gray-900 flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-gray-400" />
+                <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  Email
+                </label>
+                <p className="flex items-center gap-2 themed-transition" style={{ color: 'var(--foreground)' }}>
+                  <Mail className="w-4 h-4" style={{ color: 'var(--foreground-tertiary)' }} />
                   {vendor.email || 'N/A'}
                 </p>
               </div>
               <div>
-                <label className="text-sm text-gray-500">Phone</label>
-                <p className="text-gray-900 flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-gray-400" />
+                <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  Phone
+                </label>
+                <p className="flex items-center gap-2 themed-transition" style={{ color: 'var(--foreground)' }}>
+                  <Phone className="w-4 h-4" style={{ color: 'var(--foreground-tertiary)' }} />
                   {vendor.phone || 'N/A'}
                 </p>
               </div>
               {vendor.contactPerson && (
                 <div>
-                  <label className="text-sm text-gray-500">Contact Person</label>
-                  <p className="text-gray-900 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-gray-400" />
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Contact Person
+                  </label>
+                  <p className="flex items-center gap-2 themed-transition" style={{ color: 'var(--foreground)' }}>
+                    <Users className="w-4 h-4" style={{ color: 'var(--foreground-tertiary)' }} />
                     {vendor.contactPerson}
                   </p>
                 </div>
               )}
               {vendor.contactEmail && (
                 <div>
-                  <label className="text-sm text-gray-500">Contact Email</label>
-                  <p className="text-gray-900 flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-gray-400" />
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Contact Email
+                  </label>
+                  <p className="flex items-center gap-2 themed-transition" style={{ color: 'var(--foreground)' }}>
+                    <Mail className="w-4 h-4" style={{ color: 'var(--foreground-tertiary)' }} />
                     {vendor.contactEmail}
                   </p>
                 </div>
               )}
               {vendor.contactPhone && (
                 <div>
-                  <label className="text-sm text-gray-500">Contact Phone</label>
-                  <p className="text-gray-900 flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-gray-400" />
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Contact Phone
+                  </label>
+                  <p className="flex items-center gap-2 themed-transition" style={{ color: 'var(--foreground)' }}>
+                    <Phone className="w-4 h-4" style={{ color: 'var(--foreground-tertiary)' }} />
                     {vendor.contactPhone}
                   </p>
                 </div>
@@ -436,27 +560,55 @@ const VendorView: React.FC = () => {
           </div>
 
           {/* Address */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-gray-500" />
+          <div
+            className="rounded-xl p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            <h3
+              className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <MapPin className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
               Address
             </h3>
             <div className="grid grid-cols-1 gap-2">
-              <p className="text-gray-900">{vendor.address || 'N/A'}</p>
-              <p className="text-gray-900">
+              <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                {vendor.address || 'N/A'}
+              </p>
+              <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
                 {vendor.city && vendor.state && vendor.zipCode
                   ? `${vendor.city}, ${vendor.state} ${vendor.zipCode}`
                   : vendor.city || vendor.state || vendor.zipCode || 'N/A'}
               </p>
-              <p className="text-gray-900">{vendor.country || 'N/A'}</p>
+              <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                {vendor.country || 'N/A'}
+              </p>
             </div>
           </div>
 
           {/* Notes */}
           {vendor.notes && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Notes</h3>
-              <p className="text-gray-700 whitespace-pre-wrap">{vendor.notes}</p>
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Notes
+              </h3>
+              <p className="whitespace-pre-wrap themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                {vendor.notes}
+              </p>
             </div>
           )}
         </div>
@@ -464,28 +616,57 @@ const VendorView: React.FC = () => {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Quick Summary */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Summary</h3>
+          <div
+            className="rounded-xl p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            <h3
+              className="text-lg font-medium mb-4 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              Quick Summary
+            </h3>
             <div className="space-y-3">
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-sm text-gray-500">Vendor ID</span>
-                <span className="text-sm font-medium text-gray-900">#{vendor.id}</span>
+              <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  Vendor ID
+                </span>
+                <span className="text-sm font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
+                  #{vendor.id}
+                </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-sm text-gray-500">Created</span>
-                <span className="text-sm font-medium text-gray-900">
+              <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  Created
+                </span>
+                <span className="text-sm font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
                   {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString() : 'N/A'}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-sm text-gray-500">Last Updated</span>
-                <span className="text-sm font-medium text-gray-900">
+              <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  Last Updated
+                </span>
+                <span className="text-sm font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
                   {vendor.updatedAt ? new Date(vendor.updatedAt).toLocaleDateString() : 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-sm text-gray-500">Profile Status</span>
-                <span className={`text-sm font-medium ${isComplete ? 'text-green-600' : 'text-yellow-600'}`}>
+                <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  Profile Status
+                </span>
+                <span
+                  className={`text-sm font-medium themed-transition ${
+                    isComplete ? 'text-green-600' : 'text-yellow-600'
+                  }`}
+                  style={{
+                    color: isComplete ? 'var(--success)' : 'var(--warning)',
+                  }}
+                >
                   {isComplete ? 'Complete' : 'Incomplete'}
                 </span>
               </div>
@@ -493,26 +674,69 @@ const VendorView: React.FC = () => {
           </div>
 
           {/* Actions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
+          <div
+            className="rounded-xl p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            <h3
+              className="text-lg font-medium mb-4 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              Actions
+            </h3>
             <div className="space-y-2">
               <button
                 onClick={handleEdit}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                style={{
+                  background: 'var(--primary)',
+                  color: 'white',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--primary)';
+                }}
               >
                 <Edit className="h-4 w-4" />
                 Edit Vendor
               </button>
               <button
                 onClick={handleDelete}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                style={{
+                  background: 'var(--error)',
+                  color: 'white',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--error-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--error)';
+                }}
               >
                 <Trash className="h-4 w-4" />
                 Delete Vendor
               </button>
               <button
                 onClick={() => navigate('/purchases/vendors')}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                style={{
+                  color: 'var(--foreground-secondary)',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--surface)';
+                }}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Vendors

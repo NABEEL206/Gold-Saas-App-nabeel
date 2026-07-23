@@ -24,18 +24,51 @@ import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAnd
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { DeliveryChallan } from '../../../types/deliveryChallan/DeliveryChallanTypes';
 
-// Status Badge
+// ============================================================
+// STATUS CONFIGURATION - Single source of truth
+// ============================================================
+
+const STATUS_CONFIG: Record<string, { bg: string; color: string; icon: React.ReactNode; label: string }> = {
+  draft: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-secondary)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Draft',
+  },
+  sent: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <Truck className="h-3 w-3" />,
+    label: 'Sent',
+  },
+  delivered: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Delivered',
+  },
+  cancelled: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    icon: <XCircle className="h-3 w-3" />,
+    label: 'Cancelled',
+  },
+};
+
+// Status Badge Component
 const StatusBadge: React.FC<{ status: DeliveryChallan['status'] }> = ({ status }) => {
-  const config = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Draft' },
-    sent: { color: 'bg-blue-100 text-blue-700', icon: Truck, label: 'Sent' },
-    delivered: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Delivered' },
-    cancelled: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Cancelled' },
-  };
-  const { color, icon: Icon, label } = config[status] || config.draft;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
@@ -97,7 +130,7 @@ const DeliveryChallans: React.FC = () => {
     navigate(`/sales/delivery-challan/${challan.id}/edit`);
   }, [navigate]);
 
-  // Single delete handler using confirmation modal instead of window.confirm
+  // Single delete handler using confirmation modal
   const handleDelete = useCallback((id: string) => {
     withConfirmation(
       {
@@ -120,8 +153,6 @@ const DeliveryChallans: React.FC = () => {
       }
     );
   }, [withConfirmation, deleteChallan, success, showError]);
-
-  // Status update handler using confirmation modal instead of window.confirm
 
   const handleSelectAll = useCallback(() => {
     if (selectedItems.length === currentItems.length) {
@@ -161,7 +192,7 @@ const DeliveryChallans: React.FC = () => {
     }
   }, [handleExport, success, showError]);
 
-  // Bulk delete handler using confirmation modal instead of window.confirm
+  // Bulk delete handler using confirmation modal
   const handleBulkDeleteWithLoading = useCallback(async () => {
     if (selectedItems.length === 0) {
       showError('Please select at least one delivery challan to delete.');
@@ -206,20 +237,30 @@ const DeliveryChallans: React.FC = () => {
     }
   }, [handleImport, success, showError]);
 
-  // Columns - No action column
+  // Columns
   const columns: TableColumn<DeliveryChallan>[] = [
     {
       key: 'challanNumber',
       header: 'Challan #',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">{item.challanNumber}</span>
+        <span
+          className="text-sm font-medium themed-transition"
+          style={{ color: 'var(--foreground)' }}
+        >
+          {item.challanNumber}
+        </span>
       ),
     },
     {
       key: 'challanDate',
       header: 'Date',
       render: (item) => (
-        <span className="text-sm text-gray-600">{new Date(item.challanDate).toLocaleDateString()}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {new Date(item.challanDate).toLocaleDateString()}
+        </span>
       ),
     },
     {
@@ -227,8 +268,18 @@ const DeliveryChallans: React.FC = () => {
       header: 'Customer',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{item.customerName}</p>
-          <p className="text-xs text-gray-500">{item.customerEmail}</p>
+          <p
+            className="text-sm font-medium themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.customerName}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.customerEmail}
+          </p>
         </div>
       ),
     },
@@ -236,14 +287,24 @@ const DeliveryChallans: React.FC = () => {
       key: 'total',
       header: 'Total',
       render: (item) => (
-        <span className="text-sm font-semibold text-amber-600">₹{item.total.toLocaleString()}</span>
+        <span
+          className="text-sm font-semibold themed-transition"
+          style={{ color: 'var(--gold)' }}
+        >
+          ₹{item.total.toLocaleString()}
+        </span>
       ),
     },
     {
       key: 'deliveryDate',
       header: 'Delivery Date',
       render: (item) => (
-        <span className="text-sm text-gray-600">{new Date(item.deliveryDate).toLocaleDateString()}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {new Date(item.deliveryDate).toLocaleDateString()}
+        </span>
       ),
     },
     {
@@ -260,7 +321,7 @@ const DeliveryChallans: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportWithLoading('pdf'),
       disabled: exportLoading,
@@ -270,7 +331,7 @@ const DeliveryChallans: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportWithLoading('excel'),
       disabled: exportLoading,
@@ -287,21 +348,46 @@ const DeliveryChallans: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Truck className="h-6 w-6 text-amber-500" />
+          <h1
+            className="text-2xl font-bold flex items-center gap-2 themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            <Truck className="h-6 w-6" style={{ color: 'var(--gold)' }} />
             Delivery Challans
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your delivery challans</p>
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            Manage your delivery challans
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh Button */}
           <button
             onClick={handleRefreshWithLoading}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
@@ -310,18 +396,45 @@ const DeliveryChallans: React.FC = () => {
             )}
             Refresh
           </button>
+
+          {/* New Challan Button */}
           <button
             onClick={() => navigate('/sales/delivery-challan/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Challan
           </button>
+
+          {/* Bulk Delete Button */}
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteWithLoading}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -331,6 +444,8 @@ const DeliveryChallans: React.FC = () => {
               Delete ({selectedItems.length})
             </button>
           )}
+
+          {/* More Options Dropdown */}
           <ThreeDotDropdown
             items={dropdownItems}
             position="right"
@@ -340,7 +455,7 @@ const DeliveryChallans: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -350,26 +465,68 @@ const DeliveryChallans: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search Input */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by challan # or customer..."
                 value={filters.search}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Status</option>
               <option value="draft">Draft</option>
@@ -378,27 +535,60 @@ const DeliveryChallans: React.FC = () => {
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
+
+          {/* Date Range */}
           <div className="flex items-center gap-2">
             <input
               type="date"
               value={filters.dateFrom}
               onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               placeholder="Start Date"
             />
-            <span className="text-gray-400">to</span>
+            <span
+              className="text-sm themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            >
+              to
+            </span>
             <input
               type="date"
               value={filters.dateTo}
               onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               placeholder="End Date"
             />
           </div>
         </div>
       </div>
 
-      {/* Table - No actions prop */}
+      {/* Table */}
       <ReusableTable
         data={currentItems}
         columns={columns}
@@ -408,7 +598,7 @@ const DeliveryChallans: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => item.id!}
         emptyMessage="No delivery challans found"
-        emptyIcon={<Truck className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<Truck className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage,

@@ -1,5 +1,4 @@
 // src/pages/purchases/RecurringExpenses/RecurringExpenses.tsx
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -30,30 +29,122 @@ import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAnd
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import { RECURRING_CATEGORIES, RECURRING_STATUSES, FREQUENCY_LABELS } from '../../../types/RecurringExpense/RecurringExpenseType';
 
-// Status Badge
+// ============================================================
+// STATUS CONFIGURATION - Single source of truth
+// ============================================================
+
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  active: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Active',
+  },
+  paused: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    icon: <Pause className="h-3 w-3" />,
+    label: 'Paused',
+  },
+  cancelled: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    icon: <XCircle className="h-3 w-3" />,
+    label: 'Cancelled',
+  },
+  completed: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Completed',
+  },
+};
+
+// Frequency configuration
+const FREQUENCY_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  daily: {
+    bg: 'var(--primary-light)',
+    color: 'var(--primary)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Daily',
+  },
+  weekly: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Weekly',
+  },
+  monthly: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Monthly',
+  },
+  quarterly: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Quarterly',
+  },
+  half_yearly: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Half Yearly',
+  },
+  yearly: {
+    bg: 'var(--primary-light)',
+    color: 'var(--primary)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Yearly',
+  },
+  custom: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-secondary)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Custom',
+  },
+};
+
+// Status Badge Component
 const StatusBadge: React.FC<{ status: RecurringExpense['paymentStatus'] }> = ({ status }) => {
-  const config = {
-    active: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Active' },
-    paused: { color: 'bg-yellow-100 text-yellow-700', icon: Pause, label: 'Paused' },
-    cancelled: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Cancelled' },
-    completed: { color: 'bg-blue-100 text-blue-700', icon: CheckCircle, label: 'Completed' },
-  };
-  const defaultConfig = { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
-  const { color, icon: Icon, label } = config[status as keyof typeof config] || defaultConfig;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.active;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
 };
 
-// Frequency Badge
+// Frequency Badge Component
 const FrequencyBadge: React.FC<{ frequency: RecurringExpense['frequency'] }> = ({ frequency }) => {
-  const label = FREQUENCY_LABELS[frequency] || frequency;
+  const config = FREQUENCY_CONFIG[frequency] || FREQUENCY_CONFIG.custom;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-      <Repeat className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
@@ -99,8 +190,32 @@ const RecurringExpenses: React.FC = () => {
     navigate(`/purchases/recurring-expenses/${expense.id}`);
   }, [navigate]);
 
-
   // Single delete handler using confirmation modal
+  const handleDeleteClick = useCallback(async (expense: RecurringExpense) => {
+    const expenseId = String(expense.id);
+
+    await withConfirmation(
+      {
+        title: 'Delete Recurring Expense',
+        message: `Are you sure you want to delete "${expense.recurringNumber}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+      },
+      async () => {
+        setDeleteLoading(expenseId);
+        try {
+          await deleteExpense(expense.id);
+          setSelectedItems(prev => prev.filter(item => item !== expenseId));
+          success(`Recurring expense "${expense.recurringNumber}" deleted successfully.`);
+        } catch (error) {
+          console.error('Error deleting recurring expense:', error);
+          showError('Failed to delete recurring expense. Please try again.');
+        } finally {
+          setDeleteLoading(null);
+        }
+      }
+    );
+  }, [withConfirmation, deleteExpense, success, showError]);
 
   // Bulk delete handler using confirmation modal
   const handleBulkDeleteAction = useCallback(async () => {
@@ -208,8 +323,18 @@ const RecurringExpenses: React.FC = () => {
       header: 'Recurring #',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{item.recurringNumber}</p>
-          <p className="text-xs text-gray-500">{item.referenceNumber || 'No ref'}</p>
+          <p
+            className="text-sm font-medium themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.recurringNumber}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.referenceNumber || 'No ref'}
+          </p>
         </div>
       ),
     },
@@ -217,21 +342,34 @@ const RecurringExpenses: React.FC = () => {
       key: 'vendorName',
       header: 'Vendor',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.vendorName || 'N/A'}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.vendorName || 'N/A'}
+        </span>
       ),
     },
     {
       key: 'category',
       header: 'Category',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.category}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.category}
+        </span>
       ),
     },
     {
       key: 'amount',
       header: 'Amount',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">
+        <span
+          className="text-sm font-medium themed-transition"
+          style={{ color: 'var(--gold)' }}
+        >
           {formatCurrency(item.totalAmount)}
         </span>
       ),
@@ -246,9 +384,19 @@ const RecurringExpenses: React.FC = () => {
       header: 'Start Date',
       render: (item) => (
         <div>
-          <span className="text-sm text-gray-600">{new Date(item.startDate).toLocaleDateString()}</span>
+          <span
+            className="text-sm themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {new Date(item.startDate).toLocaleDateString()}
+          </span>
           {item.nextProcessingDate && (
-            <span className="text-xs text-gray-400 block">Next: {new Date(item.nextProcessingDate).toLocaleDateString()}</span>
+            <span
+              className="text-xs block themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            >
+              Next: {new Date(item.nextProcessingDate).toLocaleDateString()}
+            </span>
           )}
         </div>
       ),
@@ -267,7 +415,7 @@ const RecurringExpenses: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportAction('pdf'),
       disabled: exportLoading,
@@ -277,10 +425,30 @@ const RecurringExpenses: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportAction('excel'),
       disabled: exportLoading,
+    },
+  ];
+
+  // Row dropdown items
+  const getRowDropdownItems = (expense: RecurringExpense) => [
+    {
+      label: 'View Details',
+      icon: <DollarSign className="h-4 w-4" style={{ color: 'var(--info)' }} />,
+      onClick: () => handleView(expense),
+    },
+    {
+      label: deleteLoading === String(expense.id) ? 'Deleting...' : 'Delete',
+      icon: deleteLoading === String(expense.id) ? (
+        <LoadingSpinner size="sm" />
+      ) : (
+        <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />
+      ),
+      onClick: () => handleDeleteClick(expense),
+      danger: true,
+      disabled: deleteLoading === String(expense.id),
     },
   ];
 
@@ -294,18 +462,45 @@ const RecurringExpenses: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Recurring Expenses</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your recurring business expenses</p>
+          <h1
+            className="text-2xl font-bold themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            Recurring Expenses
+          </h1>
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            Manage your recurring business expenses
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh Button */}
           <button
             onClick={handleRefreshClick}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
@@ -314,18 +509,45 @@ const RecurringExpenses: React.FC = () => {
             )}
             Refresh
           </button>
+
+          {/* New Recurring Expense Button */}
           <button
             onClick={() => navigate('/purchases/recurring-expenses/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Recurring Expense
           </button>
+
+          {/* Bulk Delete Button */}
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteAction}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -335,6 +557,8 @@ const RecurringExpenses: React.FC = () => {
               Delete ({selectedItems.length})
             </button>
           )}
+
+          {/* More Options Dropdown */}
           <ThreeDotDropdown
             items={headerDropdownItems}
             position="right"
@@ -344,7 +568,7 @@ const RecurringExpenses: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -354,26 +578,68 @@ const RecurringExpenses: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search Input */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by recurring #, vendor, category..."
                 value={filters.search || ''}
                 onChange={(e) => updateFilters({ search: e.target.value })}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
+
+          {/* Category Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.category || ''}
               onChange={(e) => updateFilters({ category: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Categories</option>
               {RECURRING_CATEGORIES.map(cat => (
@@ -381,12 +647,30 @@ const RecurringExpenses: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.paymentStatus || ''}
               onChange={(e) => updateFilters({ paymentStatus: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Status</option>
               {RECURRING_STATUSES.map(status => (
@@ -396,12 +680,30 @@ const RecurringExpenses: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Frequency Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.frequency || ''}
               onChange={(e) => updateFilters({ frequency: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Frequencies</option>
               <option value="daily">Daily</option>
@@ -417,12 +719,19 @@ const RecurringExpenses: React.FC = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+        <div
+          className="mb-4 p-4 rounded-lg themed-transition"
+          style={{
+            background: 'var(--error-light)',
+            border: '1px solid var(--error)',
+            color: 'var(--error)',
+          }}
+        >
           {error}
         </div>
       )}
 
-      {/* Table - NO actions column */}
+      {/* Table */}
       <ReusableTable
         data={expenses}
         columns={columns}
@@ -432,7 +741,7 @@ const RecurringExpenses: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => String(item.id)}
         emptyMessage="No recurring expenses found"
-        emptyIcon={<Calendar className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<Calendar className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage: pagination.page,
@@ -443,7 +752,7 @@ const RecurringExpenses: React.FC = () => {
         }}
       />
 
-      {/* Confirmation Modal - Replaces the custom delete modal */}
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

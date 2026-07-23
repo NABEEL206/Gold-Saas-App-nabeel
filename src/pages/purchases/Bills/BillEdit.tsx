@@ -1,5 +1,4 @@
 // src/pages/purchases/Bills/BillEdit.tsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Mail, Phone, MapPin, AlertCircle } from 'lucide-react';
@@ -13,6 +12,10 @@ import SearchableDropdown, { type DropdownOption } from '../../../components/com
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+
+// ============================================================
+// CONSTANTS - Single source of truth
+// ============================================================
 
 // ─── Static option lists ───────────────────────────────────────────────────────
 const BILL_STATUS_OPTIONS: DropdownOption[] = BILL_STATUSES.map(s => ({
@@ -44,6 +47,18 @@ const PRODUCT_SUGGESTIONS = [
   { id: '5', name: 'Silver Necklace',  code: 'SN-001',  price: 2800,  unit: 'Pcs', description: 'Silver Necklace' },
   { id: '6', name: 'Machine Parts',    code: 'MAC-001', price: 2000,  unit: 'Pcs', description: 'Industrial Parts' },
 ];
+
+// Combined blur handler for input fields
+const handleInputBlur = (field: string, e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, errors: Record<string, string>) => {
+  e.currentTarget.style.borderColor = errors[field] ? 'var(--error)' : 'var(--border)';
+  e.currentTarget.style.boxShadow = 'none';
+};
+
+// Focus handler for input fields
+const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  e.currentTarget.style.borderColor = 'var(--primary)';
+  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const BillEdit: React.FC = () => {
@@ -322,11 +337,23 @@ const BillEdit: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-yellow-300 mx-auto mb-3" />
-          <p className="text-gray-500">{loadError || 'Bill not found'}</p>
+          <AlertCircle className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--warning)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            {loadError || 'Bill not found'}
+          </p>
           <button
             onClick={() => navigate('/purchases/bills')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Bills
           </button>
@@ -336,21 +363,44 @@ const BillEdit: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* ── Header ── */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Edit Bill</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{bill.billNumber}</p>
+              <h1
+                className="text-2xl font-bold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Edit Bill
+              </h1>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                {bill.billNumber}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -358,7 +408,17 @@ const BillEdit: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResetForm}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+                style={{
+                  color: 'var(--foreground-secondary)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
                 title="Reset changes"
               >
                 Reset
@@ -367,14 +427,36 @@ const BillEdit: React.FC = () => {
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
             <button
               onClick={onSubmit}
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {isSubmitting ? (
                 <>
@@ -414,15 +496,30 @@ const BillEdit: React.FC = () => {
         )}
 
         {/* ── Form ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+        <div
+          className="rounded-xl p-6 space-y-6 themed-transition"
+          style={{
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
           {/* ── Section: Bill Information ── */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Bill Information</h3>
+            <h3
+              className="text-lg font-medium mb-4 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              Bill Information
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Vendor SearchableDropdown — full width */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Vendor <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Vendor <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <SearchableDropdown
                   options={vendorOptions}
@@ -435,31 +532,42 @@ const BillEdit: React.FC = () => {
                   resetSearchOnOpen
                 />
                 {errors.vendorId && (
-                  <p className="mt-1 text-sm text-red-500">{errors.vendorId}</p>
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.vendorId}
+                  </p>
                 )}
                 {selectedVendorInfo && (
-                  <div className="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-lg flex flex-wrap gap-4 text-sm text-gray-600">
+                  <div
+                    className="mt-3 p-3 rounded-lg flex flex-wrap gap-4 text-sm themed-transition"
+                    style={{
+                      background: 'var(--primary-light)',
+                      border: '1px solid var(--primary)',
+                      color: 'var(--foreground-secondary)',
+                    }}
+                  >
                     {selectedVendorInfo.email && (
                       <span className="flex items-center gap-1.5">
-                        <Mail className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                        <Mail className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--primary)' }} />
                         {selectedVendorInfo.email}
                       </span>
                     )}
                     {selectedVendorInfo.phone && (
                       <span className="flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                        <Phone className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--primary)' }} />
                         {selectedVendorInfo.phone}
                       </span>
                     )}
                     {(selectedVendorInfo.address || selectedVendorInfo.city) && (
                       <span className="flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--primary)' }} />
                         {[selectedVendorInfo.address, selectedVendorInfo.city, selectedVendorInfo.state]
                           .filter(Boolean).join(', ')}
                       </span>
                     )}
                     {selectedVendorInfo.taxId && (
-                      <span className="text-gray-500">GST: {selectedVendorInfo.taxId}</span>
+                      <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                        GST: {selectedVendorInfo.taxId}
+                      </span>
                     )}
                   </div>
                 )}
@@ -467,37 +575,68 @@ const BillEdit: React.FC = () => {
 
               {/* Bill Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bill Date <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Bill Date <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <input
                   type="date"
                   value={formData.billDate}
                   onChange={(e) => handleChange('billDate', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.billDate ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.billDate ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('billDate', e, errors)}
                 />
-                {errors.billDate && <p className="mt-1 text-sm text-red-500">{errors.billDate}</p>}
+                {errors.billDate && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.billDate}
+                  </p>
+                )}
               </div>
 
               {/* Due Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Due Date
+                </label>
                 <input
                   type="date"
                   value={formData.dueDate || ''}
                   onChange={(e) => handleChange('dueDate', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.dueDate ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.dueDate ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('dueDate', e, errors)}
                 />
-                {errors.dueDate && <p className="mt-1 text-sm text-red-500">{errors.dueDate}</p>}
+                {errors.dueDate && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.dueDate}
+                  </p>
+                )}
               </div>
 
               {/* Status */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Status
+                </label>
                 <SearchableDropdown
                   options={BILL_STATUS_OPTIONS}
                   value={formData.status || null}
@@ -506,56 +645,103 @@ const BillEdit: React.FC = () => {
                   placeholder="Search status..."
                   resetSearchOnOpen
                 />
-                {errors.status && <p className="mt-1 text-sm text-red-500">{errors.status}</p>}
+                {errors.status && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.status}
+                  </p>
+                )}
               </div>
 
               {/* PO Number */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Purchase Order Number
                 </label>
                 <input
                   type="text"
                   value={formData.purchaseOrderNumber || ''}
                   onChange={(e) => handleChange('purchaseOrderNumber', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('purchaseOrderNumber', e, errors)}
                   placeholder="Enter PO number"
                 />
               </div>
 
               {/* Vendor GST */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vendor GST</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Vendor GST
+                </label>
                 <input
                   type="text"
                   value={formData.vendorGST || ''}
                   onChange={(e) => handleChange('vendorGST', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.vendorGST ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.vendorGST ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('vendorGST', e, errors)}
                   placeholder="Auto-filled or enter manually"
                 />
-                {errors.vendorGST && <p className="mt-1 text-sm text-red-500">{errors.vendorGST}</p>}
+                {errors.vendorGST && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.vendorGST}
+                  </p>
+                )}
               </div>
 
               {/* Vendor Address */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Address</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Vendor Address
+                </label>
                 <textarea
                   value={formData.vendorAddress || ''}
                   onChange={(e) => handleChange('vendorAddress', e.target.value)}
                   rows={2}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.vendorAddress ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.vendorAddress ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('vendorAddress', e, errors)}
                   placeholder="Auto-filled from vendor selection, or enter manually"
                 />
-                {errors.vendorAddress && <p className="mt-1 text-sm text-red-500">{errors.vendorAddress}</p>}
+                {errors.vendorAddress && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.vendorAddress}
+                  </p>
+                )}
               </div>
 
               {/* Currency */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Currency
+                </label>
                 <SearchableDropdown
                   options={CURRENCY_OPTIONS}
                   value={formData.currency || 'INR'}
@@ -563,23 +749,41 @@ const BillEdit: React.FC = () => {
                   triggerPlaceholder="Select Currency"
                   placeholder="Search currency..."
                 />
-                {errors.currency && <p className="mt-1 text-sm text-red-500">{errors.currency}</p>}
+                {errors.currency && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.currency}
+                  </p>
+                )}
               </div>
 
               {/* Exchange Rate */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Rate</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Exchange Rate
+                </label>
                 <input
                   type="number"
                   step="0.0001"
                   value={formData.exchangeRate || ''}
                   onChange={(e) => handleChange('exchangeRate', parseFloat(e.target.value) || 1)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.exchangeRate ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.exchangeRate ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('exchangeRate', e, errors)}
                   placeholder="1.0000"
                 />
-                {errors.exchangeRate && <p className="mt-1 text-sm text-red-500">{errors.exchangeRate}</p>}
+                {errors.exchangeRate && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.exchangeRate}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -587,8 +791,16 @@ const BillEdit: React.FC = () => {
           {/* ── Section: Bill Items ── */}
           <div>
             {errors.items && typeof errors.items === 'string' && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{errors.items}</p>
+              <div
+                className="mb-4 p-3 rounded-lg themed-transition"
+                style={{
+                  background: 'var(--error-light)',
+                  border: '1px solid var(--error)',
+                }}
+              >
+                <p className="text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.items}
+                </p>
               </div>
             )}
             <ItemSelectionTable
@@ -617,11 +829,21 @@ const BillEdit: React.FC = () => {
 
           {/* ── Section: Payment Information ── */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Information</h3>
+            <h3
+              className="text-lg font-medium mb-4 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              Payment Information
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Paid Amount */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Paid Amount
+                </label>
                 <input
                   type="number"
                   step="0.01"
@@ -630,29 +852,53 @@ const BillEdit: React.FC = () => {
                     const val = parseFloat(e.target.value) || 0;
                     handleChange('paidAmount', val);
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.paidAmount ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.paidAmount ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('paidAmount', e, errors)}
                   placeholder="0.00"
                 />
-                {errors.paidAmount && <p className="mt-1 text-sm text-red-500">{errors.paidAmount}</p>}
+                {errors.paidAmount && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.paidAmount}
+                  </p>
+                )}
               </div>
 
               {/* Balance Due (read-only) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Balance Due</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Balance Due
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.balanceDue || 0}
                   readOnly
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
                 />
               </div>
 
               {/* Payment Method */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Payment Method
+                </label>
                 <SearchableDropdown
                   options={PAYMENT_METHOD_OPTIONS}
                   value={formData.paymentMethod || null}
@@ -661,71 +907,134 @@ const BillEdit: React.FC = () => {
                   placeholder="Search method..."
                   resetSearchOnOpen
                 />
-                {errors.paymentMethod && <p className="mt-1 text-sm text-red-500">{errors.paymentMethod}</p>}
+                {errors.paymentMethod && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.paymentMethod}
+                  </p>
+                )}
               </div>
 
               {/* Payment Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Payment Date
+                </label>
                 <input
                   type="date"
                   value={formData.paymentDate || ''}
                   onChange={(e) => handleChange('paymentDate', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.paymentDate ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.paymentDate ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('paymentDate', e, errors)}
                 />
-                {errors.paymentDate && <p className="mt-1 text-sm text-red-500">{errors.paymentDate}</p>}
+                {errors.paymentDate && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.paymentDate}
+                  </p>
+                )}
               </div>
 
               {/* Payment Terms */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Payment Terms
+                </label>
                 <input
                   type="text"
                   value={formData.paymentTerms || ''}
                   onChange={(e) => handleChange('paymentTerms', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.paymentTerms ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.paymentTerms ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('paymentTerms', e, errors)}
                   placeholder="e.g., Net 30 days"
                 />
-                {errors.paymentTerms && <p className="mt-1 text-sm text-red-500">{errors.paymentTerms}</p>}
+                {errors.paymentTerms && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.paymentTerms}
+                  </p>
+                )}
               </div>
             </div>
           </div>
 
           {/* ── Section: Additional Information ── */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Additional Information</h3>
+            <h3
+              className="text-lg font-medium mb-4 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              Additional Information
+            </h3>
             <div className="grid grid-cols-1 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Notes
+                </label>
                 <textarea
                   value={formData.notes || ''}
                   onChange={(e) => handleChange('notes', e.target.value)}
                   rows={3}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.notes ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.notes ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('notes', e, errors)}
                   placeholder="Enter additional notes"
                 />
-                {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes}</p>}
+                {errors.notes && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.notes}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Terms &amp; Conditions
                 </label>
                 <textarea
                   value={formData.terms || ''}
                   onChange={(e) => handleChange('terms', e.target.value)}
                   rows={3}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.terms ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: `1px solid ${errors.terms ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={(e) => handleInputBlur('terms', e, errors)}
                   placeholder="Enter terms and conditions"
                 />
-                {errors.terms && <p className="mt-1 text-sm text-red-500">{errors.terms}</p>}
+                {errors.terms && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.terms}
+                  </p>
+                )}
               </div>
             </div>
           </div>

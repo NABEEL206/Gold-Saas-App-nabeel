@@ -1,5 +1,4 @@
 // src/pages/banking/Banks/Banks.tsx
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -38,36 +37,99 @@ import {
   BANK_ACCOUNT_TYPE_LABELS
 } from '../../types/Bank/BankTypes';
 
-// Status Badge
+// ============================================================
+// STATUS CONFIGURATION - Single source of truth
+// ============================================================
+
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  active: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Active',
+  },
+  inactive: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-secondary)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Inactive',
+  },
+  suspended: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    icon: <AlertCircle className="h-3 w-3" />,
+    label: 'Suspended',
+  },
+};
+
+// Account Type Configuration
+const ACCOUNT_TYPE_CONFIG: Record<
+  string,
+  { bg: string; color: string; label: string }
+> = {
+  savings: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    label: 'Savings',
+  },
+  current: {
+    bg: 'var(--primary-light)',
+    color: 'var(--primary)',
+    label: 'Current',
+  },
+  fixed_deposit: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    label: 'Fixed Deposit',
+  },
+  recurring_deposit: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    label: 'Recurring Deposit',
+  },
+  salary: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    label: 'Salary',
+  },
+};
+
+// Status Badge Component
 const StatusBadge: React.FC<{ status: Bank['status'] }> = ({ status }) => {
-  const config = {
-    active: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Active' },
-    inactive: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Inactive' },
-    suspended: { color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle, label: 'Suspended' },
-  };
-  const defaultConfig = { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
-  const { color, icon: Icon, label } = config[status] || defaultConfig;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.inactive;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
 };
 
-// Account Type Badge
+// Account Type Badge Component
 const AccountTypeBadge: React.FC<{ accountType: Bank['accountType'] }> = ({ accountType }) => {
-  const colors = {
-    savings: 'bg-blue-100 text-blue-700',
-    current: 'bg-purple-100 text-purple-700',
-    fixed_deposit: 'bg-amber-100 text-amber-700',
-    recurring_deposit: 'bg-green-100 text-green-700',
-    salary: 'bg-pink-100 text-pink-700'
-  };
-  const color = colors[accountType] || 'bg-gray-100 text-gray-700';
+  const config = ACCOUNT_TYPE_CONFIG[accountType] || ACCOUNT_TYPE_CONFIG.savings;
+  const { bg, color, label } = config;
+  
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {BANK_ACCOUNT_TYPE_LABELS[accountType] || accountType}
+    <span
+      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {label}
     </span>
   );
 };
@@ -76,49 +138,91 @@ const AccountTypeBadge: React.FC<{ accountType: Bank['accountType'] }> = ({ acco
 const BankStats: React.FC<{ stats: any }> = ({ stats }) => {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div
+        className="rounded-xl p-4 themed-transition"
+        style={{
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-50 rounded-lg">
-            <Building2 className="h-5 w-5 text-blue-600" />
+          <div className="p-2 rounded-lg" style={{ background: 'var(--info-light)' }}>
+            <Building2 className="h-5 w-5" style={{ color: 'var(--info)' }} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalBanks}</p>
-            <p className="text-sm text-gray-500">Total Banks</p>
+            <p className="text-2xl font-bold themed-transition" style={{ color: 'var(--foreground)' }}>
+              {stats.totalBanks}
+            </p>
+            <p className="text-sm themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+              Total Banks
+            </p>
           </div>
         </div>
       </div>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div
+        className="rounded-xl p-4 themed-transition"
+        style={{
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-green-50 rounded-lg">
-            <CheckCircle className="h-5 w-5 text-green-600" />
+          <div className="p-2 rounded-lg" style={{ background: 'var(--success-light)' }}>
+            <CheckCircle className="h-5 w-5" style={{ color: 'var(--success)' }} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">{stats.activeCount}</p>
-            <p className="text-sm text-gray-500">Active</p>
+            <p className="text-2xl font-bold themed-transition" style={{ color: 'var(--foreground)' }}>
+              {stats.activeCount}
+            </p>
+            <p className="text-sm themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+              Active
+            </p>
           </div>
         </div>
       </div>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div
+        className="rounded-xl p-4 themed-transition"
+        style={{
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-50 rounded-lg">
-            <DollarSign className="h-5 w-5 text-amber-600" />
+          <div className="p-2 rounded-lg" style={{ background: 'var(--primary-light)' }}>
+            <DollarSign className="h-5 w-5" style={{ color: 'var(--gold)' }} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">₹{stats.totalBalance.toFixed(2)}</p>
-            <p className="text-sm text-gray-500">Total Balance</p>
+            <p className="text-2xl font-bold themed-transition" style={{ color: 'var(--foreground)' }}>
+              ₹{stats.totalBalance.toFixed(2)}
+            </p>
+            <p className="text-sm themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+              Total Balance
+            </p>
           </div>
         </div>
       </div>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div
+        className="rounded-xl p-4 themed-transition"
+        style={{
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-50 rounded-lg">
-            <CreditCard className="h-5 w-5 text-purple-600" />
+          <div className="p-2 rounded-lg" style={{ background: 'var(--info-light)' }}>
+            <CreditCard className="h-5 w-5" style={{ color: 'var(--info)' }} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-2xl font-bold themed-transition" style={{ color: 'var(--foreground)' }}>
               {stats.savingsCount + stats.currentCount + stats.fixedDepositCount}
             </p>
-            <p className="text-sm text-gray-500">Active Accounts</p>
+            <p className="text-sm themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+              Active Accounts
+            </p>
           </div>
         </div>
       </div>
@@ -165,7 +269,6 @@ const Banks: React.FC = () => {
   const handleView = useCallback((bank: Bank) => {
     navigate(`/banking/banks/${bank.id}`);
   }, [navigate]);
-
 
   // Single delete handler using confirmation modal
   const handleDeleteClick = useCallback(async (bank: Bank) => {
@@ -292,6 +395,26 @@ const Banks: React.FC = () => {
     return `₹${amount.toFixed(2)}`;
   };
 
+  // Row dropdown items
+  const getRowDropdownItems = (bank: Bank) => [
+    {
+      label: 'View Details',
+      icon: <Building2 className="h-4 w-4" style={{ color: 'var(--info)' }} />,
+      onClick: () => handleView(bank),
+    },
+    {
+      label: deleteLoading === String(bank.id) ? 'Deleting...' : 'Delete',
+      icon: deleteLoading === String(bank.id) ? (
+        <LoadingSpinner size="sm" />
+      ) : (
+        <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />
+      ),
+      onClick: () => handleDeleteClick(bank),
+      danger: true,
+      disabled: deleteLoading === String(bank.id),
+    },
+  ];
+
   // Columns
   const columns: TableColumn<Bank>[] = [
     {
@@ -299,11 +422,19 @@ const Banks: React.FC = () => {
       header: 'Bank',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900 flex items-center gap-1">
-            <Building2 className="h-3 w-3 text-gray-400" />
+          <p
+            className="text-sm font-medium flex items-center gap-1 themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            <Building2 className="h-3 w-3" style={{ color: 'var(--foreground-tertiary)' }} />
             {item.bankName}
           </p>
-          <p className="text-xs text-gray-500">{item.branchName}</p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.branchName}
+          </p>
         </div>
       ),
     },
@@ -312,8 +443,18 @@ const Banks: React.FC = () => {
       header: 'Account',
       render: (item) => (
         <div>
-          <p className="text-sm text-gray-900">{item.accountName}</p>
-          <p className="text-xs text-gray-500">XXXX{item.accountNumber.slice(-4)}</p>
+          <p
+            className="text-sm themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.accountName}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            XXXX{item.accountNumber.slice(-4)}
+          </p>
         </div>
       ),
     },
@@ -326,14 +467,22 @@ const Banks: React.FC = () => {
       key: 'ifscCode',
       header: 'IFSC',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.ifscCode}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.ifscCode}
+        </span>
       ),
     },
     {
       key: 'balance',
       header: 'Balance',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">
+        <span
+          className="text-sm font-medium themed-transition"
+          style={{ color: 'var(--gold)' }}
+        >
           {formatCurrency(item.currentBalance)}
         </span>
       ),
@@ -352,7 +501,7 @@ const Banks: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportAction('pdf'),
       disabled: exportLoading,
@@ -362,7 +511,7 @@ const Banks: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportAction('excel'),
       disabled: exportLoading,
@@ -379,18 +528,45 @@ const Banks: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Banks</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your bank accounts</p>
+          <h1
+            className="text-2xl font-bold themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            Banks
+          </h1>
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            Manage your bank accounts
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh Button */}
           <button
             onClick={handleRefreshClick}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
@@ -399,18 +575,45 @@ const Banks: React.FC = () => {
             )}
             Refresh
           </button>
+
+          {/* New Bank Button */}
           <button
             onClick={() => navigate('/banking/banks/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Bank
           </button>
+
+          {/* Bulk Delete Button */}
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteAction}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -420,6 +623,8 @@ const Banks: React.FC = () => {
               Delete ({selectedItems.length})
             </button>
           )}
+
+          {/* More Options Dropdown */}
           <ThreeDotDropdown
             items={headerDropdownItems}
             position="right"
@@ -429,7 +634,7 @@ const Banks: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -442,26 +647,68 @@ const Banks: React.FC = () => {
       <BankStats stats={stats} />
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search Input */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by bank name, account, IFSC..."
                 value={filters.search || ''}
                 onChange={(e) => updateFilters({ search: e.target.value })}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.status || ''}
               onChange={(e) => updateFilters({ status: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Status</option>
               {BANK_STATUSES.map(status => (
@@ -471,12 +718,30 @@ const Banks: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Account Type Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.accountType || ''}
               onChange={(e) => updateFilters({ accountType: e.target.value || undefined })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="">All Types</option>
               {BANK_ACCOUNT_TYPES.map(type => (
@@ -491,7 +756,14 @@ const Banks: React.FC = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+        <div
+          className="mb-4 p-4 rounded-lg themed-transition"
+          style={{
+            background: 'var(--error-light)',
+            border: '1px solid var(--error)',
+            color: 'var(--error)',
+          }}
+        >
           {error}
         </div>
       )}
@@ -506,7 +778,7 @@ const Banks: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => String(item.id)}
         emptyMessage="No banks found"
-        emptyIcon={<Banknote className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<Banknote className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage: pagination.page,
@@ -517,7 +789,7 @@ const Banks: React.FC = () => {
         }}
       />
 
-      {/* Confirmation Modal - Replaces the custom delete modal */}
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

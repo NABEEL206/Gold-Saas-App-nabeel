@@ -1,5 +1,4 @@
 // src/pages/banking/Banks/BankEdit.tsx
-
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save, AlertCircle } from "lucide-react";
@@ -20,6 +19,10 @@ import ConfirmationModal from "../../components/common/ConfirmationModal";
 import ErrorSummary from "../../components/common/ErrorSummary";
 import { useToastAndConfirm } from "../../hooks/ToastConfirmModal/useToastAndConfirm";
 
+// ============================================================
+// CONSTANTS - Single source of truth
+// ============================================================
+
 const ACCOUNT_TYPE_OPTIONS: DropdownOption[] = BANK_ACCOUNT_TYPES.map((t) => ({
   value: t,
   label: BANK_ACCOUNT_TYPE_LABELS[t],
@@ -28,6 +31,18 @@ const BANK_STATUS_OPTIONS: DropdownOption[] = BANK_STATUSES.map((s) => ({
   value: s,
   label: BANK_STATUS_LABELS[s],
 }));
+
+// Combined blur handler for input fields
+const handleInputBlur = (field: string, e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, errors: Record<string, string>) => {
+  e.currentTarget.style.borderColor = errors[field] ? 'var(--error)' : 'var(--border)';
+  e.currentTarget.style.boxShadow = 'none';
+};
+
+// Focus handler for input fields
+const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  e.currentTarget.style.borderColor = 'var(--primary)';
+  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+};
 
 const BankEdit: React.FC = () => {
   const navigate = useNavigate();
@@ -188,6 +203,22 @@ const BankEdit: React.FC = () => {
     );
   };
 
+  const handleResetForm = async () => {
+    if (!hasChanges) return;
+    await withConfirmation(
+      {
+        title: "Reset Form",
+        message: "Reset all changes to original values?",
+        confirmText: "Reset",
+        variant: "warning",
+      },
+      async () => {
+        if (resetForm) resetForm();
+        initialSnapshotRef.current = null;
+        success("Form reset.");
+      },
+    );
+  };
 
   const formErrors = getFormErrors();
   const warningErrors = getWarningErrors();
@@ -202,11 +233,23 @@ const BankEdit: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-yellow-300 mx-auto mb-3" />
-          <p className="text-gray-500">{loadError || "Bank not found"}</p>
+          <AlertCircle className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--warning)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            {loadError || "Bank not found"}
+          </p>
           <button
             onClick={() => navigate("/banking/banks")}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Banks
           </button>
@@ -215,34 +258,97 @@ const BankEdit: React.FC = () => {
     );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-5xl mx-auto">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Edit Bank</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{bank.bankName}</p>
+              <h1
+                className="text-2xl font-bold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Edit Bank
+              </h1>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                {bank.bankName}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-
+            {hasChanges && (
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+                style={{
+                  color: 'var(--foreground-secondary)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                Reset
+              </button>
+            )}
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
             <button
               onClick={onSubmit}
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {isSubmitting ? (
                 <>
@@ -278,65 +384,113 @@ const BankEdit: React.FC = () => {
           />
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div
+          className="rounded-xl p-6 themed-transition"
+          style={{
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Bank Details
               </h3>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Bank Name <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Bank Name <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
                 type="text"
                 value={formData.bankName}
                 onChange={(e) => handleChange("bankName", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.bankName ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.bankName ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('bankName', e, errors)}
                 placeholder="Enter bank name"
               />
               {errors.bankName && (
-                <p className="mt-1 text-sm text-red-500">{errors.bankName}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.bankName}
+                </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Account Name <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Account Name <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
                 type="text"
                 value={formData.accountName}
                 onChange={(e) => handleChange("accountName", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.accountName ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.accountName ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('accountName', e, errors)}
                 placeholder="Enter account holder name"
               />
               {errors.accountName && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
                   {errors.accountName}
                 </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Account Number <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Account Number <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
                 type="text"
                 value={formData.accountNumber}
                 onChange={(e) => handleChange("accountNumber", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.accountNumber ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.accountNumber ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('accountNumber', e, errors)}
                 placeholder="Enter account number"
               />
               {errors.accountNumber && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
                   {errors.accountNumber}
                 </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Account Type
               </label>
               <SearchableDropdown
@@ -348,14 +502,18 @@ const BankEdit: React.FC = () => {
                 resetSearchOnOpen
               />
               {errors.accountType && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
                   {errors.accountType}
                 </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                IFSC Code <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                IFSC Code <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
                 type="text"
@@ -363,94 +521,169 @@ const BankEdit: React.FC = () => {
                 onChange={(e) =>
                   handleChange("ifscCode", e.target.value.toUpperCase())
                 }
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.ifscCode ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.ifscCode ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('ifscCode', e, errors)}
                 placeholder="Enter IFSC code"
               />
               {errors.ifscCode && (
-                <p className="mt-1 text-sm text-red-500">{errors.ifscCode}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.ifscCode}
+                </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Branch Name <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Branch Name <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
                 type="text"
                 value={formData.branchName}
                 onChange={(e) => handleChange("branchName", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.branchName ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.branchName ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('branchName', e, errors)}
                 placeholder="Enter branch name"
               />
               {errors.branchName && (
-                <p className="mt-1 text-sm text-red-500">{errors.branchName}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.branchName}
+                </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Branch Address
               </label>
               <input
                 type="text"
                 value={formData.branchAddress || ""}
                 onChange={(e) => handleChange("branchAddress", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.branchAddress ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.branchAddress ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('branchAddress', e, errors)}
                 placeholder="Enter branch address"
               />
               {errors.branchAddress && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
                   {errors.branchAddress}
                 </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 City
               </label>
               <input
                 type="text"
                 value={formData.city || ""}
                 onChange={(e) => handleChange("city", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.city ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.city ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('city', e, errors)}
                 placeholder="Enter city"
               />
               {errors.city && (
-                <p className="mt-1 text-sm text-red-500">{errors.city}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.city}
+                </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 State
               </label>
               <input
                 type="text"
                 value={formData.state || ""}
                 onChange={(e) => handleChange("state", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.state ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.state ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('state', e, errors)}
                 placeholder="Enter state"
               />
               {errors.state && (
-                <p className="mt-1 text-sm text-red-500">{errors.state}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.state}
+                </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Pincode
               </label>
               <input
                 type="text"
                 value={formData.pincode || ""}
                 onChange={(e) => handleChange("pincode", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.pincode ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.pincode ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('pincode', e, errors)}
                 placeholder="Enter pincode"
               />
               {errors.pincode && (
-                <p className="mt-1 text-sm text-red-500">{errors.pincode}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.pincode}
+                </p>
               )}
             </div>
 
             {/* Country - Searchable Dropdown */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Country
               </label>
               <SearchableDropdown
@@ -462,17 +695,26 @@ const BankEdit: React.FC = () => {
                 resetSearchOnOpen
               />
               {errors.country && (
-                <p className="mt-1 text-sm text-red-500">{errors.country}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.country}
+                </p>
               )}
             </div>
 
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 mt-4">
+              <h3
+                className="text-lg font-medium mb-4 mt-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Financial Details
               </h3>
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Opening Balance
               </label>
               <input
@@ -485,17 +727,28 @@ const BankEdit: React.FC = () => {
                     parseFloat(e.target.value) || 0,
                   )
                 }
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.openingBalance ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.openingBalance ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('openingBalance', e, errors)}
                 placeholder="0.00"
               />
               {errors.openingBalance && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
                   {errors.openingBalance}
                 </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Current Balance
               </label>
               <input
@@ -508,32 +761,56 @@ const BankEdit: React.FC = () => {
                     parseFloat(e.target.value) || 0,
                   )
                 }
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.currentBalance ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.currentBalance ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('currentBalance', e, errors)}
                 placeholder="0.00"
               />
               {errors.currentBalance && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
                   {errors.currentBalance}
                 </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Currency
               </label>
               <input
                 type="text"
                 value={formData.currency || "INR"}
                 onChange={(e) => handleChange("currency", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.currency ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.currency ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('currency', e, errors)}
                 placeholder="INR"
               />
               {errors.currency && (
-                <p className="mt-1 text-sm text-red-500">{errors.currency}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.currency}
+                </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Status
               </label>
               <SearchableDropdown
@@ -545,79 +822,130 @@ const BankEdit: React.FC = () => {
                 resetSearchOnOpen
               />
               {errors.status && (
-                <p className="mt-1 text-sm text-red-500">{errors.status}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.status}
+                </p>
               )}
             </div>
 
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 mt-4">
+              <h3
+                className="text-lg font-medium mb-4 mt-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Contact Details
               </h3>
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Contact Person
               </label>
               <input
                 type="text"
                 value={formData.contactPerson || ""}
                 onChange={(e) => handleChange("contactPerson", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.contactPerson ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.contactPerson ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('contactPerson', e, errors)}
                 placeholder="Enter contact person name"
               />
               {errors.contactPerson && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
                   {errors.contactPerson}
                 </p>
               )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Contact Phone
               </label>
               <input
                 type="text"
                 value={formData.contactPhone || ""}
                 onChange={(e) => handleChange("contactPhone", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.contactPhone ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.contactPhone ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('contactPhone', e, errors)}
                 placeholder="Enter contact phone"
               />
               {errors.contactPhone && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
                   {errors.contactPhone}
                 </p>
               )}
             </div>
+
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Contact Email
               </label>
               <input
                 type="email"
                 value={formData.contactEmail || ""}
                 onChange={(e) => handleChange("contactEmail", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.contactEmail ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.contactEmail ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('contactEmail', e, errors)}
                 placeholder="Enter contact email"
               />
               {errors.contactEmail && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
                   {errors.contactEmail}
                 </p>
               )}
             </div>
+
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Notes
               </label>
               <textarea
                 value={formData.notes || ""}
                 onChange={(e) => handleChange("notes", e.target.value)}
                 rows={3}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.notes ? "border-red-500" : "border-gray-300"}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.notes ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('notes', e, errors)}
                 placeholder="Enter additional notes"
               />
               {errors.notes && (
-                <p className="mt-1 text-sm text-red-500">{errors.notes}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.notes}
+                </p>
               )}
             </div>
           </div>

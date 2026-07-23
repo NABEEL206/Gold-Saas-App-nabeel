@@ -1,5 +1,4 @@
 // src/pages/purchases/RecurringExpenses/RecurringExpenseView.tsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -34,49 +33,134 @@ import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 
+// ============================================================
+// STATUS CONFIGURATION - Single source of truth
+// ============================================================
+
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  active: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Active',
+  },
+  paused: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    icon: <Pause className="h-3 w-3" />,
+    label: 'Paused',
+  },
+  cancelled: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    icon: <XCircle className="h-3 w-3" />,
+    label: 'Cancelled',
+  },
+  completed: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Completed',
+  },
+};
+
+// Frequency configuration - Single source of truth
+const FREQUENCY_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  daily: {
+    bg: 'var(--primary-light)',
+    color: 'var(--primary)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Daily',
+  },
+  weekly: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Weekly',
+  },
+  monthly: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Monthly',
+  },
+  quarterly: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Quarterly',
+  },
+  half_yearly: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Half Yearly',
+  },
+  yearly: {
+    bg: 'var(--primary-light)',
+    color: 'var(--primary)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Yearly',
+  },
+  custom: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-secondary)',
+    icon: <Repeat className="h-3 w-3" />,
+    label: 'Custom',
+  },
+};
+
 // ─── Status Badge Component ────────────────────────────────────────────────────
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const config: Record<string, { color: string; icon: React.ElementType; label: string }> = {
-    active: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Active' },
-    paused: { color: 'bg-yellow-100 text-yellow-700', icon: Pause, label: 'Paused' },
-    cancelled: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Cancelled' },
-    completed: { color: 'bg-blue-100 text-blue-700', icon: CheckCircle, label: 'Completed' },
-  };
-  
-  const defaultConfig = { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
-  const { color, icon: Icon, label } = config[status] || defaultConfig;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.active;
+  const { bg, color, icon, label } = config;
   
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
 };
 
 // ─── Frequency Badge Component ─────────────────────────────────────────────────
-const FrequencyBadge: React.FC<{ frequency: string; frequencyInterval?: number; frequencyUnit?: string }> = ({ 
+const FrequencyBadge: React.FC<{ 
+  frequency: string; 
+  frequencyInterval?: number; 
+  frequencyUnit?: string 
+}> = ({ 
   frequency, 
   frequencyInterval, 
   frequencyUnit 
 }) => {
-  const labels: Record<string, string> = {
-    daily: 'Daily',
-    weekly: 'Weekly',
-    monthly: 'Monthly',
-    quarterly: 'Quarterly',
-    half_yearly: 'Half Yearly',
-    yearly: 'Yearly',
-    custom: 'Custom',
-  };
+  const config = FREQUENCY_CONFIG[frequency] || FREQUENCY_CONFIG.custom;
+  const { bg, color, icon, label: defaultLabel } = config;
 
   const label = frequency === 'custom' 
     ? `Every ${frequencyInterval || 1} ${frequencyUnit || 'months'}`
-    : labels[frequency] || frequency;
+    : defaultLabel;
 
   return (
-    <span className="px-3 py-1 text-sm font-medium rounded-full bg-purple-100 text-purple-800 inline-flex items-center gap-1">
-      <Repeat className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
@@ -89,12 +173,12 @@ const InfoRow: React.FC<{
   icon?: React.ElementType;
   className?: string;
 }> = ({ label, value, icon: Icon, className = '' }) => (
-  <div className={`flex justify-between py-2 border-b border-gray-100 last:border-b-0 ${className}`}>
-    <span className="text-sm text-gray-500 flex items-center gap-1.5">
-      {Icon && <Icon className="h-3.5 w-3.5 text-gray-400" />}
+  <div className={`flex justify-between py-2 last:border-b-0 ${className}`} style={{ borderBottom: '1px solid var(--border)' }}>
+    <span className="text-sm flex items-center gap-1.5 themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+      {Icon && <Icon className="h-3.5 w-3.5" style={{ color: 'var(--foreground-tertiary)' }} />}
       {label}
     </span>
-    <span className="text-sm font-medium text-gray-900">{value}</span>
+    <span className="text-sm font-medium themed-transition" style={{ color: 'var(--foreground)' }}>{value}</span>
   </div>
 );
 
@@ -319,22 +403,22 @@ const RecurringExpenseView: React.FC = () => {
   const dropdownItems = [
     {
       label: 'Print',
-      icon: <Printer className="h-4 w-4 text-gray-500" />,
+      icon: <Printer className="h-4 w-4" style={{ color: 'var(--foreground-secondary)' }} />,
       onClick: handlePrint,
     },
     {
       label: 'Download',
-      icon: <Download className="h-4 w-4 text-blue-500" />,
+      icon: <Download className="h-4 w-4" style={{ color: 'var(--info)' }} />,
       onClick: handleDownload,
     },
     {
       label: 'Edit Recurring Expense',
-      icon: <Edit className="h-4 w-4 text-amber-500" />,
+      icon: <Edit className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
       onClick: handleEdit,
     },
     {
       label: 'Delete Recurring Expense',
-      icon: <Trash className="h-4 w-4 text-red-500" />,
+      icon: <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />,
       onClick: handleDelete,
       danger: true,
     },
@@ -354,11 +438,23 @@ const RecurringExpenseView: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-yellow-300 mx-auto mb-3" />
-          <p className="text-gray-500">{error || 'Recurring expense not found'}</p>
+          <AlertCircle className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--warning)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            {error || 'Recurring expense not found'}
+          </p>
           <button
             onClick={handleBack}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Recurring Expenses
           </button>
@@ -369,27 +465,60 @@ const RecurringExpenseView: React.FC = () => {
 
   // ─── Main View ───────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* ── Header ── */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={handleBack}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{expense.recurringNumber}</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Recurring Expense Details</p>
+              <h1
+                className="text-2xl font-bold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                {expense.recurringNumber}
+              </h1>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                Recurring Expense Details
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--primary-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               <Edit className="h-4 w-4" />
               Edit Recurring Expense
@@ -409,11 +538,23 @@ const RecurringExpenseView: React.FC = () => {
             frequencyInterval={expense.frequencyInterval}
             frequencyUnit={expense.frequencyUnit}
           />
-          <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+          <span
+            className="px-3 py-1 text-sm font-medium rounded-full themed-transition"
+            style={{
+              background: 'var(--info-light)',
+              color: 'var(--info)',
+            }}
+          >
             {getPaymentMethodLabel(expense.paymentMethod)}
           </span>
           {expense.isVendorExpense && (
-            <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-1">
+            <span
+              className="px-3 py-1 text-sm font-medium rounded-full flex items-center gap-1 themed-transition"
+              style={{
+                background: 'var(--success-light)',
+                color: 'var(--success)',
+              }}
+            >
               <Building2 className="h-3 w-3" />
               Vendor Expense
             </span>
@@ -424,114 +565,133 @@ const RecurringExpenseView: React.FC = () => {
           {/* ── Main Content ── */}
           <div className="lg:col-span-2 space-y-6">
             {/* Expense Details */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-gray-500" />
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <FileText className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
                 Expense Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-gray-500 flex items-center gap-1.5 mb-1">
-                    <Tag className="h-3.5 w-3.5 text-gray-400" />
+                  <label className="text-sm flex items-center gap-1.5 mb-1 themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                    <Tag className="h-3.5 w-3.5" style={{ color: 'var(--foreground-tertiary)' }} />
                     Category
                   </label>
-                  <p className="text-gray-900 font-medium">{expense.category}</p>
+                  <p className="font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {expense.category}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500 flex items-center gap-1.5 mb-1">
-                    <Tag className="h-3.5 w-3.5 text-gray-400" />
+                  <label className="text-sm flex items-center gap-1.5 mb-1 themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                    <Tag className="h-3.5 w-3.5" style={{ color: 'var(--foreground-tertiary)' }} />
                     Sub Category
                   </label>
-                  <p className="text-gray-900">{expense.subCategory || 'N/A'}</p>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {expense.subCategory || 'N/A'}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500 flex items-center gap-1.5 mb-1">
-                    <Building2 className="h-3.5 w-3.5 text-gray-400" />
+                  <label className="text-sm flex items-center gap-1.5 mb-1 themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                    <Building2 className="h-3.5 w-3.5" style={{ color: 'var(--foreground-tertiary)' }} />
                     Vendor
                   </label>
-                  <p className="text-gray-900 font-medium">
+                  <p className="font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
                     {expense.vendorName || 'N/A'}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500 flex items-center gap-1.5 mb-1">
-                    <Hash className="h-3.5 w-3.5 text-gray-400" />
+                  <label className="text-sm flex items-center gap-1.5 mb-1 themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                    <Hash className="h-3.5 w-3.5" style={{ color: 'var(--foreground-tertiary)' }} />
                     Reference Number
                   </label>
-                  <p className="text-gray-900">{expense.referenceNumber || 'N/A'}</p>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {expense.referenceNumber || 'N/A'}
+                  </p>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-sm text-gray-500 flex items-center gap-1.5 mb-1">
-                    <Info className="h-3.5 w-3.5 text-gray-400" />
+                  <label className="text-sm flex items-center gap-1.5 mb-1 themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                    <Info className="h-3.5 w-3.5" style={{ color: 'var(--foreground-tertiary)' }} />
                     Description
                   </label>
-                  <p className="text-gray-900">{expense.description || 'No description provided'}</p>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {expense.description || 'No description provided'}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Vendor Contact Information */}
-            {expense.isVendorExpense && expense.vendorId && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-gray-500" />
-                  Vendor Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-gray-500 flex items-center gap-1.5 mb-1">
-                      <Mail className="h-3.5 w-3.5 text-gray-400" />
-                      Email
-                    </label>
-                    <p className="text-gray-900">N/A</p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500 flex items-center gap-1.5 mb-1">
-                      <Phone className="h-3.5 w-3.5 text-gray-400" />
-                      Phone
-                    </label>
-                    <p className="text-gray-900">N/A</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="text-sm text-gray-500 flex items-center gap-1.5 mb-1">
-                      <MapPin className="h-3.5 w-3.5 text-gray-400" />
-                      Address
-                    </label>
-                    <p className="text-gray-900">N/A</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Financial Details */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-gray-500" />
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <DollarSign className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
                 Financial Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <label className="text-sm text-gray-500">Amount</label>
-                  <p className="text-xl font-bold text-gray-900">
+                <div
+                  className="rounded-lg p-4 themed-transition"
+                  style={{ background: 'var(--surface)' }}
+                >
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Amount
+                  </label>
+                  <p className="text-xl font-bold themed-transition" style={{ color: 'var(--foreground)' }}>
                     {formatCurrency(expense.amount, expense.currency)}
                   </p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <label className="text-sm text-gray-500">Tax Amount</label>
-                  <p className="text-xl font-bold text-gray-900">
+                <div
+                  className="rounded-lg p-4 themed-transition"
+                  style={{ background: 'var(--surface)' }}
+                >
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Tax Amount
+                  </label>
+                  <p className="text-xl font-bold themed-transition" style={{ color: 'var(--foreground)' }}>
                     {formatCurrency(expense.taxAmount || 0, expense.currency)}
                   </p>
                 </div>
-                <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                  <label className="text-sm text-amber-600">Total Amount</label>
-                  <p className="text-xl font-bold text-amber-700">
+                <div
+                  className="rounded-lg p-4 themed-transition"
+                  style={{
+                    background: 'var(--primary-light)',
+                    border: '1px solid var(--primary)',
+                  }}
+                >
+                  <label className="text-sm" style={{ color: 'var(--primary)' }}>
+                    Total Amount
+                  </label>
+                  <p className="text-xl font-bold" style={{ color: 'var(--primary)' }}>
                     {formatCurrency(expense.totalAmount, expense.currency)}
                   </p>
                 </div>
               </div>
               {expense.currency && expense.currency !== 'INR' && expense.exchangeRate && expense.exchangeRate !== 1 && (
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                  <p className="text-sm text-blue-700">
+                <div
+                  className="mt-4 p-3 rounded-lg themed-transition"
+                  style={{
+                    background: 'var(--info-light)',
+                    border: '1px solid var(--info)',
+                  }}
+                >
+                  <p className="text-sm" style={{ color: 'var(--info)' }}>
                     Exchange Rate: 1 {expense.currency} = {expense.exchangeRate} INR
                   </p>
                 </div>
@@ -539,15 +699,27 @@ const RecurringExpenseView: React.FC = () => {
             </div>
 
             {/* Schedule Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-gray-500" />
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Calendar className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
                 Schedule Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-gray-500">Frequency</label>
-                  <p className="text-gray-900 font-medium">
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Frequency
+                  </label>
+                  <p className="font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
                     <FrequencyBadge 
                       frequency={expense.frequency}
                       frequencyInterval={expense.frequencyInterval}
@@ -556,8 +728,10 @@ const RecurringExpenseView: React.FC = () => {
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Start Date</label>
-                  <p className="text-gray-900">
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Start Date
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
                     {new Date(expense.startDate).toLocaleDateString('en-IN', {
                       year: 'numeric',
                       month: 'long',
@@ -566,8 +740,10 @@ const RecurringExpenseView: React.FC = () => {
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">End Date</label>
-                  <p className="text-gray-900">
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    End Date
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
                     {expense.endDate 
                       ? new Date(expense.endDate).toLocaleDateString('en-IN', {
                           year: 'numeric',
@@ -578,21 +754,27 @@ const RecurringExpenseView: React.FC = () => {
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Next Processing</label>
-                  <p className="text-gray-900 font-medium text-amber-600">
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Next Processing
+                  </label>
+                  <p className="font-medium" style={{ color: 'var(--gold)' }}>
                     {getNextProcessingDate(expense)}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Processed Occurrences</label>
-                  <p className="text-gray-900">
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Processed Occurrences
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
                     {expense.processedOccurrences || 0}
                     {expense.totalOccurrences ? ` / ${expense.totalOccurrences}` : ''}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Remaining</label>
-                  <p className="text-gray-900">
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Remaining
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
                     {expense.totalOccurrences 
                       ? Math.max(0, expense.totalOccurrences - (expense.processedOccurrences || 0))
                       : '∞'}
@@ -603,29 +785,57 @@ const RecurringExpenseView: React.FC = () => {
 
             {/* Notes */}
             {expense.notes && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-gray-500" />
+              <div
+                className="rounded-xl p-6 themed-transition"
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
+                <h3
+                  className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  <FileText className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
                   Notes
                 </h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{expense.notes}</p>
+                <p className="whitespace-pre-wrap themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                  {expense.notes}
+                </p>
               </div>
             )}
 
             {/* Payment Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-gray-500" />
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <CreditCard className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
                 Payment Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-gray-500">Payment Method</label>
-                  <p className="text-gray-900">{getPaymentMethodLabel(expense.paymentMethod)}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Payment Method
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {getPaymentMethodLabel(expense.paymentMethod)}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Status</label>
-                  <p className="text-gray-900">
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Status
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
                     <StatusBadge status={expense.paymentStatus} />
                   </p>
                 </div>
@@ -636,8 +846,20 @@ const RecurringExpenseView: React.FC = () => {
           {/* ── Sidebar ── */}
           <div className="space-y-6">
             {/* Quick Summary */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Summary</h3>
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Quick Summary
+              </h3>
               <div className="space-y-0">
                 <InfoRow 
                   label="Recurring ID" 
@@ -652,7 +874,7 @@ const RecurringExpenseView: React.FC = () => {
                 <InfoRow 
                   label="Total Amount" 
                   value={
-                    <span className="font-bold text-amber-600">
+                    <span className="font-bold" style={{ color: 'var(--gold)' }}>
                       {formatCurrency(expense.totalAmount, expense.currency)}
                     </span>
                   } 
@@ -704,33 +926,87 @@ const RecurringExpenseView: React.FC = () => {
             </div>
 
             {/* Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Actions
+              </h3>
               <div className="space-y-2">
                 <button
                   onClick={handleEdit}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--primary-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--primary)';
+                  }}
                 >
                   <Edit className="h-4 w-4" />
                   Edit Recurring Expense
                 </button>
                 <button
                   onClick={handlePrint}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                  style={{
+                    color: 'var(--foreground-secondary)',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--surface-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--surface)';
+                  }}
                 >
                   <Printer className="h-4 w-4" />
                   Print Details
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                  style={{
+                    background: 'var(--error)',
+                    color: 'white',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--error-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--error)';
+                  }}
                 >
                   <Trash className="h-4 w-4" />
                   Delete Recurring Expense
                 </button>
                 <button
                   onClick={handleBack}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                  style={{
+                    color: 'var(--foreground-secondary)',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--surface-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--surface)';
+                  }}
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back to Recurring Expenses

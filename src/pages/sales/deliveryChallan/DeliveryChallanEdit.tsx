@@ -30,7 +30,11 @@ import {
 import type { DropdownOption } from '../../../components/common/Searchabledropdown';
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 
-// Mock customer data for dropdown
+// ============================================================
+// MOCK DATA - Consolidated single source of truth
+// ============================================================
+
+// Customer options
 const MOCK_CUSTOMERS: DropdownOption[] = [
   { value: 'CUST-001', label: 'Rajesh Jewelers', group: 'Regular' },
   { value: 'CUST-002', label: 'Priya Gold House', group: 'Regular' },
@@ -39,16 +43,46 @@ const MOCK_CUSTOMERS: DropdownOption[] = [
   { value: 'CUST-005', label: 'Vikram Gems', group: 'Corporate' },
 ];
 
-// Mock customer details for auto-fill
+// Customer details lookup - Single source of truth
 const CUSTOMER_DETAILS: Record<string, any> = {
-  'CUST-001': { name: 'Rajesh Jewelers', email: 'rajesh@jewelers.com', phone: '+91-98765-43210', address: '123, Jewelry Market, Mumbai', gst: '22AAAAA0000A1Z5' },
-  'CUST-002': { name: 'Priya Gold House', email: 'priya@goldhouse.com', phone: '+91-98765-43211', address: '45, Gold Street, Chennai', gst: '22BBBBB0000B1Z5' },
-  'CUST-003': { name: 'Amit Diamond Co.', email: 'amit@diamond.com', phone: '+91-98765-43212', address: '789, Diamond Plaza, Surat', gst: '22CCCCC0000C1Z5' },
-  'CUST-004': { name: 'Sneha Jewellery', email: 'sneha@jewellery.com', phone: '+91-98765-43213', address: '321, Jewel Lane, Jaipur', gst: '22DDDDD0000D1Z5' },
-  'CUST-005': { name: 'Vikram Gems', email: 'vikram@gems.com', phone: '+91-98765-43214', address: '654, Gem Tower, Mumbai', gst: '22EEEEE0000E1Z5' },
+  'CUST-001': { 
+    name: 'Rajesh Jewelers', 
+    email: 'rajesh@jewelers.com', 
+    phone: '+91-98765-43210', 
+    address: '123, Jewelry Market, Mumbai', 
+    gst: '22AAAAA0000A1Z5' 
+  },
+  'CUST-002': { 
+    name: 'Priya Gold House', 
+    email: 'priya@goldhouse.com', 
+    phone: '+91-98765-43211', 
+    address: '45, Gold Street, Chennai', 
+    gst: '22BBBBB0000B1Z5' 
+  },
+  'CUST-003': { 
+    name: 'Amit Diamond Co.', 
+    email: 'amit@diamond.com', 
+    phone: '+91-98765-43212', 
+    address: '789, Diamond Plaza, Surat', 
+    gst: '22CCCCC0000C1Z5' 
+  },
+  'CUST-004': { 
+    name: 'Sneha Jewellery', 
+    email: 'sneha@jewellery.com', 
+    phone: '+91-98765-43213', 
+    address: '321, Jewel Lane, Jaipur', 
+    gst: '22DDDDD0000D1Z5' 
+  },
+  'CUST-005': { 
+    name: 'Vikram Gems', 
+    email: 'vikram@gems.com', 
+    phone: '+91-98765-43214', 
+    address: '654, Gem Tower, Mumbai', 
+    gst: '22EEEEE0000E1Z5' 
+  },
 };
 
-// Mock product suggestions
+// Product suggestions - Single source of truth
 const MOCK_PRODUCTS = [
   { id: '1', name: 'Gold Ring', code: 'GR-001', category: 'Ring', purity: '22K', price: 7500, description: '22K Gold Ring with diamond', unit: 'Pcs' },
   { id: '2', name: 'Gold Chain', code: 'GC-001', category: 'Chain', purity: '22K', price: 4500, description: '22K Gold Chain with pendant', unit: 'Pcs' },
@@ -69,6 +103,14 @@ const deliveryChallanColumns: any[] = [
   { key: 'taxRate', label: 'Tax' },
   { key: 'total', label: 'Total' },
 ];
+
+// Status badge color mapping
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  draft: { bg: 'var(--surface-hover)', text: 'var(--foreground-secondary)' },
+  sent: { bg: 'var(--success-light)', text: 'var(--success)' },
+  delivered: { bg: 'var(--info-light)', text: 'var(--info)' },
+  cancelled: { bg: 'var(--error-light)', text: 'var(--error)' },
+};
 
 const DeliveryChallanEdit: React.FC = () => {
   const navigate = useNavigate();
@@ -309,11 +351,23 @@ const DeliveryChallanEdit: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-300 mx-auto mb-3" />
-          <p className="text-gray-500">Invalid delivery challan ID</p>
+          <AlertCircle className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--error)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            Invalid delivery challan ID
+          </p>
           <button
             onClick={() => navigate('/sales/delivery-challan')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Delivery Challans
           </button>
@@ -334,11 +388,23 @@ const DeliveryChallanEdit: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Truck className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">Delivery Challan not found</p>
+          <Truck className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--foreground-tertiary)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            Delivery Challan not found
+          </p>
           <button
             onClick={() => navigate('/sales/delivery-challan')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Delivery Challans
           </button>
@@ -347,25 +413,47 @@ const DeliveryChallanEdit: React.FC = () => {
     );
   }
 
+  // Get status colors
+  const statusColors = STATUS_COLORS[challanStatus || 'draft'] || STATUS_COLORS.draft;
+
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Go back"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
-                <Truck className="h-6 w-6 text-amber-500" />
+              <h1
+                className="text-2xl font-semibold flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Truck className="h-6 w-6" style={{ color: 'var(--gold)' }} />
                 Edit Delivery Challan
               </h1>
-              <p className="text-sm text-gray-500">
+              <p
+                className="text-sm themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
                 {formData.challanNumber ? `Editing ${formData.challanNumber}` : 'Edit delivery challan'}
               </p>
             </div>
@@ -373,15 +461,13 @@ const DeliveryChallanEdit: React.FC = () => {
           <div className="flex items-center gap-3">
             {/* Status Badge */}
             {challanStatus && (
-              <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                challanStatus === 'draft' 
-                  ? 'bg-gray-100 text-gray-700' 
-                  : challanStatus === 'sent' 
-                  ? 'bg-green-100 text-green-700'
-                  : challanStatus === 'delivered'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-red-100 text-red-700'
-              }`}>
+              <span
+                className="px-3 py-1 text-xs font-medium rounded-full themed-transition"
+                style={{
+                  background: statusColors.bg,
+                  color: statusColors.text,
+                }}
+              >
                 {challanStatus.charAt(0).toUpperCase() + challanStatus.slice(1)}
               </span>
             )}
@@ -391,7 +477,19 @@ const DeliveryChallanEdit: React.FC = () => {
               type="button"
               onClick={onRefresh}
               disabled={refreshing}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 rounded-lg transition-colors disabled:opacity-50 themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                if (!refreshing) {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Refresh data"
             >
               <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -400,7 +498,17 @@ const DeliveryChallanEdit: React.FC = () => {
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
@@ -409,7 +517,19 @@ const DeliveryChallanEdit: React.FC = () => {
               type="button"
               onClick={onSubmit}
               disabled={saving || submitLoading || !isEditable}
-              className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving && !submitLoading && isEditable) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {saving || submitLoading ? (
                 <LoadingSpinner size="sm" />
@@ -425,13 +545,19 @@ const DeliveryChallanEdit: React.FC = () => {
 
         {/* Status Warning for non-draft */}
         {!isEditable && (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
+          <div
+            className="mb-6 p-4 rounded-lg flex items-start gap-3 themed-transition"
+            style={{
+              background: 'var(--warning-light)',
+              border: '1px solid var(--warning)',
+            }}
+          >
+            <AlertCircle className="h-5 w-5 mt-0.5" style={{ color: 'var(--warning)' }} />
             <div>
-              <p className="text-sm text-yellow-800">
+              <p className="text-sm" style={{ color: 'var(--foreground)' }}>
                 This challan is in <strong>{challanStatus}</strong> status and cannot be edited.
               </p>
-              <p className="text-sm text-yellow-700 mt-1">
+              <p className="text-sm mt-1" style={{ color: 'var(--foreground-secondary)' }}>
                 Only draft challans can be modified.
               </p>
             </div>
@@ -459,13 +585,28 @@ const DeliveryChallanEdit: React.FC = () => {
 
         {/* Load error */}
         {hookErrors?.load && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+          <div
+            className="mb-6 p-4 rounded-lg flex items-start gap-3 themed-transition"
+            style={{
+              background: 'var(--error-light)',
+              border: '1px solid var(--error)',
+            }}
+          >
+            <AlertCircle className="h-5 w-5 mt-0.5" style={{ color: 'var(--error)' }} />
             <div className="flex-1">
-              <p className="text-sm text-red-700">{hookErrors.load}</p>
+              <p className="text-sm" style={{ color: 'var(--error)' }}>
+                {hookErrors.load}
+              </p>
               <button
                 onClick={onRefresh}
-                className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
+                className="mt-2 text-sm font-medium flex items-center gap-1 themed-transition"
+                style={{ color: 'var(--error)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
               >
                 <RefreshCw className="h-4 w-4" />
                 Try Again
@@ -476,49 +617,97 @@ const DeliveryChallanEdit: React.FC = () => {
 
         <form onSubmit={onSubmit} className="space-y-6">
           {/* Basic Information */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <FileText className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Basic Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Challan Number <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Challan Number <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.challanNumber || ''}
                   onChange={(e) => updateFormData('challanNumber', e.target.value)}
                   disabled={!isEditable}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    validationErrors.challanNumber ? 'border-red-500' : 'border-gray-300'
-                  } ${!isEditable ? 'bg-gray-50 text-gray-500' : 'bg-white text-gray-900'}`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                  style={{
+                    border: `1px solid ${validationErrors.challanNumber ? 'var(--error)' : 'var(--border)'}`,
+                    background: isEditable ? 'var(--background)' : 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    if (isEditable) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = validationErrors.challanNumber ? 'var(--error)' : 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter challan number"
                 />
                 {validationErrors.challanNumber && (
-                  <p className="mt-1 text-xs text-red-500">{validationErrors.challanNumber}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {validationErrors.challanNumber}
+                  </p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Challan Date <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Challan Date <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <input
                   type="date"
                   value={formData.challanDate || ''}
                   onChange={(e) => updateFormData('challanDate', e.target.value)}
                   disabled={!isEditable}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    validationErrors.challanDate ? 'border-red-500' : 'border-gray-300'
-                  } ${!isEditable ? 'bg-gray-50' : ''}`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                  style={{
+                    border: `1px solid ${validationErrors.challanDate ? 'var(--error)' : 'var(--border)'}`,
+                    background: isEditable ? 'var(--background)' : 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    if (isEditable) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = validationErrors.challanDate ? 'var(--error)' : 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
                 {validationErrors.challanDate && (
-                  <p className="mt-1 text-xs text-red-500">{validationErrors.challanDate}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {validationErrors.challanDate}
+                  </p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Expected Delivery Date
                 </label>
                 <input
@@ -526,23 +715,48 @@ const DeliveryChallanEdit: React.FC = () => {
                   value={formData.deliveryDate || ''}
                   onChange={(e) => updateFormData('deliveryDate', e.target.value)}
                   disabled={!isEditable}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    !isEditable ? 'bg-gray-50' : 'bg-white'
-                  } border-gray-300`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: isEditable ? 'var(--background)' : 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    if (isEditable) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
               </div>
             </div>
           </div>
 
           {/* Customer Section - Using SearchableDropdown */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <Users className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Customer Details
             </h2>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select Customer <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Select Customer <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <SearchableDropdown
                 options={MOCK_CUSTOMERS}
@@ -557,33 +771,57 @@ const DeliveryChallanEdit: React.FC = () => {
                 disabled={!isEditable}
               />
               {validationErrors.customerId && (
-                <p className="mt-1 text-xs text-red-500">{validationErrors.customerId}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.customerId}
+                </p>
               )}
             </div>
 
             {formData.customerName && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50 rounded-lg">
+              <div
+                className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg themed-transition"
+                style={{
+                  background: 'var(--primary-light)',
+                }}
+              >
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{formData.customerName}</p>
+                  <p
+                    className="text-sm font-medium themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    {formData.customerName}
+                  </p>
                   {formData.customerEmail && (
-                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                    <p
+                      className="text-sm flex items-center gap-2 mt-1 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       <Mail className="h-4 w-4" /> {formData.customerEmail}
                     </p>
                   )}
                   {formData.customerPhone && (
-                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                    <p
+                      className="text-sm flex items-center gap-2 mt-1 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       <Phone className="h-4 w-4" /> {formData.customerPhone}
                     </p>
                   )}
                 </div>
                 <div>
                   {formData.customerGst && (
-                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                    <p
+                      className="text-sm flex items-center gap-2 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       <FileText className="h-4 w-4" /> GST: {formData.customerGst}
                     </p>
                   )}
                   {formData.customerAddress && (
-                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                    <p
+                      className="text-sm flex items-center gap-2 mt-1 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       <Building2 className="h-4 w-4" /> {formData.customerAddress}
                     </p>
                   )}
@@ -593,27 +831,54 @@ const DeliveryChallanEdit: React.FC = () => {
           </div>
 
           {/* Delivery Address */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <MapPin className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Delivery Address
             </h2>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Delivery Address <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Delivery Address <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <textarea
                 value={formData.deliveryAddress || ''}
                 onChange={(e) => updateFormData('deliveryAddress', e.target.value)}
                 disabled={!isEditable}
                 rows={3}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  validationErrors.deliveryAddress ? 'border-red-500' : 'border-gray-300'
-                } ${!isEditable ? 'bg-gray-50' : ''}`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                style={{
+                  border: `1px solid ${validationErrors.deliveryAddress ? 'var(--error)' : 'var(--border)'}`,
+                  background: isEditable ? 'var(--background)' : 'var(--surface)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  if (isEditable) {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = validationErrors.deliveryAddress ? 'var(--error)' : 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter delivery address..."
               />
               {validationErrors.deliveryAddress && (
-                <p className="mt-1 text-xs text-red-500">{validationErrors.deliveryAddress}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.deliveryAddress}
+                </p>
               )}
             </div>
           </div>
@@ -646,82 +911,194 @@ const DeliveryChallanEdit: React.FC = () => {
             className={!isEditable ? 'pointer-events-none opacity-75' : ''}
           />
           {validationErrors.items && (
-            <p className="mt-1 text-xs text-red-500">{validationErrors.items}</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+              {validationErrors.items}
+            </p>
           )}
 
           {/* Transport Details */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <TruckIcon className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <TruckIcon className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Transport Details
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Transporter Name</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Transporter Name
+                </label>
                 <input
                   type="text"
                   value={formData.transporterName || ''}
                   onChange={(e) => updateFormData('transporterName', e.target.value)}
                   disabled={!isEditable}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    !isEditable ? 'bg-gray-50' : 'bg-white'
-                  } border-gray-300`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: isEditable ? 'var(--background)' : 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    if (isEditable) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter transporter name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Number</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Vehicle Number
+                </label>
                 <input
                   type="text"
                   value={formData.vehicleNumber || ''}
                   onChange={(e) => updateFormData('vehicleNumber', e.target.value)}
                   disabled={!isEditable}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    !isEditable ? 'bg-gray-50' : 'bg-white'
-                  } border-gray-300`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: isEditable ? 'var(--background)' : 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    if (isEditable) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter vehicle number"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">LR Number</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  LR Number
+                </label>
                 <input
                   type="text"
                   value={formData.lrNumber || ''}
                   onChange={(e) => updateFormData('lrNumber', e.target.value)}
                   disabled={!isEditable}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    !isEditable ? 'bg-gray-50' : 'bg-white'
-                  } border-gray-300`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: isEditable ? 'var(--background)' : 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    if (isEditable) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter LR number"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">LR Date</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  LR Date
+                </label>
                 <input
                   type="date"
                   value={formData.lrDate || ''}
                   onChange={(e) => updateFormData('lrDate', e.target.value)}
                   disabled={!isEditable}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    !isEditable ? 'bg-gray-50' : 'bg-white'
-                  } border-gray-300`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: isEditable ? 'var(--background)' : 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    if (isEditable) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
               </div>
             </div>
           </div>
 
           {/* Payment Terms */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Terms</h2>
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              Payment Terms
+            </h2>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Payment Terms
+              </label>
               <select
                 value={formData.paymentTerms || 'Net 15'}
                 onChange={(e) => updateFormData('paymentTerms', e.target.value)}
                 disabled={!isEditable}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  !isEditable ? 'bg-gray-50' : 'bg-white'
-                } border-gray-300`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: isEditable ? 'var(--background)' : 'var(--surface)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  if (isEditable) {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               >
                 <option value="Net 7">Net 7</option>
                 <option value="Net 15">Net 15</option>
@@ -735,31 +1112,73 @@ const DeliveryChallanEdit: React.FC = () => {
           </div>
 
           {/* Notes & Terms */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Notes
+                </label>
                 <textarea
                   value={formData.notes || ''}
                   onChange={(e) => updateFormData('notes', e.target.value)}
                   disabled={!isEditable}
                   rows={3}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    !isEditable ? 'bg-gray-50' : 'bg-white'
-                  } border-gray-300`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: isEditable ? 'var(--background)' : 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    if (isEditable) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter any notes..."
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Terms & Conditions</label>
+                <label
+                  className="block text-sm font-medium mb-1 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Terms & Conditions
+                </label>
                 <textarea
                   value={formData.termsAndConditions || ''}
                   onChange={(e) => updateFormData('termsAndConditions', e.target.value)}
                   disabled={!isEditable}
                   rows={3}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    !isEditable ? 'bg-gray-50' : 'bg-white'
-                  } border-gray-300`}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: isEditable ? 'var(--background)' : 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    if (isEditable) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   placeholder="Enter terms and conditions..."
                 />
               </div>
@@ -769,8 +1188,16 @@ const DeliveryChallanEdit: React.FC = () => {
       </div>
 
       {saving && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div
+            className="rounded-lg p-8 flex flex-col items-center themed-transition"
+            style={{
+              background: 'var(--card)',
+            }}
+          >
             <LoadingSpinner size="lg" />
           </div>
         </div>

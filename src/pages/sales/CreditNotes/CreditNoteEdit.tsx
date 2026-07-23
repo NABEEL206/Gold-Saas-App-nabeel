@@ -26,8 +26,11 @@ import {
 import type { ItemSelectionItem } from '../../../components/common/ItemSelectionTable';
 import type { CreditNote } from '../../../types/creditNote/CreditNoteTypes';
 
-// ─── Static data ──────────────────────────────────────────────────────────────
+// ============================================================
+// CONSTANTS - Single source of truth (shared with Create page)
+// ============================================================
 
+// Customer data
 const DEMO_CUSTOMERS = [
   { id: '1', name: 'Rajesh Jewelers',  email: 'rajesh@jewelers.com', phone: '+91-98765-43210', gst: '22AAAAA0000A1Z5' },
   { id: '2', name: 'Priya Gold House', email: 'priya@goldhouse.com',  phone: '+91-98765-43211', gst: '22BBBBB0000B1Z5' },
@@ -35,6 +38,7 @@ const DEMO_CUSTOMERS = [
   { id: '4', name: 'Meera Jewel World',email: 'meera@jewelworld.com', phone: '+91-98765-43213', gst: '22DDDDD0000D1Z5' },
 ];
 
+// Invoice data
 const DEMO_INVOICES = [
   { id: '1', number: 'INV-000001', amount: 29500 },
   { id: '2', number: 'INV-000002', amount: 50445 },
@@ -42,6 +46,7 @@ const DEMO_INVOICES = [
   { id: '4', number: 'INV-000004', amount: 12862 },
 ];
 
+// Product/Item data
 const DEMO_ITEMS = [
   { id: '1', name: 'Gold Ring',     code: 'GR-001', purity: '22K', price: 7500, unit: 'Pcs' },
   { id: '2', name: 'Gold Chain',    code: 'GC-001', purity: '22K', price: 4500, unit: 'Pcs' },
@@ -50,8 +55,17 @@ const DEMO_ITEMS = [
   { id: '5', name: 'Gold Bracelet', code: 'GB-001', purity: '22K', price: 3800, unit: 'Pcs' },
 ];
 
-// ─── Dropdown option lists ────────────────────────────────────────────────────
+// Predefined reason options
+const REASON_OPTIONS: DropdownOption[] = [
+  { value: 'Product damaged during shipping',       label: 'Product damaged during shipping' },
+  { value: 'Quality issue - incorrect purity',      label: 'Quality issue — incorrect purity' },
+  { value: 'Customer requested cancellation',       label: 'Customer requested cancellation' },
+  { value: 'Wrong item delivered',                  label: 'Wrong item delivered' },
+  { value: 'Price mismatch',                        label: 'Price mismatch' },
+  { value: 'Other',                                 label: 'Other' },
+];
 
+// Dropdown option lists
 const CUSTOMER_OPTIONS: DropdownOption[] = DEMO_CUSTOMERS.map(c => ({
   value: c.id,
   label: c.name,
@@ -64,106 +78,98 @@ const INVOICE_OPTIONS: DropdownOption[] = DEMO_INVOICES.map(inv => ({
   group: 'Invoices',
 }));
 
-const REASON_OPTIONS: DropdownOption[] = [
-  { value: 'Product damaged during shipping',       label: 'Product damaged during shipping' },
-  { value: 'Quality issue - incorrect purity',      label: 'Quality issue — incorrect purity' },
-  { value: 'Customer requested cancellation',       label: 'Customer requested cancellation' },
-  { value: 'Wrong item delivered',                  label: 'Wrong item delivered' },
-  { value: 'Price mismatch',                        label: 'Price mismatch' },
-  { value: 'Other',                                 label: 'Other' },
-];
+// ─── Dummy credit note data ─────────────────────────────────────────────────
 
-// ─── Generate dummy credit note data ─────────────────────────────────────────
+const DUMMY_CREDIT_NOTES: Record<string, CreditNote> = {
+  '1': {
+    id: '1',
+    creditNoteNumber: 'CN-2024-001',
+    creditNoteDate: new Date().toISOString().split('T')[0],
+    customerId: '1',
+    customerName: 'Rajesh Jewelers',
+    customerEmail: 'rajesh@jewelers.com',
+    customerPhone: '+91-98765-43210',
+    customerGst: '22AAAAA0000A1Z5',
+    invoiceId: '1',
+    invoiceNumber: 'INV-000001',
+    items: [
+      {
+        id: 'item1',
+        creditNoteId: '1',
+        itemName: 'Gold Chain',
+        description: '22K Gold Chain with pendant',
+        quantity: 1,
+        unit: 'Pcs',
+        rate: 4500,
+        discount: 0,
+        taxRate: 18,
+        taxAmount: 810,
+        total: 5310,
+        purity: '22K',
+        weight: 5.5,
+        makingCharges: 400,
+      },
+    ],
+    subtotal: 4500,
+    taxRate: 18,
+    taxAmount: 810,
+    discount: 0,
+    discountType: 'percentage',
+    total: 5310,
+    reason: 'Product damaged during shipping',
+    status: 'draft',
+    notes: 'Customer returned damaged item',
+    createdBy: 'admin',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  '2': {
+    id: '2',
+    creditNoteNumber: 'CN-2024-002',
+    creditNoteDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    customerId: '2',
+    customerName: 'Priya Gold House',
+    customerEmail: 'priya@goldhouse.com',
+    customerPhone: '+91-98765-43211',
+    customerGst: '22BBBBB0000B1Z5',
+    invoiceId: '2',
+    invoiceNumber: 'INV-000002',
+    items: [
+      {
+        id: 'item2',
+        creditNoteId: '2',
+        itemName: 'Gold Earrings',
+        description: '22K Gold Earrings with pearl',
+        quantity: 2,
+        unit: 'Pcs',
+        rate: 3200,
+        discount: 0,
+        taxRate: 18,
+        taxAmount: 1152,
+        total: 7552,
+        purity: '22K',
+        weight: 6.8,
+        makingCharges: 400,
+      },
+    ],
+    subtotal: 6400,
+    taxRate: 18,
+    taxAmount: 1152,
+    discount: 0,
+    discountType: 'percentage',
+    total: 7552,
+    reason: 'Quality issue - incorrect purity',
+    status: 'draft',
+    notes: 'Customer complained about purity mismatch',
+    createdBy: 'admin',
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+};
 
-const generateDummyCreditNote = (id: string): CreditNote | null => {
-  const dummyCreditNotes: Record<string, CreditNote> = {
-    '1': {
-      id: '1',
-      creditNoteNumber: 'CN-2024-001',
-      creditNoteDate: new Date().toISOString().split('T')[0],
-      customerId: '1',
-      customerName: 'Rajesh Jewelers',
-      customerEmail: 'rajesh@jewelers.com',
-      customerPhone: '+91-98765-43210',
-      customerGst: '22AAAAA0000A1Z5',
-      invoiceId: '1',
-      invoiceNumber: 'INV-000001',
-      items: [
-        {
-          id: 'item1',
-          creditNoteId: '1',
-          itemName: 'Gold Chain',
-          description: '22K Gold Chain with pendant',
-          quantity: 1,
-          unit: 'Pcs',
-          rate: 4500,
-          discount: 0,
-          taxRate: 18,
-          taxAmount: 810,
-          total: 5310,
-          purity: '22K',
-          weight: 5.5,
-          makingCharges: 400,
-        },
-      ],
-      subtotal: 4500,
-      taxRate: 18,
-      taxAmount: 810,
-      discount: 0,
-      discountType: 'percentage',
-      total: 5310,
-      reason: 'Product damaged during shipping',
-      status: 'draft',
-      notes: 'Customer returned damaged item',
-      createdBy: 'admin',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    '2': {
-      id: '2',
-      creditNoteNumber: 'CN-2024-002',
-      creditNoteDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      customerId: '2',
-      customerName: 'Priya Gold House',
-      customerEmail: 'priya@goldhouse.com',
-      customerPhone: '+91-98765-43211',
-      customerGst: '22BBBBB0000B1Z5',
-      invoiceId: '2',
-      invoiceNumber: 'INV-000002',
-      items: [
-        {
-          id: 'item2',
-          creditNoteId: '2',
-          itemName: 'Gold Earrings',
-          description: '22K Gold Earrings with pearl',
-          quantity: 2,
-          unit: 'Pcs',
-          rate: 3200,
-          discount: 0,
-          taxRate: 18,
-          taxAmount: 1152,
-          total: 7552,
-          purity: '22K',
-          weight: 6.8,
-          makingCharges: 400,
-        },
-      ],
-      subtotal: 6400,
-      taxRate: 18,
-      taxAmount: 1152,
-      discount: 0,
-      discountType: 'percentage',
-      total: 7552,
-      reason: 'Quality issue - incorrect purity',
-      status: 'draft',
-      notes: 'Customer complained about purity mismatch',
-      createdBy: 'admin',
-      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-  };
-
-  return dummyCreditNotes[id] || null;
+// Helper function to get dummy credit note
+const getDummyCreditNote = (id: string): CreditNote | null => {
+  return DUMMY_CREDIT_NOTES[id] || null;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -276,7 +282,7 @@ const CreditNoteEdit: React.FC = () => {
         }, 0);
       } else {
         // Fallback to dummy data if API returns nothing
-        const dummyData = generateDummyCreditNote(creditNoteId);
+        const dummyData = getDummyCreditNote(creditNoteId);
         if (dummyData) {
           setOriginalCreditNote(dummyData);
           setFormData({
@@ -323,7 +329,7 @@ const CreditNoteEdit: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading credit note:', error);
-      const dummyData = generateDummyCreditNote(creditNoteId);
+      const dummyData = getDummyCreditNote(creditNoteId);
       if (dummyData) {
         setOriginalCreditNote(dummyData);
         setFormData({
@@ -651,11 +657,23 @@ const CreditNoteEdit: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Receipt className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">Credit Note not found</p>
+          <Receipt className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--foreground-tertiary)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            Credit Note not found
+          </p>
           <button
             onClick={() => navigate('/sales/credit-notes')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Credit Notes
           </button>
@@ -670,7 +688,10 @@ const CreditNoteEdit: React.FC = () => {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-6xl mx-auto">
 
         {/* ── Header ── */}
@@ -678,24 +699,47 @@ const CreditNoteEdit: React.FC = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Go back"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
-                <Receipt className="h-6 w-6 text-amber-500" />
+              <h1
+                className="text-2xl font-semibold flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <Receipt className="h-6 w-6" style={{ color: 'var(--gold)' }} />
                 Edit Credit Note
               </h1>
-              <p className="text-sm text-gray-500">
+              <p
+                className="text-sm themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
                 Editing {originalCreditNote.creditNoteNumber} - {originalCreditNote.customerName}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             {!isEditable && (
-              <div className="flex items-center gap-2 px-3 py-1 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-700">
+              <div
+                className="flex items-center gap-2 px-3 py-1 rounded-lg text-xs themed-transition"
+                style={{
+                  background: 'var(--warning-light)',
+                  border: '1px solid var(--warning)',
+                  color: 'var(--warning)',
+                }}
+              >
                 <AlertCircle className="h-4 w-4" />
                 <span>Read-only: Credit note not in draft</span>
               </div>
@@ -703,7 +747,17 @@ const CreditNoteEdit: React.FC = () => {
             <button
               type="button"
               onClick={handleDelete}
-              className="px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
+              className="px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-1 themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--error-light)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Delete credit note"
             >
               <Trash2 className="h-4 w-4" />
@@ -714,7 +768,19 @@ const CreditNoteEdit: React.FC = () => {
                 type="button"
                 onClick={handleReset}
                 disabled={!hasChanges || !isEditable}
-                className="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+                style={{
+                  color: 'var(--foreground-secondary)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  if (hasChanges && isEditable) {
+                    e.currentTarget.style.background = 'var(--surface-hover)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
                 title="Reset changes"
               >
                 Reset
@@ -723,7 +789,17 @@ const CreditNoteEdit: React.FC = () => {
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
@@ -731,7 +807,20 @@ const CreditNoteEdit: React.FC = () => {
               type="button"
               onClick={() => handleSubmit('draft')}
               disabled={saving || hookSaving || !isEditable || !hasChanges}
-              className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving && !hookSaving && isEditable && hasChanges) {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--surface)';
+              }}
               title={!isEditable ? 'Only draft credit notes can be edited' : ''}
             >
               {saving || hookSaving ? (
@@ -745,7 +834,19 @@ const CreditNoteEdit: React.FC = () => {
               type="button"
               onClick={() => handleSubmit('sent')}
               disabled={saving || hookSaving || !isEditable || !hasChanges}
-              className="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving && !hookSaving && isEditable && hasChanges) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
               title={!isEditable ? 'Only draft credit notes can be edited' : ''}
             >
               {saving || hookSaving ? (
@@ -762,11 +863,19 @@ const CreditNoteEdit: React.FC = () => {
 
         {/* Read-only warning */}
         {!isEditable && (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+          <div
+            className="mb-6 p-4 rounded-lg flex items-start gap-3 themed-transition"
+            style={{
+              background: 'var(--warning-light)',
+              border: '1px solid var(--warning)',
+            }}
+          >
+            <AlertCircle className="h-5 w-5 mt-0.5" style={{ color: 'var(--warning)' }} />
             <div>
-              <p className="text-sm font-medium text-yellow-800">Credit note is not in draft status</p>
-              <p className="text-sm text-yellow-700 mt-1">
+              <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                Credit note is not in draft status
+              </p>
+              <p className="text-sm mt-1" style={{ color: 'var(--foreground-secondary)' }}>
                 Only draft credit notes can be edited. This credit note is currently marked as <strong>{originalCreditNote.status}</strong>.
               </p>
             </div>
@@ -786,9 +895,18 @@ const CreditNoteEdit: React.FC = () => {
         <form className="space-y-6">
 
           {/* ── Customer Details ── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <Users className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Customer Details
             </h2>
 
@@ -796,8 +914,11 @@ const CreditNoteEdit: React.FC = () => {
 
               {/* Customer */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Select Customer <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Select Customer <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <SearchableDropdown
                   options={CUSTOMER_OPTIONS}
@@ -811,13 +932,18 @@ const CreditNoteEdit: React.FC = () => {
                   disabled={!isEditable}
                 />
                 {errors.customerId && (
-                  <p className="mt-1 text-xs text-red-500">{errors.customerId}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {errors.customerId}
+                  </p>
                 )}
               </div>
 
               {/* Invoice */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Invoice (Optional)
                 </label>
                 <SearchableDropdown
@@ -835,27 +961,48 @@ const CreditNoteEdit: React.FC = () => {
 
               {/* Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Credit Note Date <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Credit Note Date <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <input
                   type="date"
                   value={formData.creditNoteDate}
                   onChange={(e) => handleInputChange('creditNoteDate', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    errors.creditNoteDate ? 'border-red-500' : 'border-gray-300'
-                  } ${!isEditable ? 'bg-gray-50' : 'bg-white'}`}
+                  className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition disabled:opacity-60"
+                  style={{
+                    border: `1px solid ${errors.creditNoteDate ? 'var(--error)' : 'var(--border)'}`,
+                    background: isEditable ? 'var(--background)' : 'var(--surface)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    if (isEditable) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = errors.creditNoteDate ? 'var(--error)' : 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   disabled={!isEditable}
                 />
                 {errors.creditNoteDate && (
-                  <p className="mt-1 text-xs text-red-500">{errors.creditNoteDate}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {errors.creditNoteDate}
+                  </p>
                 )}
               </div>
 
               {/* Reason */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Reason <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Reason <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <SearchableDropdown
                   options={REASON_OPTIONS}
@@ -869,27 +1016,54 @@ const CreditNoteEdit: React.FC = () => {
                   disabled={!isEditable}
                 />
                 {errors.reason && (
-                  <p className="mt-1 text-xs text-red-500">{errors.reason}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {errors.reason}
+                  </p>
                 )}
               </div>
             </div>
 
             {/* Customer info card */}
             {formData.customerName && (
-              <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-100">
-                <p className="font-medium text-gray-900">{formData.customerName}</p>
-                <p className="text-sm text-gray-600 mt-0.5">
+              <div
+                className="mt-4 p-4 rounded-lg themed-transition"
+                style={{
+                  background: 'var(--primary-light)',
+                  border: '1px solid var(--primary)',
+                }}
+              >
+                <p
+                  className="font-medium themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  {formData.customerName}
+                </p>
+                <p
+                  className="text-sm mt-0.5 themed-transition"
+                  style={{ color: 'var(--foreground-secondary)' }}
+                >
                   {formData.customerEmail} | {formData.customerPhone}
                 </p>
                 {formData.customerGst && (
-                  <p className="text-sm text-gray-500 mt-0.5">GST: {formData.customerGst}</p>
+                  <p
+                    className="text-sm mt-0.5 themed-transition"
+                    style={{ color: 'var(--foreground-secondary)' }}
+                  >
+                    GST: {formData.customerGst}
+                  </p>
                 )}
               </div>
             )}
           </div>
 
           {/* ── Items ── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <ItemSelectionTable
               items={items}
               onItemsChange={handleItemsChange}
@@ -915,28 +1089,55 @@ const CreditNoteEdit: React.FC = () => {
               className={!isEditable ? 'pointer-events-none opacity-75' : ''}
             />
             {errors.items && (
-              <p className="mt-1 text-xs text-red-500">{errors.items}</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                {errors.items}
+              </p>
             )}
             {!isEditable && (
-              <div className="mt-2 text-xs text-gray-500 text-center">
+              <p
+                className="mt-2 text-xs text-center themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              >
                 Items cannot be edited for non-draft credit notes
-              </div>
+              </p>
             )}
           </div>
 
           {/* ── Notes ── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-amber-500" />
+          <div
+            className="rounded-lg p-6 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h2
+              className="text-lg font-semibold mb-4 flex items-center gap-2 themed-transition"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <FileText className="h-5 w-5" style={{ color: 'var(--gold)' }} />
               Notes
             </h2>
             <textarea
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
               rows={3}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none ${
-                !isEditable ? 'bg-gray-50' : 'bg-white'
-              }`}
+              className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none themed-transition disabled:opacity-60"
+              style={{
+                border: '1px solid var(--border)',
+                background: isEditable ? 'var(--background)' : 'var(--surface)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                if (isEditable) {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               placeholder="Enter any additional notes..."
               disabled={!isEditable}
             />
@@ -947,8 +1148,16 @@ const CreditNoteEdit: React.FC = () => {
 
       {/* Saving Overlay */}
       {saving && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div
+            className="rounded-lg p-8 flex flex-col items-center themed-transition"
+            style={{
+              background: 'var(--card)',
+            }}
+          >
             <LoadingSpinner size="lg" />
           </div>
         </div>

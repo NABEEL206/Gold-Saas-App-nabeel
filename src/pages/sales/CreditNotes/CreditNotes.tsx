@@ -28,6 +28,42 @@ import { formatCurrency } from '../../../utils/Invoice/calculations';
 import type { TableColumn } from '../../../components/common/ReusableTable';
 import type { CreditNote } from '../../../types/creditNote/CreditNoteTypes';
 
+// ============================================================
+// CONSTANTS - Single source of truth
+// ============================================================
+
+// Status configuration - Single source of truth
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  draft: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-secondary)',
+    icon: <FileText className="h-3 w-3" />,
+    label: 'Draft',
+  },
+  sent: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    icon: <Send className="h-3 w-3" />,
+    label: 'Sent',
+  },
+  approved: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Approved',
+  },
+  rejected: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    icon: <XCircle className="h-3 w-3" />,
+    label: 'Rejected',
+  },
+};
+
+// Status filter options
 const STATUS_FILTER_OPTIONS: DropdownOption[] = [
   { value: '', label: 'All Status' },
   { value: 'draft',    label: 'Draft' },
@@ -36,17 +72,19 @@ const STATUS_FILTER_OPTIONS: DropdownOption[] = [
   { value: 'rejected', label: 'Rejected' },
 ];
 
-// Status Badge
+// Status Badge Component
 const StatusBadge: React.FC<{ status: CreditNote['status'] }> = ({ status }) => {
-  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
-    draft: { color: 'bg-gray-100 text-gray-700', icon: <FileText className="h-3 w-3" />, label: 'Draft' },
-    sent: { color: 'bg-blue-100 text-blue-700', icon: <Send className="h-3 w-3" />, label: 'Sent' },
-    approved: { color: 'bg-green-100 text-green-700', icon: <CheckCircle className="h-3 w-3" />, label: 'Approved' },
-    rejected: { color: 'bg-red-100 text-red-700', icon: <XCircle className="h-3 w-3" />, label: 'Rejected' },
-  };
-  const { color, icon, label } = config[status] || config.draft;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
       {icon}
       {label}
     </span>
@@ -267,14 +305,24 @@ const CreditNotes: React.FC = () => {
       key: 'creditNoteNumber',
       header: 'Credit Note #',
       render: (item) => (
-        <span className="text-sm font-medium text-gray-900">{item.creditNoteNumber}</span>
+        <span
+          className="text-sm font-medium themed-transition"
+          style={{ color: 'var(--foreground)' }}
+        >
+          {item.creditNoteNumber}
+        </span>
       ),
     },
     {
       key: 'creditNoteDate',
       header: 'Date',
       render: (item) => (
-        <span className="text-sm text-gray-600">{new Date(item.creditNoteDate).toLocaleDateString()}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {new Date(item.creditNoteDate).toLocaleDateString()}
+        </span>
       ),
     },
     {
@@ -282,8 +330,18 @@ const CreditNotes: React.FC = () => {
       header: 'Customer',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{item.customerName}</p>
-          <p className="text-xs text-gray-500">{item.customerEmail}</p>
+          <p
+            className="text-sm font-medium themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.customerName}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.customerEmail}
+          </p>
         </div>
       ),
     },
@@ -291,21 +349,35 @@ const CreditNotes: React.FC = () => {
       key: 'invoiceNumber',
       header: 'Invoice',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.invoiceNumber || '-'}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.invoiceNumber || '-'}
+        </span>
       ),
     },
     {
       key: 'total',
       header: 'Amount',
       render: (item) => (
-        <span className="text-sm font-semibold text-amber-600">{formatCurrency(item.total)}</span>
+        <span
+          className="text-sm font-semibold themed-transition"
+          style={{ color: 'var(--gold)' }}
+        >
+          {formatCurrency(item.total)}
+        </span>
       ),
     },
     {
       key: 'reason',
       header: 'Reason',
       render: (item) => (
-        <span className="text-sm text-gray-600 truncate max-w-[150px] block" title={item.reason}>
+        <span
+          className="text-sm truncate max-w-[150px] block themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+          title={item.reason}
+        >
           {item.reason}
         </span>
       ),
@@ -324,7 +396,7 @@ const CreditNotes: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportWithLoading('pdf'),
       disabled: exportLoading,
@@ -334,7 +406,7 @@ const CreditNotes: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportWithLoading('excel'),
       disabled: exportLoading,
@@ -351,23 +423,46 @@ const CreditNotes: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Receipt className="h-6 w-6 text-amber-500" />
+          <h1
+            className="text-2xl font-bold flex items-center gap-2 themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            <Receipt className="h-6 w-6" style={{ color: 'var(--gold)' }} />
             Credit Notes
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
             {totalItems > 0 ? `${totalItems} total credit notes` : 'Manage customer credit notes'}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh Button */}
           <button
             onClick={handleRefreshWithLoading}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
             title="Refresh credit notes list"
           >
             {refreshLoading ? (
@@ -377,18 +472,45 @@ const CreditNotes: React.FC = () => {
             )}
             <span className="hidden sm:inline">Refresh</span>
           </button>
+
+          {/* New Credit Note Button */}
           <button
             onClick={handleCreateNew}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Credit Note
           </button>
+
+          {/* Bulk Delete Button */}
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteWithLoading}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -398,6 +520,8 @@ const CreditNotes: React.FC = () => {
               Delete ({selectedItems.length})
             </button>
           )}
+
+          {/* More Options Dropdown */}
           <ThreeDotDropdown
             items={dropdownItems}
             position="right"
@@ -407,7 +531,7 @@ const CreditNotes: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -417,22 +541,51 @@ const CreditNotes: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search Input */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by credit note #, customer or invoice..."
                 value={filters.search || ''}
                 onChange={handleSearchChange}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <SearchableDropdown
               options={STATUS_FILTER_OPTIONS}
               value={filters.status || ''}
@@ -443,20 +596,53 @@ const CreditNotes: React.FC = () => {
               resetSearchOnOpen
             />
           </div>
+
+          {/* Date Range */}
           <div className="flex items-center gap-2">
             <input
               type="date"
               value={filters.dateFrom || ''}
               onChange={handleDateFromChange}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               placeholder="Start Date"
             />
-            <span className="text-gray-400">to</span>
+            <span
+              className="text-sm themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            >
+              to
+            </span>
             <input
               type="date"
               value={filters.dateTo || ''}
               onChange={handleDateToChange}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               placeholder="End Date"
             />
           </div>
@@ -473,7 +659,7 @@ const CreditNotes: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => item.id!}
         emptyMessage="No credit notes found"
-        emptyIcon={<Receipt className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<Receipt className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage,

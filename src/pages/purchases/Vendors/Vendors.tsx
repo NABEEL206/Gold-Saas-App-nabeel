@@ -1,5 +1,4 @@
 // src/pages/purchases/Vendors/Vendors.tsx
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -25,24 +24,49 @@ import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 import type { TableColumn } from '../../../components/common/ReusableTable';
-import { 
-  validateVendorForm, 
+import {
+  validateVendorForm,
   formatValidationErrors,
   hasValidationErrors,
-  getErrorCount 
+  getErrorCount,
 } from '../../../validations/vendor.validation';
+
+// ============================================================
+// STATUS CONFIGURATION - Single source of truth
+// ============================================================
+
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; icon: React.ReactNode; label: string }
+> = {
+  active: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Active',
+  },
+  inactive: {
+    bg: 'var(--surface-hover)',
+    color: 'var(--foreground-secondary)',
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Inactive',
+  },
+};
 
 // Status Badge Component
 const StatusBadge: React.FC<{ status: Vendor['status'] }> = ({ status }) => {
-  const config = {
-    active: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Active' },
-    inactive: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Inactive' },
-  };
-  const defaultConfig = { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Unknown' };
-  const { color, icon: Icon, label } = config[status as keyof typeof config] || defaultConfig;
+  const config = status && STATUS_CONFIG[status] ? STATUS_CONFIG[status] : STATUS_CONFIG.inactive;
+  const { bg, color, icon, label } = config;
+  
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      <Icon className="h-3 w-3" />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {icon}
       {label}
     </span>
   );
@@ -83,7 +107,7 @@ const Vendors: React.FC = () => {
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   
-  // Validation state for bulk operations
+  // Validation state for operations
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showValidationSummary, setShowValidationSummary] = useState(false);
 
@@ -127,8 +151,8 @@ const Vendors: React.FC = () => {
 
   // Bulk delete handler with validation
   const handleBulkDeleteAction = useCallback(async () => {
+    // Validate selection
     if (selectedItems.length === 0) {
-      // Set validation error
       setValidationErrors({
         selection: 'Please select at least one vendor to delete.'
       });
@@ -151,7 +175,10 @@ const Vendors: React.FC = () => {
       async () => {
         setBulkDeleteLoading(true);
         try {
+          // Validate each vendor before deletion (optional check)
           for (const id of selectedItems) {
+            // You could validate vendor data here if needed
+            // For example: check if vendor has associated records before deleting
             await deleteVendor(id);
           }
           success(`${selectedItems.length} vendor(s) deleted successfully.`);
@@ -184,6 +211,38 @@ const Vendors: React.FC = () => {
 
     setExportLoading(true);
     try {
+      // Validate vendor data before export (optional)
+      let hasInvalidData = false;
+      const validationResults = vendors.map(vendor => {
+        // Convert vendor to form data format for validation
+        const formData = {
+          name: vendor.name || '',
+          email: vendor.email || '',
+          phone: vendor.phone || '',
+          company: vendor.company || '',
+          address: vendor.address || '',
+          city: vendor.city || '',
+          state: vendor.state || '',
+          country: vendor.country || '',
+          zipCode: vendor.zipCode || '',
+          taxId: vendor.taxId || '',
+          website: vendor.website || '',
+          notes: vendor.notes || '',
+          status: vendor.status || 'active',
+          contactPerson: vendor.contactPerson || '',
+          contactEmail: vendor.contactEmail || '',
+          contactPhone: vendor.contactPhone || '',
+        };
+        return validateVendorForm(formData);
+      });
+
+      // Check if any vendor has validation errors
+      const invalidVendors = validationResults.filter(r => !r.isValid);
+      if (invalidVendors.length > 0) {
+        const errorCount = invalidVendors.reduce((sum, r) => sum + getErrorCount(r.errors), 0);
+        warning(`Found ${invalidVendors.length} vendor(s) with ${errorCount} validation issue(s). Exporting anyway.`);
+      }
+
       // Replace with actual export logic
       await new Promise(resolve => setTimeout(resolve, 1000));
       success(`Vendors exported as ${format.toUpperCase()} successfully.`);
@@ -192,7 +251,7 @@ const Vendors: React.FC = () => {
     } finally {
       setExportLoading(false);
     }
-  }, [vendors.length, success, showError]);
+  }, [vendors, success, showError, warning]);
 
   // Import handler with validation
   const handleImportAction = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -219,8 +278,14 @@ const Vendors: React.FC = () => {
 
       setImportLoading(true);
       try {
-        // Replace with actual import logic
+        // Simulate file parsing and validation
         await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // If you had actual file parsing, you would validate each record here
+        // const importedData = parseFile(file);
+        // const validationResults = importedData.map(record => validateVendorForm(record));
+        // Check for invalid records and show appropriate messages
+        
         await fetchVendors();
         success('Vendors imported successfully.');
       } catch (error) {
@@ -286,8 +351,18 @@ const Vendors: React.FC = () => {
       header: 'Vendor',
       render: (item) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{item.name}</p>
-          <p className="text-xs text-gray-500">{item.email}</p>
+          <p
+            className="text-sm font-medium themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {item.name}
+          </p>
+          <p
+            className="text-xs themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            {item.email}
+          </p>
         </div>
       ),
     },
@@ -295,28 +370,46 @@ const Vendors: React.FC = () => {
       key: 'company',
       header: 'Company',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.company || '-'}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.company || '-'}
+        </span>
       ),
     },
     {
       key: 'phone',
       header: 'Phone',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.phone || '-'}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.phone || '-'}
+        </span>
       ),
     },
     {
       key: 'contactPerson',
       header: 'Contact Person',
       render: (item) => (
-        <span className="text-sm text-gray-600">{item.contactPerson || '-'}</span>
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
+          {item.contactPerson || '-'}
+        </span>
       ),
     },
     {
       key: 'location',
       header: 'Location',
       render: (item) => (
-        <span className="text-sm text-gray-600">
+        <span
+          className="text-sm themed-transition"
+          style={{ color: 'var(--foreground-secondary)' }}
+        >
           {item.city && item.state ? `${item.city}, ${item.state}` : '-'}
         </span>
       ),
@@ -335,7 +428,7 @@ const Vendors: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <File className="h-4 w-4 text-red-500" />
+        <File className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleExportAction('pdf'),
       disabled: exportLoading,
@@ -345,7 +438,7 @@ const Vendors: React.FC = () => {
       icon: exportLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <FileSpreadsheet className="h-4 w-4 text-green-500" />
+        <FileSpreadsheet className="h-4 w-4" style={{ color: 'var(--success)' }} />
       ),
       onClick: () => handleExportAction('excel'),
       disabled: exportLoading,
@@ -356,24 +449,24 @@ const Vendors: React.FC = () => {
   const getRowDropdownItems = (vendor: Vendor) => [
     {
       label: 'View Details',
-      icon: <Users className="h-4 w-4 text-blue-500" />,
+      icon: <Users className="h-4 w-4" style={{ color: 'var(--info)' }} />,
       onClick: () => handleView(vendor),
     },
     {
       label: 'Edit Vendor',
-      icon: <Building2 className="h-4 w-4 text-green-500" />,
+      icon: <Building2 className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
       onClick: () => handleEdit(vendor),
     },
     {
-      label: deleteLoading === vendor.id ? 'Deleting...' : 'Delete',
-      icon: deleteLoading === vendor.id ? (
+      label: deleteLoading === String(vendor.id) ? 'Deleting...' : 'Delete',
+      icon: deleteLoading === String(vendor.id) ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <Trash className="h-4 w-4 text-red-500" />
+        <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: () => handleDeleteClick(vendor),
       danger: true,
-      disabled: deleteLoading === vendor.id,
+      disabled: deleteLoading === String(vendor.id),
     },
   ];
 
@@ -387,18 +480,45 @@ const Vendors: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Vendors</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your vendor database</p>
+          <h1
+            className="text-2xl font-bold themed-transition"
+            style={{ color: 'var(--foreground)' }}
+          >
+            Vendors
+          </h1>
+          <p
+            className="text-sm mt-0.5 themed-transition"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
+            Manage your vendor database
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh Button */}
           <button
             onClick={handleRefreshClick}
             disabled={refreshLoading}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+            style={{
+              color: 'var(--foreground-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshLoading) {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--surface)';
+            }}
           >
             {refreshLoading ? (
               <LoadingSpinner size="sm" />
@@ -407,18 +527,45 @@ const Vendors: React.FC = () => {
             )}
             Refresh
           </button>
+
+          {/* New Vendor Button */}
           <button
             onClick={() => navigate('/purchases/vendors/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             <Plus className="h-4 w-4" />
             New Vendor
           </button>
+
+          {/* Bulk Delete Button */}
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteAction}
               disabled={bulkDeleteLoading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                color: 'var(--error)',
+                background: 'var(--error-light)',
+                border: '1px solid var(--error)',
+              }}
+              onMouseEnter={(e) => {
+                if (!bulkDeleteLoading) {
+                  e.currentTarget.style.opacity = '0.8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             >
               {bulkDeleteLoading ? (
                 <LoadingSpinner size="sm" />
@@ -428,6 +575,8 @@ const Vendors: React.FC = () => {
               Delete ({selectedItems.length})
             </button>
           )}
+
+          {/* More Options Dropdown */}
           <ThreeDotDropdown
             items={headerDropdownItems}
             position="right"
@@ -437,7 +586,7 @@ const Vendors: React.FC = () => {
               importLoading ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                <Upload className="h-4 w-4 text-blue-500" />
+                <Upload className="h-4 w-4" style={{ color: 'var(--info)' }} />
               )
             }
             importAccept=".csv,.xlsx,.xls"
@@ -462,26 +611,68 @@ const Vendors: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div
+        className="rounded-xl p-4 mb-6 themed-transition"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search Input */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 themed-transition"
+                style={{ color: 'var(--foreground-tertiary)' }}
+              />
               <input
                 type="text"
                 placeholder="Search by name, company, email, phone..."
                 value={filters.search || ''}
                 onChange={(e) => updateFilters({ search: e.target.value })}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
             </div>
           </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter
+              className="h-4 w-4 themed-transition"
+              style={{ color: 'var(--foreground-tertiary)' }}
+            />
             <select
               value={filters.status || 'all'}
               onChange={(e) => updateFilters({ status: e.target.value === 'all' ? undefined : e.target.value })}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -501,7 +692,7 @@ const Vendors: React.FC = () => {
         onSelectItem={handleSelectItem}
         getId={(item) => String(item.id)}
         emptyMessage="No vendors found"
-        emptyIcon={<Users className="h-12 w-12 text-gray-300" />}
+        emptyIcon={<Users className="h-12 w-12" style={{ color: 'var(--foreground-tertiary)' }} />}
         onRowClick={(item) => handleView(item)}
         pagination={{
           currentPage: pagination.page,

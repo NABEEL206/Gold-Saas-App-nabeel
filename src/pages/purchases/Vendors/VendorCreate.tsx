@@ -15,6 +15,10 @@ import {
   type VendorValidationErrors,
 } from '../../../validations/vendor.validation';
 
+// ============================================================
+// CONSTANTS - Single source of truth
+// ============================================================
+
 const STATUS_OPTIONS: DropdownOption[] = [
   { value: 'active', label: 'Active' },
   { value: 'inactive', label: 'Inactive' },
@@ -138,21 +142,44 @@ const VendorCreate: React.FC = () => {
   const hasErrors = Object.keys(validationErrors).length > 0 || Object.keys(hookErrors).length > 0;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Create Vendor</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Add a new vendor to your system</p>
+              <h1
+                className="text-2xl font-bold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Create Vendor
+              </h1>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                Add a new vendor to your system
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -160,7 +187,17 @@ const VendorCreate: React.FC = () => {
               <button
                 type="button"
                 onClick={handleClearForm}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+                style={{
+                  color: 'var(--foreground-secondary)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
                 title="Clear form"
               >
                 Clear
@@ -169,14 +206,36 @@ const VendorCreate: React.FC = () => {
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
             <button
               onClick={onSubmit}
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {isSubmitting ? (
                 <LoadingSpinner size="sm" />
@@ -201,105 +260,224 @@ const VendorCreate: React.FC = () => {
         )}
 
         {/* Form */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div
+          className="rounded-xl p-6 themed-transition"
+          style={{
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Information */}
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Basic Information
+              </h3>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Vendor Name <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Vendor Name <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  validationErrors.name ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${validationErrors.name ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = validationErrors.name ? 'var(--error)' : 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter vendor name"
               />
-              {validationErrors.name && <p className="mt-1 text-xs text-red-500">{validationErrors.name}</p>}
+              {validationErrors.name && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.name}
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Company
               </label>
               <input
                 type="text"
                 value={formData.company}
                 onChange={(e) => handleChange('company', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter company name"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Email
               </label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  validationErrors.email ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${validationErrors.email ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = validationErrors.email ? 'var(--error)' : 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter email address"
               />
-              {validationErrors.email && <p className="mt-1 text-xs text-red-500">{validationErrors.email}</p>}
+              {validationErrors.email && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.email}
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Phone
               </label>
               <input
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  validationErrors.phone ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${validationErrors.phone ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = validationErrors.phone ? 'var(--error)' : 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter phone number"
               />
-              {validationErrors.phone && <p className="mt-1 text-xs text-red-500">{validationErrors.phone}</p>}
+              {validationErrors.phone && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.phone}
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Tax ID
               </label>
               <input
                 type="text"
                 value={formData.taxId}
                 onChange={(e) => handleChange('taxId', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  validationErrors.taxId ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${validationErrors.taxId ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = validationErrors.taxId ? 'var(--error)' : 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter tax ID"
               />
-              {validationErrors.taxId && <p className="mt-1 text-xs text-red-500">{validationErrors.taxId}</p>}
+              {validationErrors.taxId && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.taxId}
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Website
               </label>
               <input
                 type="url"
                 value={formData.website}
                 onChange={(e) => handleChange('website', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter website URL"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Status
               </label>
               <SearchableDropdown
@@ -313,133 +491,291 @@ const VendorCreate: React.FC = () => {
 
             {/* Address Information */}
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 mt-4">Address Information</h3>
+              <h3
+                className="text-lg font-medium mb-4 mt-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Address Information
+              </h3>
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Address
               </label>
               <input
                 type="text"
                 value={formData.address}
                 onChange={(e) => handleChange('address', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter street address"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 City
               </label>
               <input
                 type="text"
                 value={formData.city}
                 onChange={(e) => handleChange('city', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter city"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 State
               </label>
               <input
                 type="text"
                 value={formData.state}
                 onChange={(e) => handleChange('state', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter state"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 ZIP Code
               </label>
               <input
                 type="text"
                 value={formData.zipCode}
                 onChange={(e) => handleChange('zipCode', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter ZIP code"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Country
               </label>
               <input
                 type="text"
                 value={formData.country}
                 onChange={(e) => handleChange('country', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter country"
               />
             </div>
 
             {/* Contact Person */}
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 mt-4">Contact Person</h3>
+              <h3
+                className="text-lg font-medium mb-4 mt-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Contact Person
+              </h3>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Contact Person Name
               </label>
               <input
                 type="text"
                 value={formData.contactPerson}
                 onChange={(e) => handleChange('contactPerson', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter contact person name"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Contact Email
               </label>
               <input
                 type="email"
                 value={formData.contactEmail}
                 onChange={(e) => handleChange('contactEmail', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  validationErrors.contactEmail ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${validationErrors.contactEmail ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = validationErrors.contactEmail ? 'var(--error)' : 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter contact email"
               />
-              {validationErrors.contactEmail && <p className="mt-1 text-xs text-red-500">{validationErrors.contactEmail}</p>}
+              {validationErrors.contactEmail && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.contactEmail}
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Contact Phone
               </label>
               <input
                 type="tel"
                 value={formData.contactPhone}
                 onChange={(e) => handleChange('contactPhone', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${
-                  validationErrors.contactPhone ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${validationErrors.contactPhone ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = validationErrors.contactPhone ? 'var(--error)' : 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter contact phone"
               />
-              {validationErrors.contactPhone && <p className="mt-1 text-xs text-red-500">{validationErrors.contactPhone}</p>}
+              {validationErrors.contactPhone && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                  {validationErrors.contactPhone}
+                </p>
+              )}
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
                 Notes
               </label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => handleChange('notes', e.target.value)}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 placeholder="Enter any additional notes about this vendor"
               />
             </div>

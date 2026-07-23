@@ -1,5 +1,4 @@
 // src/pages/accountant/ChartOfAccounts/ChartOfAccountsView.tsx
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -26,25 +25,85 @@ import ThreeDotDropdown from '../../../components/common/ThreeDotDropdown';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
 
-// Type Badge
+// ============================================================
+// ACCOUNT TYPE CONFIGURATION - Single source of truth (shared with List page)
+// ============================================================
+
+const ACCOUNT_TYPE_CONFIG: Record<
+  string,
+  { bg: string; color: string; label: string }
+> = {
+  asset: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    label: 'Asset',
+  },
+  liability: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    label: 'Liability',
+  },
+  equity: {
+    bg: 'var(--primary-light)',
+    color: 'var(--primary)',
+    label: 'Equity',
+  },
+  revenue: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    label: 'Revenue',
+  },
+  expense: {
+    bg: 'var(--warning-light)',
+    color: 'var(--warning)',
+    label: 'Expense',
+  },
+};
+
+// Status Configuration
+const STATUS_CONFIG = {
+  active: {
+    bg: 'var(--success-light)',
+    color: 'var(--success)',
+    label: 'Active',
+    icon: <CheckCircle className="h-3 w-3" />,
+  },
+  inactive: {
+    bg: 'var(--error-light)',
+    color: 'var(--error)',
+    label: 'Inactive',
+    icon: <XCircle className="h-3 w-3" />,
+  },
+};
+
+// System Account Configuration
+const SYSTEM_CONFIG = {
+  system: {
+    bg: 'var(--info-light)',
+    color: 'var(--info)',
+    label: 'System',
+  },
+  custom: {
+    bg: 'var(--primary-light)',
+    color: 'var(--primary)',
+    label: 'Custom',
+  },
+};
+
+// Type Badge Component
 const TypeBadge: React.FC<{ type: string }> = ({ type }) => {
-  const colors: Record<string, string> = {
-    asset: 'bg-blue-100 text-blue-700',
-    liability: 'bg-red-100 text-red-700',
-    equity: 'bg-purple-100 text-purple-700',
-    revenue: 'bg-green-100 text-green-700',
-    expense: 'bg-amber-100 text-amber-700'
-  };
-  const labels: Record<string, string> = {
-    asset: 'Asset',
-    liability: 'Liability',
-    equity: 'Equity',
-    revenue: 'Revenue',
-    expense: 'Expense'
-  };
+  const config = ACCOUNT_TYPE_CONFIG[type] || ACCOUNT_TYPE_CONFIG.asset;
+  const { bg, color, label } = config;
+  
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[type] || 'bg-gray-100 text-gray-700'}`}>
-      {labels[type] || type}
+    <span
+      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
+    >
+      {label}
     </span>
   );
 };
@@ -150,22 +209,22 @@ const ChartOfAccountsView: React.FC = () => {
   const dropdownItems = [
     {
       label: 'Print',
-      icon: <Printer className="h-4 w-4 text-gray-500" />,
+      icon: <Printer className="h-4 w-4" style={{ color: 'var(--foreground-secondary)' }} />,
       onClick: handlePrint,
     },
     {
       label: 'Download',
-      icon: <Download className="h-4 w-4 text-blue-500" />,
+      icon: <Download className="h-4 w-4" style={{ color: 'var(--info)' }} />,
       onClick: handleDownload,
     },
     {
       label: 'Edit Account',
-      icon: <Edit className="h-4 w-4 text-amber-500" />,
+      icon: <Edit className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
       onClick: handleEdit,
     },
     {
       label: 'Delete Account',
-      icon: <Trash className="h-4 w-4 text-red-500" />,
+      icon: <Trash className="h-4 w-4" style={{ color: 'var(--error)' }} />,
       onClick: handleDelete,
       danger: true,
     },
@@ -183,11 +242,23 @@ const ChartOfAccountsView: React.FC = () => {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">{error || 'Account not found'}</p>
+          <BookOpen className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--foreground-tertiary)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            {error || 'Account not found'}
+          </p>
           <button
             onClick={() => navigate('/accountant/chart-of-accounts')}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back to Chart of Accounts
           </button>
@@ -199,27 +270,63 @@ const ChartOfAccountsView: React.FC = () => {
   const status = getStatusBadge();
   const system = getSystemBadge();
 
+  // Get status config
+  const statusConfig = account.isActive ? STATUS_CONFIG.active : STATUS_CONFIG.inactive;
+
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/accountant/chart-of-accounts')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{account.name}</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Account Details</p>
+              <h1
+                className="text-2xl font-bold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                {account.name}
+              </h1>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                Account Details
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--primary-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               <Edit className="h-4 w-4" />
               Edit Account
@@ -233,12 +340,24 @@ const ChartOfAccountsView: React.FC = () => {
 
         {/* Status Badges */}
         <div className="mb-6 flex flex-wrap gap-2">
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
-            {status.label === 'Active' ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-            {status.label}
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+            style={{
+              background: statusConfig.bg,
+              color: statusConfig.color,
+            }}
+          >
+            {statusConfig.icon}
+            {statusConfig.label}
           </span>
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${system.color}`}>
-            {system.label}
+          <span
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+            style={{
+              background: account.isSystemAccount ? SYSTEM_CONFIG.system.bg : SYSTEM_CONFIG.custom.bg,
+              color: account.isSystemAccount ? SYSTEM_CONFIG.system.color : SYSTEM_CONFIG.custom.color,
+            }}
+          >
+            {account.isSystemAccount ? SYSTEM_CONFIG.system.label : SYSTEM_CONFIG.custom.label}
           </span>
           <TypeBadge type={account.type} />
         </div>
@@ -247,105 +366,233 @@ const ChartOfAccountsView: React.FC = () => {
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Account Details */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-gray-500" />
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <BookOpen className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
                 Account Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-gray-500">Account Code</label>
-                  <p className="text-gray-900 font-mono font-medium">{account.code}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Account Code
+                  </label>
+                  <p className="font-mono font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {account.code}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Account Name</label>
-                  <p className="text-gray-900 font-medium">{account.name}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Account Name
+                  </label>
+                  <p className="font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {account.name}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Account Type</label>
-                  <p className="text-gray-900"><TypeBadge type={account.type} /></p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Account Type
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    <TypeBadge type={account.type} />
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Category</label>
-                  <p className="text-gray-900">{account.category}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Category
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {account.category}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Sub Category</label>
-                  <p className="text-gray-900">{account.subCategory || 'N/A'}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Sub Category
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {account.subCategory || 'N/A'}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Parent Account</label>
-                  <p className="text-gray-900">{account.parentAccountName || 'N/A'}</p>
+                  <label className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Parent Account
+                  </label>
+                  <p className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {account.parentAccountName || 'N/A'}
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Description */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-gray-500" />
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 flex items-center gap-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <FileText className="w-5 h-5" style={{ color: 'var(--foreground-secondary)' }} />
                 Description
               </h3>
-              <p className="text-gray-700 whitespace-pre-wrap">{account.description || 'No description provided'}</p>
+              <p className="whitespace-pre-wrap themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                {account.description || 'No description provided'}
+              </p>
             </div>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Summary */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Summary</h3>
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Quick Summary
+              </h3>
               <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Account ID</span>
-                  <span className="text-sm font-medium text-gray-900">#{account.id}</span>
+                <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Account ID
+                  </span>
+                  <span className="text-sm font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
+                    #{account.id}
+                  </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Code</span>
-                  <span className="text-sm font-medium text-gray-900 font-mono">{account.code}</span>
+                <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Code
+                  </span>
+                  <span className="text-sm font-medium font-mono themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {account.code}
+                  </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Type</span>
+                <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Type
+                  </span>
                   <span className="text-sm font-medium">
                     <TypeBadge type={account.type} />
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Status</span>
-                  <span className={`text-sm font-medium ${status.color}`}>{status.label}</span>
+                <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Status
+                  </span>
+                  <span
+                    className="text-sm font-medium themed-transition"
+                    style={{
+                      color: account.isActive ? 'var(--success)' : 'var(--error)',
+                    }}
+                  >
+                    {account.isActive ? 'Active' : 'Inactive'}
+                  </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-500">Opening Balance</span>
-                  <span className="text-sm font-medium text-gray-900">{formatCurrency(account.openingBalance || 0)}</span>
+                <div className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Opening Balance
+                  </span>
+                  <span className="text-sm font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
+                    {formatCurrency(account.openingBalance || 0)}
+                  </span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="text-sm text-gray-500">Current Balance</span>
-                  <span className="text-sm font-bold text-amber-600">{formatCurrency(account.currentBalance || 0)}</span>
+                  <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                    Current Balance
+                  </span>
+                  <span className="text-sm font-bold" style={{ color: 'var(--gold)' }}>
+                    {formatCurrency(account.currentBalance || 0)}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
+            <div
+              className="rounded-xl p-6 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Actions
+              </h3>
               <div className="space-y-2">
                 <button
                   onClick={handleEdit}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--primary-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--primary)';
+                  }}
                 >
                   <Edit className="h-4 w-4" />
                   Edit Account
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                  style={{
+                    background: 'var(--error)',
+                    color: 'white',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--error-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--error)';
+                  }}
                 >
                   <Trash className="h-4 w-4" />
                   Delete Account
                 </button>
                 <button
                   onClick={() => navigate('/accountant/chart-of-accounts')}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors themed-transition"
+                  style={{
+                    color: 'var(--foreground-secondary)',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--surface-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--surface)';
+                  }}
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back to Accounts
@@ -356,7 +603,7 @@ const ChartOfAccountsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Confirmation Modal - Replaces the custom delete modal */}
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={modalOpen}
         onClose={onModalCancel}

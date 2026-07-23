@@ -1,5 +1,4 @@
 // src/pages/purchases/RecurringExpenses/RecurringExpenseCreate.tsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Building2, User, Mail, Phone } from 'lucide-react';
@@ -14,6 +13,10 @@ import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorSummary from '../../../components/common/ErrorSummary';
 import { useToastAndConfirm } from '../../../hooks/ToastConfirmModal/useToastAndConfirm';
+
+// ============================================================
+// CONSTANTS - Single source of truth
+// ============================================================
 
 // ─── Static option lists ───────────────────────────────────────────────────────
 const CATEGORY_OPTIONS: DropdownOption[] = RECURRING_CATEGORIES.map(c => ({ value: c, label: c }));
@@ -56,6 +59,18 @@ const CURRENCY_OPTIONS: DropdownOption[] = [
   { value: 'EUR', label: 'EUR (€)' },
   { value: 'GBP', label: 'GBP (£)' },
 ];
+
+// Combined blur handler for input fields
+const handleInputBlur = (field: string, e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, errors: Record<string, string>) => {
+  e.currentTarget.style.borderColor = errors[field] ? 'var(--error)' : 'var(--border)';
+  e.currentTarget.style.boxShadow = 'none';
+};
+
+// Focus handler for input fields
+const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  e.currentTarget.style.borderColor = 'var(--primary)';
+  e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+};
 
 const RecurringExpenseCreate: React.FC = () => {
   const navigate = useNavigate();
@@ -229,21 +244,44 @@ const RecurringExpenseCreate: React.FC = () => {
   const warningErrors = getWarningErrors();
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-5xl mx-auto">
         {/* ── Header ── */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               title="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Create Recurring Expense</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Set up a new recurring expense</p>
+              <h1
+                className="text-2xl font-bold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Create Recurring Expense
+              </h1>
+              <p
+                className="text-sm mt-0.5 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
+                Set up a new recurring expense
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -251,7 +289,17 @@ const RecurringExpenseCreate: React.FC = () => {
               <button
                 type="button"
                 onClick={handleClearForm}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+                style={{
+                  color: 'var(--foreground-secondary)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--surface-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
                 title="Clear form"
               >
                 Clear
@@ -260,14 +308,36 @@ const RecurringExpenseCreate: React.FC = () => {
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
             <button
               onClick={onSubmit}
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {isSubmitting ? (
                 <>
@@ -307,25 +377,43 @@ const RecurringExpenseCreate: React.FC = () => {
         )}
 
         {/* ── Form ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div
+          className="rounded-xl p-6 themed-transition"
+          style={{
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
+              <h3
+                className="text-lg font-medium mb-4 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Basic Information
+              </h3>
             </div>
 
             {/* ── Expense type toggle ── */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Expense Type</label>
+              <label
+                className="block text-sm font-medium mb-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Expense Type
+              </label>
               <div className="flex gap-4">
                 <button
                   type="button"
                   onClick={() => { setIsVendorExpense(false); clearVendor(); }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors ${
-                    !isVendorExpense
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors themed-transition`}
+                  style={{
+                    borderColor: !isVendorExpense ? 'var(--primary)' : 'var(--border)',
+                    background: !isVendorExpense ? 'var(--primary-light)' : 'var(--card)',
+                    color: !isVendorExpense ? 'var(--primary)' : 'var(--foreground-secondary)',
+                  }}
                 >
                   <User className="h-4 w-4" />
                   General Expense
@@ -333,11 +421,12 @@ const RecurringExpenseCreate: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsVendorExpense(true)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors ${
-                    isVendorExpense
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors themed-transition`}
+                  style={{
+                    borderColor: isVendorExpense ? 'var(--primary)' : 'var(--border)',
+                    background: isVendorExpense ? 'var(--primary-light)' : 'var(--card)',
+                    color: isVendorExpense ? 'var(--primary)' : 'var(--foreground-secondary)',
+                  }}
                 >
                   <Building2 className="h-4 w-4" />
                   Vendor Expense
@@ -348,8 +437,11 @@ const RecurringExpenseCreate: React.FC = () => {
             {/* ── Vendor dropdown ── */}
             {isVendorExpense && (
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Vendor <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Vendor <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <SearchableDropdown
                   options={vendorOptions}
@@ -362,24 +454,35 @@ const RecurringExpenseCreate: React.FC = () => {
                   resetSearchOnOpen
                 />
                 {errors.vendorId && (
-                  <p className="mt-1 text-sm text-red-500">{errors.vendorId}</p>
+                  <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                    {errors.vendorId}
+                  </p>
                 )}
                 {selectedVendorInfo && (
-                  <div className="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-lg flex flex-wrap gap-4 text-sm text-gray-600">
+                  <div
+                    className="mt-3 p-3 rounded-lg flex flex-wrap gap-4 text-sm themed-transition"
+                    style={{
+                      background: 'var(--primary-light)',
+                      border: '1px solid var(--primary)',
+                      color: 'var(--foreground-secondary)',
+                    }}
+                  >
                     {selectedVendorInfo.email && (
                       <span className="flex items-center gap-1.5">
-                        <Mail className="h-3.5 w-3.5 text-amber-500" />
+                        <Mail className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} />
                         {selectedVendorInfo.email}
                       </span>
                     )}
                     {selectedVendorInfo.phone && (
                       <span className="flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5 text-amber-500" />
+                        <Phone className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} />
                         {selectedVendorInfo.phone}
                       </span>
                     )}
                     {selectedVendorInfo.address && (
-                      <span className="text-gray-500">{selectedVendorInfo.address}</span>
+                      <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                        {selectedVendorInfo.address}
+                      </span>
                     )}
                   </div>
                 )}
@@ -388,8 +491,11 @@ const RecurringExpenseCreate: React.FC = () => {
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Category <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <SearchableDropdown
                 options={CATEGORY_OPTIONS}
@@ -398,74 +504,140 @@ const RecurringExpenseCreate: React.FC = () => {
                 triggerPlaceholder="Select Category"
                 placeholder="Search category..."
               />
-              {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
+              {errors.category && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.category}
+                </p>
+              )}
             </div>
 
             {/* Sub Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sub Category</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Sub Category
+              </label>
               <input
                 type="text"
                 value={formData.subCategory || ''}
                 onChange={(e) => handleChange('subCategory', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.subCategory ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('subCategory', e, errors)}
                 placeholder="Enter sub category"
               />
+              {errors.subCategory && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.subCategory}
+                </p>
+              )}
             </div>
 
             {/* Amount */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Amount <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Amount <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
                 type="number"
                 step="0.01"
                 value={formData.amount || ''}
                 onChange={(e) => handleChange('amount', parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.amount ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.amount ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('amount', e, errors)}
                 placeholder="0.00"
               />
-              {errors.amount && <p className="mt-1 text-sm text-red-500">{errors.amount}</p>}
+              {errors.amount && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.amount}
+                </p>
+              )}
             </div>
 
             {/* Tax Amount */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tax Amount</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Tax Amount
+              </label>
               <input
                 type="number"
                 step="0.01"
                 value={formData.taxAmount || ''}
                 onChange={(e) => handleChange('taxAmount', parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.taxAmount ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.taxAmount ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('taxAmount', e, errors)}
                 placeholder="0.00"
               />
-              {errors.taxAmount && <p className="mt-1 text-sm text-red-500">{errors.taxAmount}</p>}
+              {errors.taxAmount && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.taxAmount}
+                </p>
+              )}
             </div>
 
             {/* Total Amount */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Total Amount
+              </label>
               <input
                 type="number"
                 step="0.01"
                 value={formData.totalAmount || ''}
                 onChange={(e) => handleChange('totalAmount', parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.totalAmount ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.totalAmount ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('totalAmount', e, errors)}
                 placeholder="0.00"
               />
-              {errors.totalAmount && <p className="mt-1 text-sm text-red-500">{errors.totalAmount}</p>}
+              {errors.totalAmount && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.totalAmount}
+                </p>
+              )}
             </div>
 
             {/* Currency */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Currency
+              </label>
               <SearchableDropdown
                 options={CURRENCY_OPTIONS}
                 value={formData.currency || 'INR'}
@@ -473,29 +645,50 @@ const RecurringExpenseCreate: React.FC = () => {
                 triggerPlaceholder="Select Currency"
                 placeholder="Search currency..."
               />
-              {errors.currency && <p className="mt-1 text-sm text-red-500">{errors.currency}</p>}
+              {errors.currency && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.currency}
+                </p>
+              )}
             </div>
 
             {/* Exchange Rate */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Rate</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Exchange Rate
+              </label>
               <input
                 type="number"
                 step="0.0001"
                 value={formData.exchangeRate || ''}
                 onChange={(e) => handleChange('exchangeRate', parseFloat(e.target.value) || 1)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.exchangeRate ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.exchangeRate ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('exchangeRate', e, errors)}
                 placeholder="1.0000"
               />
-              {errors.exchangeRate && <p className="mt-1 text-sm text-red-500">{errors.exchangeRate}</p>}
+              {errors.exchangeRate && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.exchangeRate}
+                </p>
+              )}
             </div>
 
             {/* Frequency */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Frequency <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Frequency <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <SearchableDropdown
                 options={FREQUENCY_OPTIONS}
@@ -504,33 +697,50 @@ const RecurringExpenseCreate: React.FC = () => {
                 triggerPlaceholder="Select Frequency"
                 placeholder="Search frequency..."
               />
-              {errors.frequency && <p className="mt-1 text-sm text-red-500">{errors.frequency}</p>}
+              {errors.frequency && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.frequency}
+                </p>
+              )}
             </div>
 
             {/* Custom Frequency Fields */}
             {formData.frequency === 'custom' && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Interval <span className="text-red-500">*</span>
+                  <label
+                    className="block text-sm font-medium mb-1 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    Interval <span style={{ color: 'var(--error)' }}>*</span>
                   </label>
                   <input
                     type="number"
                     value={formData.frequencyInterval || ''}
                     onChange={(e) => handleChange('frequencyInterval', parseInt(e.target.value) || 1)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      errors.frequencyInterval ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                    style={{
+                      border: `1px solid ${errors.frequencyInterval ? 'var(--error)' : 'var(--border)'}`,
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }}
+                    onFocus={handleInputFocus}
+                    onBlur={(e) => handleInputBlur('frequencyInterval', e, errors)}
                     placeholder="Every"
                     min="1"
                   />
                   {errors.frequencyInterval && (
-                    <p className="mt-1 text-sm text-red-500">{errors.frequencyInterval}</p>
+                    <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                      {errors.frequencyInterval}
+                    </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Unit <span className="text-red-500">*</span>
+                  <label
+                    className="block text-sm font-medium mb-1 themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    Unit <span style={{ color: 'var(--error)' }}>*</span>
                   </label>
                   <SearchableDropdown
                     options={FREQUENCY_UNIT_OPTIONS}
@@ -540,7 +750,9 @@ const RecurringExpenseCreate: React.FC = () => {
                     placeholder="Search unit..."
                   />
                   {errors.frequencyUnit && (
-                    <p className="mt-1 text-sm text-red-500">{errors.frequencyUnit}</p>
+                    <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                      {errors.frequencyUnit}
+                    </p>
                   )}
                 </div>
               </>
@@ -548,74 +760,136 @@ const RecurringExpenseCreate: React.FC = () => {
 
             {/* Total Occurrences */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Total Occurrences</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Total Occurrences
+              </label>
               <input
                 type="number"
                 value={formData.totalOccurrences || ''}
                 onChange={(e) => handleChange('totalOccurrences', parseInt(e.target.value) || 0)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.totalOccurrences ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.totalOccurrences ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('totalOccurrences', e, errors)}
                 placeholder="Number of occurrences (optional)"
                 min="1"
               />
-              {errors.totalOccurrences && <p className="mt-1 text-sm text-red-500">{errors.totalOccurrences}</p>}
+              {errors.totalOccurrences && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.totalOccurrences}
+                </p>
+              )}
             </div>
 
             {/* Start Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Start Date <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <input
                 type="date"
                 value={formData.startDate}
                 onChange={(e) => handleChange('startDate', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.startDate ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.startDate ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('startDate', e, errors)}
               />
-              {errors.startDate && <p className="mt-1 text-sm text-red-500">{errors.startDate}</p>}
+              {errors.startDate && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.startDate}
+                </p>
+              )}
             </div>
 
             {/* End Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                End Date
+              </label>
               <input
                 type="date"
                 value={formData.endDate || ''}
                 onChange={(e) => handleChange('endDate', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.endDate ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.endDate ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('endDate', e, errors)}
               />
-              {errors.endDate && <p className="mt-1 text-sm text-red-500">{errors.endDate}</p>}
+              {errors.endDate && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.endDate}
+                </p>
+              )}
             </div>
 
             {/* Description */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Description
+              </label>
               <textarea
                 value={formData.description || ''}
                 onChange={(e) => handleChange('description', e.target.value)}
                 rows={3}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.description ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.description ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('description', e, errors)}
                 placeholder="Enter description"
               />
-              {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
+              {errors.description && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.description}
+                </p>
+              )}
             </div>
 
             {/* ── Payment Information ── */}
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 mt-2">Payment Information</h3>
+              <h3
+                className="text-lg font-medium mb-4 mt-2 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Payment Information
+              </h3>
             </div>
 
             {/* Payment Method */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Payment Method <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Payment Method <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <SearchableDropdown
                 options={PAYMENT_METHOD_OPTIONS}
@@ -624,13 +898,20 @@ const RecurringExpenseCreate: React.FC = () => {
                 triggerPlaceholder="Select Payment Method"
                 placeholder="Search method..."
               />
-              {errors.paymentMethod && <p className="mt-1 text-sm text-red-500">{errors.paymentMethod}</p>}
+              {errors.paymentMethod && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.paymentMethod}
+                </p>
+              )}
             </div>
 
             {/* Recurring Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status <span className="text-red-500">*</span>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Status <span style={{ color: 'var(--error)' }}>*</span>
               </label>
               <SearchableDropdown
                 options={RECURRING_STATUS_OPTIONS}
@@ -639,37 +920,69 @@ const RecurringExpenseCreate: React.FC = () => {
                 triggerPlaceholder="Select Status"
                 placeholder="Search status..."
               />
-              {errors.paymentStatus && <p className="mt-1 text-sm text-red-500">{errors.paymentStatus}</p>}
+              {errors.paymentStatus && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.paymentStatus}
+                </p>
+              )}
             </div>
 
             {/* Reference Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Reference Number</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Reference Number
+              </label>
               <input
                 type="text"
                 value={formData.referenceNumber || ''}
                 onChange={(e) => handleChange('referenceNumber', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.referenceNumber ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.referenceNumber ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('referenceNumber', e, errors)}
                 placeholder="Enter reference number"
               />
-              {errors.referenceNumber && <p className="mt-1 text-sm text-red-500">{errors.referenceNumber}</p>}
+              {errors.referenceNumber && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.referenceNumber}
+                </p>
+              )}
             </div>
 
             {/* Notes */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+              <label
+                className="block text-sm font-medium mb-1 themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Notes
+              </label>
               <textarea
                 value={formData.notes || ''}
                 onChange={(e) => handleChange('notes', e.target.value)}
                 rows={3}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  errors.notes ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 themed-transition"
+                style={{
+                  border: `1px solid ${errors.notes ? 'var(--error)' : 'var(--border)'}`,
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+                onFocus={handleInputFocus}
+                onBlur={(e) => handleInputBlur('notes', e, errors)}
                 placeholder="Enter additional notes"
               />
-              {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes}</p>}
+              {errors.notes && (
+                <p className="mt-1 text-sm" style={{ color: 'var(--error)' }}>
+                  {errors.notes}
+                </p>
+              )}
             </div>
 
           </div>

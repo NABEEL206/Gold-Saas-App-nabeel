@@ -1,5 +1,4 @@
 // src/pages/sales/proforma/ProformaInvoiceView.tsx
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -30,6 +29,21 @@ import { formatCurrency } from "../../../utils/Invoice/calculations";
 import type { ProformaInvoice as ProformaInvoiceType } from "../../../types/proforma/ProformaInvoiceType";
 import type { DocumentData } from "../../../types/Template/TemplateTypes";
 
+// Default company details - can be moved to a config file
+const DEFAULT_COMPANY = {
+  name: "JewelPro Solutions Pvt Ltd",
+  address: "123, Gold Street, Zaveri Bazaar",
+  city: "Mumbai",
+  state: "Maharashtra",
+  pincode: "400002",
+  country: "India",
+  phone: "+91 98765 43210",
+  email: "info@jewelpro.com",
+  website: "www.jewelpro.com",
+  gst: "27AABCG1234A1Z5",
+  pan: "AABCG1234A",
+};
+
 type ViewMode = "details" | "preview";
 
 const StatusBadge: React.FC<{ status: ProformaInvoiceType["status"] }> = ({
@@ -37,38 +51,49 @@ const StatusBadge: React.FC<{ status: ProformaInvoiceType["status"] }> = ({
 }) => {
   const config: Record<
     string,
-    { color: string; icon: React.ReactNode; label: string }
+    { bg: string; color: string; icon: React.ReactNode; label: string }
   > = {
     draft: {
-      color: "bg-gray-100 text-gray-700",
+      bg: "var(--surface-hover)",
+      color: "var(--foreground-secondary)",
       icon: <FileText className="h-3 w-3" />,
       label: "Draft",
     },
     sent: {
-      color: "bg-blue-100 text-blue-700",
+      bg: "var(--info-light)",
+      color: "var(--info)",
       icon: <Send className="h-3 w-3" />,
       label: "Sent",
     },
     approved: {
-      color: "bg-green-100 text-green-700",
+      bg: "var(--success-light)",
+      color: "var(--success)",
       icon: <CheckCircle className="h-3 w-3" />,
       label: "Approved",
     },
     rejected: {
-      color: "bg-red-100 text-red-700",
+      bg: "var(--error-light)",
+      color: "var(--error)",
       icon: <XCircle className="h-3 w-3" />,
       label: "Rejected",
     },
     expired: {
-      color: "bg-yellow-100 text-yellow-700",
+      bg: "var(--warning-light)",
+      color: "var(--warning)",
       icon: <Clock className="h-3 w-3" />,
       label: "Expired",
     },
   };
-  const { color, icon, label } = config[status] || config.draft;
+  
+  const { bg, color, icon, label } = config[status] || config.draft;
+  
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium themed-transition"
+      style={{
+        background: bg,
+        color: color,
+      }}
     >
       {icon}
       {label}
@@ -168,19 +193,7 @@ const ProformaInvoiceView: React.FC = () => {
             year: "numeric",
           })
         : undefined,
-      company: {
-        name: "JewelPro Solutions Pvt Ltd",
-        address: "123, Gold Street, Zaveri Bazaar",
-        city: "Mumbai",
-        state: "Maharashtra",
-        pincode: "400002",
-        country: "India",
-        phone: "+91 98765 43210",
-        email: "info@jewelpro.com",
-        website: "www.jewelpro.com",
-        gst: "27AABCG1234A1Z5",
-        pan: "AABCG1234A",
-      },
+      company: DEFAULT_COMPANY,
       customer: {
         name: invoice.customerName,
         address: invoice.customerAddress,
@@ -267,10 +280,12 @@ const ProformaInvoiceView: React.FC = () => {
   const handleEdit = useCallback(() => {
     if (id) navigate(`/sales/proforma/${id}/edit`);
   }, [id, navigate]);
+  
   const handlePrint = useCallback(() => {
     setViewMode("preview");
     setTimeout(() => window.print(), 300);
   }, []);
+  
   const handleDownload = useCallback(() => {
     success("Download started.");
   }, [success]);
@@ -278,17 +293,17 @@ const ProformaInvoiceView: React.FC = () => {
   const dropdownItems = [
     {
       label: "Print",
-      icon: <Printer className="h-4 w-4 text-gray-500" />,
+      icon: <Printer className="h-4 w-4" style={{ color: 'var(--foreground-secondary)' }} />,
       onClick: handlePrint,
     },
     {
       label: "Download",
-      icon: <Download className="h-4 w-4 text-blue-500" />,
+      icon: <Download className="h-4 w-4" style={{ color: 'var(--info)' }} />,
       onClick: handleDownload,
     },
     {
       label: "Edit",
-      icon: <Edit className="h-4 w-4 text-amber-500" />,
+      icon: <Edit className="h-4 w-4" style={{ color: 'var(--primary)' }} />,
       onClick: handleEdit,
       show: invoice?.status === "draft",
     },
@@ -297,7 +312,7 @@ const ProformaInvoiceView: React.FC = () => {
       icon: deleteLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
-        <Trash2 className="h-4 w-4 text-red-500" />
+        <Trash2 className="h-4 w-4" style={{ color: 'var(--error)' }} />
       ),
       onClick: handleDelete,
       show: invoice?.status === "draft",
@@ -305,21 +320,21 @@ const ProformaInvoiceView: React.FC = () => {
     },
     {
       label: "Send",
-      icon: <Send className="h-4 w-4 text-blue-500" />,
+      icon: <Send className="h-4 w-4" style={{ color: 'var(--info)' }} />,
       onClick: () => handleStatusUpdate("sent"),
       show: invoice?.status === "draft",
       disabled: updating,
     },
     {
       label: "Approve",
-      icon: <CheckCircle className="h-4 w-4 text-green-500" />,
+      icon: <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />,
       onClick: () => handleStatusUpdate("approved"),
       show: invoice?.status === "sent",
       disabled: updating,
     },
     {
       label: "Reject",
-      icon: <XCircle className="h-4 w-4 text-red-500" />,
+      icon: <XCircle className="h-4 w-4" style={{ color: 'var(--error)' }} />,
       onClick: () => handleStatusUpdate("rejected"),
       show: invoice?.status === "sent",
       disabled: updating,
@@ -332,15 +347,28 @@ const ProformaInvoiceView: React.FC = () => {
         <LoadingSpinner size="lg" text="Loading..." />
       </div>
     );
+  
   if (!invoice)
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Receipt className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">Not found</p>
+          <Receipt className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--foreground-tertiary)' }} />
+          <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+            Not found
+          </p>
           <button
             onClick={() => navigate("/sales/proforma")}
-            className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
+            className="mt-4 px-4 py-2 rounded-lg transition-colors themed-transition"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+            }}
           >
             Back
           </button>
@@ -349,27 +377,50 @@ const ProformaInvoiceView: React.FC = () => {
     );
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div
+      className="min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       {/* Sticky Header */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+      <div
+        className="sticky top-0 z-30 themed-transition"
+        style={{
+          background: 'var(--card)',
+          borderBottom: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/sales/proforma")}
-              className="p-1.5 hover:bg-gray-100 rounded-lg"
+              className="p-1.5 rounded-lg transition-colors themed-transition"
+              style={{ color: 'var(--foreground-secondary)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
+              <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-amber-500" />
+              <Receipt className="h-5 w-5" style={{ color: 'var(--primary)' }} />
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-bold text-gray-900">
+                  <h1
+                    className="text-lg font-bold themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     {invoice.invoiceNumber}
                   </h1>
                   <StatusBadge status={invoice.status} />
                 </div>
-                <p className="text-[11px] text-gray-500">
+                <p
+                  className="text-[11px] themed-transition"
+                  style={{ color: 'var(--foreground-secondary)' }}
+                >
                   {new Date(invoice.invoiceDate).toLocaleDateString()} |{" "}
                   {invoice.customerName} | {formatCurrency(invoice.grandTotal)}
                 </p>
@@ -377,34 +428,80 @@ const ProformaInvoiceView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+            {/* View Mode Toggle */}
+            <div
+              className="flex items-center rounded-lg p-0.5 themed-transition"
+              style={{ background: 'var(--surface)' }}
+            >
               <button
                 onClick={() => setViewMode("details")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === "details" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all themed-transition ${
+                  viewMode === "details"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+                style={{
+                  background: viewMode === "details" ? 'var(--card)' : 'transparent',
+                  color: viewMode === "details" ? 'var(--foreground)' : 'var(--foreground-secondary)',
+                  boxShadow: viewMode === "details" ? 'var(--shadow-sm)' : 'none',
+                }}
               >
                 <FileTextIcon className="h-3.5 w-3.5" />
                 Details
               </button>
               <button
                 onClick={() => setViewMode("preview")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === "preview" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all themed-transition ${
+                  viewMode === "preview"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+                style={{
+                  background: viewMode === "preview" ? 'var(--card)' : 'transparent',
+                  color: viewMode === "preview" ? 'var(--foreground)' : 'var(--foreground-secondary)',
+                  boxShadow: viewMode === "preview" ? 'var(--shadow-sm)' : 'none',
+                }}
               >
                 <Eye className="h-3.5 w-3.5" />
                 PDF View
               </button>
             </div>
+
+            {/* Status Action Buttons */}
             {invoice.status === "draft" && (
               <>
                 <button
                   onClick={() => handleStatusUpdate("sent")}
-                  className="px-3 py-1.5 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                  style={{
+                    color: 'var(--info)',
+                    background: 'var(--info-light)',
+                    border: '1px solid var(--info)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   <Send className="h-3.5 w-3.5" />
                   Send
                 </button>
                 <button
                   onClick={handleEdit}
-                  className="px-3 py-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                  style={{
+                    color: 'var(--primary)',
+                    background: 'var(--primary-light)',
+                    border: '1px solid var(--primary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   <Edit className="h-3.5 w-3.5" />
                   Edit
@@ -415,14 +512,36 @@ const ProformaInvoiceView: React.FC = () => {
               <>
                 <button
                   onClick={() => handleStatusUpdate("approved")}
-                  className="px-3 py-1.5 text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                  style={{
+                    color: 'var(--success)',
+                    background: 'var(--success-light)',
+                    border: '1px solid var(--success)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   <CheckCircle className="h-3.5 w-3.5" />
                   Approve
                 </button>
                 <button
                   onClick={() => handleStatusUpdate("rejected")}
-                  className="px-3 py-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 themed-transition"
+                  style={{
+                    color: 'var(--error)',
+                    background: 'var(--error-light)',
+                    border: '1px solid var(--error)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
                 >
                   <XCircle className="h-3.5 w-3.5" />
                   Reject
@@ -437,15 +556,37 @@ const ProformaInvoiceView: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Preview Mode Layout Selector */}
         {viewMode === "preview" && (
-          <div className="px-4 py-1.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-1 bg-white rounded-md border border-gray-200 p-0.5">
+          <div
+            className="px-4 py-1.5 themed-transition flex items-center justify-between"
+            style={{
+              background: 'var(--surface)',
+              borderTop: '1px solid var(--border-subtle)',
+            }}
+          >
+            <div
+              className="flex items-center gap-1 rounded-md p-0.5 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+              }}
+            >
               {(["modern", "classic", "compact", "minimal"] as const).map(
                 (layout) => (
                   <button
                     key={layout}
                     onClick={() => setPreviewLayout(layout)}
-                    className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors capitalize ${previewLayout === layout ? "bg-amber-500 text-white" : "text-gray-500 hover:text-gray-700"}`}
+                    className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors capitalize themed-transition ${
+                      previewLayout === layout
+                        ? "text-white"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                    style={{
+                      background: previewLayout === layout ? 'var(--primary)' : 'transparent',
+                      color: previewLayout === layout ? 'white' : 'var(--foreground-secondary)',
+                    }}
                   >
                     {layout}
                   </button>
@@ -453,12 +594,22 @@ const ProformaInvoiceView: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-400">
+              <span className="text-[11px]" style={{ color: 'var(--foreground-tertiary)' }}>
                 Total: {formatCurrency(invoice.grandTotal)}
               </span>
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-1 px-3 py-1 text-[11px] font-medium text-white bg-amber-500 rounded hover:bg-amber-600"
+                className="flex items-center gap-1 px-3 py-1 text-[11px] font-medium rounded transition-colors themed-transition"
+                style={{
+                  background: 'var(--primary)',
+                  color: 'white',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--primary)';
+                }}
               >
                 <Printer className="h-3 w-3" />
                 Print
@@ -468,117 +619,155 @@ const ProformaInvoiceView: React.FC = () => {
         )}
       </div>
 
+      {/* Main Content */}
       <div className="p-4">
         {viewMode === "details" ? (
           <div className="max-w-5xl mx-auto space-y-4">
-            <div className="bg-white rounded-lg border border-gray-200 p-5 bg-gradient-to-r from-amber-50 to-white">
+            {/* Header Card */}
+            <div
+              className="rounded-lg p-5 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+              }}
+            >
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">
+                  <h2
+                    className="text-xl font-bold themed-transition"
+                    style={{ color: 'var(--foreground)' }}
+                  >
                     PROFORMA INVOICE
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm mt-1 themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                     # {invoice.invoiceNumber}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                     Date: {new Date(invoice.invoiceDate).toLocaleDateString()}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                     Valid: {new Date(invoice.validUntil).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-500">Total</p>
-                  <p className="text-2xl font-bold text-amber-600">
+                  <p className="text-sm themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                    Total
+                  </p>
+                  <p
+                    className="text-2xl font-bold themed-transition"
+                    style={{ color: 'var(--gold)' }}
+                  >
                     {formatCurrency(invoice.grandTotal)}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
-              <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
+
+            {/* Customer Card */}
+            <div
+              className="rounded-lg p-5 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+              }}
+            >
+              <h3
+                className="text-xs font-semibold uppercase tracking-wider mb-3 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
                 Customer
               </h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="font-medium text-gray-900">
+                  <p className="font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
                     {invoice.customerName}
                   </p>
-                  <p className="text-gray-600 flex items-center gap-1 mt-1">
+                  <p className="flex items-center gap-1 mt-1 themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                     <Mail className="h-3.5 w-3.5" />
                     {invoice.customerEmail}
                   </p>
-                  <p className="text-gray-600 flex items-center gap-1 mt-1">
+                  <p className="flex items-center gap-1 mt-1 themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                     <Phone className="h-3.5 w-3.5" />
                     {invoice.customerPhone}
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-600 flex items-center gap-1">
+                  <p className="flex items-center gap-1 themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                     <Building2 className="h-3.5 w-3.5" />
                     {invoice.customerAddress}
                   </p>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs mt-2 themed-transition" style={{ color: 'var(--foreground-tertiary)' }}>
                     Payment: {invoice.paymentTerms}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs themed-transition" style={{ color: 'var(--foreground-tertiary)' }}>
                     Delivery: {invoice.deliveryTerms}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
-              <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
+
+            {/* Items Table */}
+            <div
+              className="rounded-lg p-5 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+              }}
+            >
+              <h3
+                className="text-xs font-semibold uppercase tracking-wider mb-3 themed-transition"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
                 Items ({invoice.items?.length || 0})
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
-                  <thead className="bg-gray-50">
+                  <thead style={{ background: 'var(--surface)' }}>
                     <tr>
-                      <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500">
+                      <th className="px-3 py-2 text-left text-[11px] font-medium themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                         Product
                       </th>
-                      <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500">
+                      <th className="px-3 py-2 text-right text-[11px] font-medium themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                         Qty
                       </th>
-                      <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500">
+                      <th className="px-3 py-2 text-right text-[11px] font-medium themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                         Price
                       </th>
-                      <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500">
+                      <th className="px-3 py-2 text-right text-[11px] font-medium themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                         Disc
                       </th>
-                      <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500">
+                      <th className="px-3 py-2 text-right text-[11px] font-medium themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                         Tax
                       </th>
-                      <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500">
+                      <th className="px-3 py-2 text-right text-[11px] font-medium themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                         Total
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
                     {invoice.items?.map((item, i) => (
                       <tr key={i}>
                         <td className="px-3 py-2">
-                          <p className="font-medium text-gray-900">
+                          <p className="font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
                             {item.productName}
                           </p>
-                          <p className="text-[10px] text-gray-400">
+                          <p className="text-[10px] themed-transition" style={{ color: 'var(--foreground-tertiary)' }}>
                             {item.description}
                           </p>
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2 text-right themed-transition" style={{ color: 'var(--foreground)' }}>
                           {item.quantity}
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2 text-right themed-transition" style={{ color: 'var(--foreground)' }}>
                           {formatCurrency(item.unitPrice)}
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2 text-right themed-transition" style={{ color: 'var(--foreground)' }}>
                           {item.discount || 0}%
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2 text-right themed-transition" style={{ color: 'var(--foreground)' }}>
                           {item.taxRate || 0}%
                         </td>
-                        <td className="px-3 py-2 text-right font-medium">
+                        <td className="px-3 py-2 text-right font-medium themed-transition" style={{ color: 'var(--foreground)' }}>
                           {formatCurrency(
                             item.total || item.unitPrice * item.quantity,
                           )}
@@ -589,50 +778,89 @@ const ProformaInvoiceView: React.FC = () => {
                 </table>
               </div>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
+
+            {/* Totals Card */}
+            <div
+              className="rounded-lg p-5 themed-transition"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+              }}
+            >
               <div className="flex justify-end">
                 <div className="w-72 space-y-1.5 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Subtotal</span>
-                    <span>{formatCurrency(invoice.subtotal)}</span>
+                    <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                      Subtotal
+                    </span>
+                    <span className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                      {formatCurrency(invoice.subtotal)}
+                    </span>
                   </div>
                   {invoice.discountTotal > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Discount</span>
-                      <span className="text-green-600">
+                      <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                        Discount
+                      </span>
+                      <span style={{ color: 'var(--success)' }}>
                         -{formatCurrency(invoice.discountTotal)}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Tax</span>
-                    <span>{formatCurrency(invoice.taxTotal)}</span>
+                    <span className="themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                      Tax
+                    </span>
+                    <span className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                      {formatCurrency(invoice.taxTotal)}
+                    </span>
                   </div>
-                  <div className="border-t pt-2 flex justify-between text-base font-bold">
-                    <span>Grand Total</span>
-                    <span className="text-amber-600">
+                  <div
+                    className="border-t pt-2 flex justify-between text-base font-bold themed-transition"
+                    style={{ borderColor: 'var(--border)' }}
+                  >
+                    <span className="themed-transition" style={{ color: 'var(--foreground)' }}>
+                      Grand Total
+                    </span>
+                    <span style={{ color: 'var(--gold)' }}>
                       {formatCurrency(invoice.grandTotal)}
                     </span>
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* Notes & Terms */}
             {(invoice.notes || invoice.termsAndConditions) && (
-              <div className="bg-white rounded-lg border border-gray-200 p-5 grid grid-cols-2 gap-4">
+              <div
+                className="rounded-lg p-5 grid grid-cols-2 gap-4 themed-transition"
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                }}
+              >
                 {invoice.notes && (
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-700 uppercase mb-1">
+                    <h4
+                      className="text-xs font-semibold uppercase mb-1 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       Notes
                     </h4>
-                    <p className="text-sm text-gray-600">{invoice.notes}</p>
+                    <p className="text-sm themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
+                      {invoice.notes}
+                    </p>
                   </div>
                 )}
                 {invoice.termsAndConditions && (
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-700 uppercase mb-1">
+                    <h4
+                      className="text-xs font-semibold uppercase mb-1 themed-transition"
+                      style={{ color: 'var(--foreground-secondary)' }}
+                    >
                       Terms
                     </h4>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                       {invoice.termsAndConditions}
                     </p>
                   </div>

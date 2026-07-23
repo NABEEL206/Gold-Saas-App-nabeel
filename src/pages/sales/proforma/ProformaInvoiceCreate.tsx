@@ -225,24 +225,50 @@ const ProformaInvoiceCreate: React.FC = () => {
   const hasErrors = Object.keys(validationErrors).length > 0 || Object.keys(hookErrors).length > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className="min-h-screen themed-transition"
+      style={{ background: 'var(--background)' }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={handleCancel}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+              className="p-2 rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center">
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                style={{ background: 'var(--primary)' }}
+              >
                 <Receipt className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Create Proforma Invoice</h1>
-                <p className="text-sm text-gray-500">Create a new proforma invoice for your customer</p>
+                <h1
+                  className="text-2xl font-semibold themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Create Proforma Invoice
+                </h1>
+                <p
+                  className="text-sm themed-transition"
+                  style={{ color: 'var(--foreground-secondary)' }}
+                >
+                  Create a new proforma invoice for your customer
+                </p>
               </div>
             </div>
           </div>
@@ -250,14 +276,36 @@ const ProformaInvoiceCreate: React.FC = () => {
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors themed-transition"
+              style={{
+                color: 'var(--foreground-secondary)',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               Cancel
             </button>
             <button
               onClick={onSubmit}
               disabled={saving}
-              className="px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 themed-transition"
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  e.currentTarget.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+              }}
             >
               {saving ? (
                 <LoadingSpinner size="sm" />
@@ -292,12 +340,21 @@ const ProformaInvoiceCreate: React.FC = () => {
 
         <form onSubmit={onSubmit}>
           {/* Customer & Invoice Details */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
+          <div
+            className="rounded-lg p-5 mb-4 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               {/* Customer Name - Using SearchableDropdown */}
               <div className="lg:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Customer <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Customer <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
                 <SearchableDropdown
                   options={MOCK_CUSTOMERS}
@@ -311,10 +368,12 @@ const ProformaInvoiceCreate: React.FC = () => {
                   resetSearchOnOpen={true}
                 />
                 {validationErrors.customerId && (
-                  <p className="mt-1 text-xs text-red-500">{validationErrors.customerId}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {validationErrors.customerId}
+                  </p>
                 )}
                 {formData.customerName && (
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs themed-transition" style={{ color: 'var(--foreground-secondary)' }}>
                     {formData.customerEmail && (
                       <span className="flex items-center gap-1">
                         <Mail className="h-3 w-3" /> {formData.customerEmail}
@@ -331,18 +390,42 @@ const ProformaInvoiceCreate: React.FC = () => {
 
               {/* Invoice # - Auto-generated with edit option */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Proforma # <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Proforma # <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
-                <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2.5 focus-within:border-amber-400 transition-all bg-white">
-                  <Hash className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                <div
+                  className="flex items-center rounded-lg px-3 py-2.5 transition-all themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <Hash
+                    className="h-4 w-4 mr-2 flex-shrink-0 themed-transition"
+                    style={{ color: 'var(--foreground-tertiary)' }}
+                  />
                   <input
                     type="text"
                     value={formData.invoiceNumber || 'PI-000001'}
                     onChange={(e) => updateFormData('invoiceNumber', e.target.value)}
-                    className="flex-1 outline-none text-sm bg-transparent text-gray-900"
+                    className="flex-1 outline-none text-sm bg-transparent themed-transition"
+                    style={{ color: 'var(--foreground)' }}
                   />
-                  <span className="text-xs text-gray-400 flex items-center gap-1 ml-2">
+                  <span
+                    className="text-xs flex items-center gap-1 ml-2 themed-transition"
+                    style={{ color: 'var(--foreground-tertiary)' }}
+                  >
                     <Pencil className="h-3 w-3" />
                     Editable
                   </span>
@@ -351,59 +434,135 @@ const ProformaInvoiceCreate: React.FC = () => {
 
               {/* Invoice Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Invoice Date <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Invoice Date <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
-                <div className={`flex items-center border rounded-lg px-3 py-2.5 focus-within:border-amber-400 transition-all ${
-                  validationErrors.invoiceDate ? 'border-red-400' : 'border-gray-300'
-                }`}>
-                  <Calendar className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                <div
+                  className={`flex items-center rounded-lg px-3 py-2.5 transition-all themed-transition ${
+                    validationErrors.invoiceDate ? 'border-red-400' : ''
+                  }`}
+                  style={{
+                    border: `1px solid ${validationErrors.invoiceDate ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                  }}
+                  onFocus={(e) => {
+                    if (!validationErrors.invoiceDate) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (!validationErrors.invoiceDate) {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }
+                  }}
+                >
+                  <Calendar
+                    className="h-4 w-4 mr-2 flex-shrink-0 themed-transition"
+                    style={{ color: 'var(--foreground-tertiary)' }}
+                  />
                   <input
                     type="date"
                     value={formData.invoiceDate}
                     onChange={(e) => updateFormData('invoiceDate', e.target.value)}
-                    className="flex-1 outline-none text-sm bg-transparent text-gray-900"
+                    className="flex-1 outline-none text-sm bg-transparent themed-transition"
+                    style={{ color: 'var(--foreground)' }}
                   />
                 </div>
                 {validationErrors.invoiceDate && (
-                  <p className="mt-1 text-xs text-red-500">{validationErrors.invoiceDate}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {validationErrors.invoiceDate}
+                  </p>
                 )}
               </div>
 
               {/* Expiry Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Expiry Date <span className="text-red-500">*</span>
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
+                  Expiry Date <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
-                <div className={`flex items-center border rounded-lg px-3 py-2.5 focus-within:border-amber-400 transition-all ${
-                  validationErrors.validUntil ? 'border-red-400' : 'border-gray-300'
-                }`}>
-                  <Clock className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                <div
+                  className={`flex items-center rounded-lg px-3 py-2.5 transition-all themed-transition ${
+                    validationErrors.validUntil ? 'border-red-400' : ''
+                  }`}
+                  style={{
+                    border: `1px solid ${validationErrors.validUntil ? 'var(--error)' : 'var(--border)'}`,
+                    background: 'var(--background)',
+                  }}
+                  onFocus={(e) => {
+                    if (!validationErrors.validUntil) {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (!validationErrors.validUntil) {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }
+                  }}
+                >
+                  <Clock
+                    className="h-4 w-4 mr-2 flex-shrink-0 themed-transition"
+                    style={{ color: 'var(--foreground-tertiary)' }}
+                  />
                   <input
                     type="date"
                     value={formData.validUntil}
                     onChange={(e) => updateFormData('validUntil', e.target.value)}
-                    className="flex-1 outline-none text-sm bg-transparent text-gray-900"
+                    className="flex-1 outline-none text-sm bg-transparent themed-transition"
+                    style={{ color: 'var(--foreground)' }}
                   />
                 </div>
                 {validationErrors.validUntil && (
-                  <p className="mt-1 text-xs text-red-500">{validationErrors.validUntil}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+                    {validationErrors.validUntil}
+                  </p>
                 )}
               </div>
             </div>
           </div>
 
           {/* Row 2 - Payment Terms & Delivery Terms */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
+          <div
+            className="rounded-lg p-5 mb-4 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Payment Terms
                 </label>
                 <select
                   value={formData.paymentTerms}
                   onChange={(e) => updateFormData('paymentTerms', e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 bg-white"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 >
                   <option value="Net 15">Net 15</option>
                   <option value="Net 30">Net 30</option>
@@ -413,13 +572,29 @@ const ProformaInvoiceCreate: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label
+                  className="block text-sm font-medium mb-1.5 themed-transition"
+                  style={{ color: 'var(--foreground)' }}
+                >
                   Delivery Terms
                 </label>
                 <select
                   value={formData.deliveryTerms}
                   onChange={(e) => updateFormData('deliveryTerms', e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 bg-white"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 themed-transition"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 >
                   <option value="FOB Shipping Point">FOB Shipping Point</option>
                   <option value="FOB Destination">FOB Destination</option>
@@ -458,39 +633,99 @@ const ProformaInvoiceCreate: React.FC = () => {
             errors={validationErrors}
           />
           {validationErrors.items && (
-            <p className="mt-1 text-xs text-red-500">{validationErrors.items}</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+              {validationErrors.items}
+            </p>
           )}
 
           {/* Customer Notes */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 mt-4">
+          <div
+            className="rounded-lg p-5 mt-4 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                <FileText className="h-4 w-4 text-amber-600" />
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{
+                  background: 'var(--primary-light)',
+                }}
+              >
+                <FileText className="h-4 w-4" style={{ color: 'var(--primary)' }} />
               </div>
-              <span className="text-sm font-semibold text-gray-700">Customer Notes</span>
+              <span
+                className="text-sm font-semibold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Customer Notes
+              </span>
             </div>
             <textarea
               value={formData.notes}
               onChange={(e) => updateFormData('notes', e.target.value)}
               rows={3}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 transition-all resize-none text-gray-900"
+              className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 transition-all resize-none themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               placeholder="Thank you for your business."
             />
           </div>
 
           {/* Terms & Conditions */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 mt-4">
+          <div
+            className="rounded-lg p-5 mt-4 themed-transition"
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                <FileText className="h-4 w-4 text-amber-600" />
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{
+                  background: 'var(--primary-light)',
+                }}
+              >
+                <FileText className="h-4 w-4" style={{ color: 'var(--primary)' }} />
               </div>
-              <span className="text-sm font-semibold text-gray-700">Terms & Conditions</span>
+              <span
+                className="text-sm font-semibold themed-transition"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Terms & Conditions
+              </span>
             </div>
             <textarea
               value={formData.termsAndConditions}
               onChange={(e) => updateFormData('termsAndConditions', e.target.value)}
               rows={3}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-400 transition-all resize-none text-gray-900"
+              className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 transition-all resize-none themed-transition"
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               placeholder="Enter the terms and conditions..."
             />
           </div>
@@ -498,8 +733,16 @@ const ProformaInvoiceCreate: React.FC = () => {
       </div>
 
       {saving && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div
+            className="rounded-lg p-8 flex flex-col items-center themed-transition"
+            style={{
+              background: 'var(--card)',
+            }}
+          >
             <LoadingSpinner size="lg" />
           </div>
         </div>
