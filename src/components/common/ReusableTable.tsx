@@ -54,7 +54,7 @@ const ReusableTable = <T,>({
     <div
       className={`rounded-xl overflow-hidden themed-transition ${className}`}
       style={{
-        background: 'var(--card)',
+        backgroundColor: 'var(--card)',
         border: '1px solid var(--border)',
         boxShadow: 'var(--shadow-sm)',
       }}
@@ -64,7 +64,10 @@ const ReusableTable = <T,>({
 
           {/* ── Head ── */}
           <thead>
-            <tr style={{ background: 'var(--hover-bg)', borderBottom: '2px solid var(--border)' }}>
+            <tr style={{ 
+              backgroundColor: 'var(--primary-light)', 
+              borderBottom: '2px solid var(--border)' 
+            }}>
               {selectable && (
                 <th className="px-4 py-3 w-10">
                   <input
@@ -75,7 +78,8 @@ const ReusableTable = <T,>({
                         selectedItems.length > 0 && selectedItems.length < data.length;
                     }}
                     onChange={() => onSelectAll?.()}
-                    className="h-4 w-4 rounded cursor-pointer accent-[var(--primary)]"
+                    className="h-4 w-4 rounded cursor-pointer"
+                    style={{ accentColor: 'var(--primary)' }}
                   />
                 </th>
               )}
@@ -84,7 +88,7 @@ const ReusableTable = <T,>({
                   key={col.key}
                   className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap
                     ${getAlignment(col.align)} ${col.className || ''}`}
-                  style={{ color: 'var(--text-secondary)' }}
+                  style={{ color: 'var(--primary)' }}
                 >
                   {col.header}
                 </th>
@@ -99,7 +103,7 @@ const ReusableTable = <T,>({
                 <td
                   colSpan={columns.length + (selectable ? 1 : 0)}
                   className="px-4 py-12 text-center"
-                  style={{ background: 'var(--card)' }}
+                  style={{ backgroundColor: 'var(--card)' }}
                 >
                   <div className="flex flex-col items-center gap-2">
                     {emptyIcon}
@@ -120,32 +124,32 @@ const ReusableTable = <T,>({
                     onClick={() => onRowClick?.(item)}
                     className={`reusable-table-row themed-transition ${
                       onRowClick ? 'cursor-pointer' : ''
-                    } ${isSelected ? 'is-selected' : ''}`}
+                    }`}
                     style={{
-                      // explicit card bg so "transparent" never bleeds through
-                      background: isSelected ? 'var(--active-bg)' : 'var(--card)',
+                      backgroundColor: isSelected ? 'var(--active-bg)' : 'var(--card)',
                       borderBottom: '1px solid var(--border)',
                     }}
                     onMouseEnter={e => {
                       if (!isSelected)
-                        (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)';
+                        (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--hover-bg)';
                     }}
                     onMouseLeave={e => {
                       if (!isSelected)
-                        (e.currentTarget as HTMLElement).style.background = 'var(--card)';
+                        (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--card)';
                     }}
                   >
                     {selectable && (
                       <td
                         className="px-4 py-3"
-                        style={{ background: 'inherit' }}
+                        style={{ backgroundColor: 'inherit' }}
                         onClick={e => e.stopPropagation()}
                       >
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => onSelectItem?.(id)}
-                          className="h-4 w-4 rounded cursor-pointer accent-[var(--primary)]"
+                          className="h-4 w-4 rounded cursor-pointer"
+                          style={{ accentColor: 'var(--primary)' }}
                         />
                       </td>
                     )}
@@ -155,7 +159,7 @@ const ReusableTable = <T,>({
                         className={`px-4 py-3 text-sm ${getAlignment(col.align)} ${col.className || ''}`}
                         style={{
                           color: 'var(--text)',
-                          background: 'inherit', // inherit from <tr> so row bg applies
+                          backgroundColor: 'inherit',
                         }}
                       >
                         {col.render ? col.render(item) : (item as any)[col.key]}

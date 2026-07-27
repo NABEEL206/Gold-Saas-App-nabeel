@@ -52,7 +52,6 @@ function toStr(v: number | string | undefined): string {
 // ─── Helper to get error for a field ──────────────────────────────────────
 const getFieldError = (errors: Record<string, string> | undefined, idx: number, field: string): string | undefined => {
   if (!errors) return undefined;
-  // Try all possible error key formats
   const keys = [
     `oldGold.${idx}.${field}`,
     `${idx}.${field}`,
@@ -71,15 +70,12 @@ const getFieldError = (errors: Record<string, string> | undefined, idx: number, 
 
 // ─── Shared input styles ─────────────────────────────────────────────────────
 const BASE_INPUT =
-  'h-9 w-full rounded border border-gray-200 bg-white px-3 text-sm ' +
-  'text-gray-900 placeholder:text-gray-400 transition-all duration-200 ' +
-  'focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-100/60 ' +
+  'h-9 w-full rounded border px-3 text-sm ' +
+  'placeholder:text-gray-400 transition-all duration-200 ' +
+  'focus:outline-none focus:ring-1 ' +
   'disabled:bg-gray-50 disabled:text-gray-400 ' +
-  // Remove number input arrows
   '[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ' +
-  '[appearance:textfield]';
-
-const ERR_INPUT = 'border-red-400 focus:border-red-500 focus:ring-red-100/60';
+  '[appearance:textfield] themed-transition';
 
 // ─── Field components ──────────────────────────────────────────────────────
 const TF: React.FC<{
@@ -99,7 +95,12 @@ const TF: React.FC<{
     disabled={disabled}
     placeholder={placeholder}
     onChange={(e) => onChange(e.target.value)}
-    className={`${BASE_INPUT} ${error ? ERR_INPUT : ''} ${align === 'right' ? 'text-right tabular-nums' : align === 'center' ? 'text-center' : ''} ${className}`}
+    className={`${BASE_INPUT} ${align === 'right' ? 'text-right tabular-nums' : align === 'center' ? 'text-center' : ''} ${className}`}
+    style={{
+      borderColor: error ? 'var(--danger)' : 'var(--border)',
+      backgroundColor: 'var(--card)',
+      color: 'var(--text)',
+    }}
   />
 );
 
@@ -114,13 +115,18 @@ const SF: React.FC<{
     <select
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value)}
-      className={`${BASE_INPUT} appearance-none pr-8 cursor-pointer ${error ? ERR_INPUT : ''}`}
+      className={`${BASE_INPUT} appearance-none pr-8 cursor-pointer`}
+      style={{
+        borderColor: error ? 'var(--danger)' : 'var(--border)',
+        backgroundColor: 'var(--card)',
+        color: 'var(--text)',
+      }}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>{o.label}</option>
       ))}
     </select>
-    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
   </div>
 );
 
@@ -177,19 +183,24 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
 
   const totalAmount = items.reduce((sum, item) => sum + (item.amount || 0), 0);
 
-  // Check if there are any old gold errors
   const hasErrors = Object.keys(errors).some(key => key.startsWith('oldGold_') || key.includes('oldGold'));
 
   return (
-    <div className={`border-t-2 border-amber-200 bg-amber-50/30 px-4 py-3 ${className}`}>
+    <div 
+      className={`border-t-2 px-4 py-3 themed-transition ${className}`}
+      style={{
+        borderColor: 'var(--border)',
+        backgroundColor: 'var(--primary-light)',
+      }}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <RotateCcw className="h-5 w-5 text-amber-600" />
-          <h3 className="text-sm font-semibold text-amber-800">{title}</h3>
-          <span className="text-xs text-amber-600">{items.length} items</span>
+          <RotateCcw className="h-5 w-5" style={{ color: 'var(--gold)' }} />
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--gold)' }}>{title}</h3>
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{items.length} items</span>
           {hasErrors && (
-            <span className="text-xs text-red-500 flex items-center gap-1 ml-2">
-              <span className="inline-block w-2 h-2 bg-red-500 rounded-full"></span>
+            <span className="text-xs flex items-center gap-1 ml-2" style={{ color: 'var(--danger)' }}>
+              <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--danger)' }}></span>
               Has errors
             </span>
           )}
@@ -197,10 +208,23 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
       </div>
 
       {/* Old Gold Table - Compact View */}
-      <div className="overflow-x-auto border border-amber-200 rounded-lg bg-white">
+      <div 
+        className="overflow-x-auto border rounded-lg themed-transition"
+        style={{ 
+          borderColor: 'var(--border)',
+          backgroundColor: 'var(--card)',
+        }}
+      >
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-amber-50/80 text-xs font-semibold uppercase tracking-wider text-amber-700 border-b border-amber-200">
+            <tr 
+              className="text-xs font-semibold uppercase tracking-wider border-b themed-transition"
+              style={{
+                backgroundColor: 'var(--primary-light)',
+                color: 'var(--primary)',
+                borderColor: 'var(--border)',
+              }}
+            >
               <th className="px-2 py-2 text-center w-8">#</th>
               <th className="px-2 py-2 text-left min-w-[160px]">Description</th>
               <th className="px-2 py-2 text-center w-24">G.WT</th>
@@ -214,7 +238,7 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400">
+                <td colSpan={8} className="px-3 py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                   No old gold items added yet. Click "Add Old Gold Item" below to start.
                 </td>
               </tr>
@@ -222,7 +246,6 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
               items.map((item, idx) => {
                 const isExpanded = expandedRows[idx] || false;
                 
-                // Get errors for this item
                 const getError = (field: string) => getFieldError(errors, idx, field);
                 const hasError = (field: string) => !!getError(field);
                 
@@ -233,8 +256,14 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
                 return (
                   <React.Fragment key={item.id || idx}>
                     {/* Main Row - Compact with Inputs */}
-                    <tr className={`border-b border-amber-100 hover:bg-amber-50/30 transition-colors ${isExpanded ? 'bg-amber-50/50' : ''}`}>
-                      <td className="px-2 py-2 text-center text-sm text-gray-500">
+                    <tr 
+                      className="border-b transition-colors themed-transition"
+                      style={{ 
+                        borderColor: 'var(--border)',
+                        backgroundColor: isExpanded ? 'var(--hover-bg)' : 'transparent',
+                      }}
+                    >
+                      <td className="px-2 py-2 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                         {idx + 1}
                       </td>
                       <td className="px-2 py-2">
@@ -244,10 +273,15 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
                             value={item.description || ''}
                             placeholder="Enter description"
                             onChange={(e) => updateField('description', e.target.value)}
-                            className={`w-full rounded border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-100/60 ${hasError('description') ? 'border-red-400' : ''}`}
+                            className="w-full rounded border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 themed-transition"
+                            style={{
+                              borderColor: hasError('description') ? 'var(--danger)' : 'var(--border)',
+                              backgroundColor: 'var(--card)',
+                              color: 'var(--text)',
+                            }}
                           />
                           {hasError('description') && (
-                            <p className="mt-0.5 text-xs text-red-500">{getError('description')}</p>
+                            <p className="mt-0.5 text-xs" style={{ color: 'var(--danger)' }}>{getError('description')}</p>
                           )}
                         </div>
                       </td>
@@ -256,14 +290,14 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
                           <TF value={toStr(item.grossWt)} placeholder="0"
                             onChange={(v) => updateField('grossWt', v)} 
                             error={hasError('grossWt')} step="0.001"
-                            className={`text-center w-24 ${hasError('grossWt') ? 'border-red-400' : ''}`} />
+                            className="text-center w-24" />
                           {hasError('grossWt') && (
-                            <p className="mt-0.5 text-xs text-red-500">{getError('grossWt')}</p>
+                            <p className="mt-0.5 text-xs" style={{ color: 'var(--danger)' }}>{getError('grossWt')}</p>
                           )}
                         </div>
                       </td>
                       <td className="px-2 py-2 text-center">
-                        <span className="text-sm font-medium text-amber-700 tabular-nums w-24 inline-block">
+                        <span className="text-sm font-medium tabular-nums w-24 inline-block" style={{ color: 'var(--gold)' }}>
                           {fmt(item.netWt || 0)}
                         </span>
                       </td>
@@ -272,14 +306,14 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
                           <TF value={toStr(item.rate)} placeholder="0"
                             onChange={(v) => updateField('rate', v)} 
                             error={hasError('rate')} step="any"
-                            className={`text-center w-28 ${hasError('rate') ? 'border-red-400' : ''}`} />
+                            className="text-center w-28" />
                           {hasError('rate') && (
-                            <p className="mt-0.5 text-xs text-red-500">{getError('rate')}</p>
+                            <p className="mt-0.5 text-xs" style={{ color: 'var(--danger)' }}>{getError('rate')}</p>
                           )}
                         </div>
                       </td>
                       <td className="px-2 py-2 text-center">
-                        <span className="text-sm font-bold text-amber-700 tabular-nums w-32 inline-block">
+                        <span className="text-sm font-bold tabular-nums w-32 inline-block" style={{ color: 'var(--gold)' }}>
                           ₹{fmt(item.amount || 0)}
                         </span>
                       </td>
@@ -287,7 +321,11 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
                         <button
                           type="button"
                           onClick={() => toggleRow(idx)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-amber-100 transition-colors"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded border transition-colors themed-transition"
+                          style={{
+                            borderColor: 'var(--border)',
+                            color: 'var(--text-muted)',
+                          }}
                           title={isExpanded ? 'Hide details' : 'Show details'}
                         >
                           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -297,7 +335,11 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
                         <button
                           type="button"
                           onClick={() => removeOldGold(idx)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-gray-200 text-red-500 hover:bg-red-50 transition-colors"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded border transition-colors themed-transition"
+                          style={{
+                            borderColor: 'var(--border)',
+                            color: 'var(--danger)',
+                          }}
                           title="Remove old gold"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -307,76 +349,100 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
 
                     {/* Expanded Details Row */}
                     {isExpanded && (
-                      <tr className="bg-amber-50/30">
+                      <tr style={{ backgroundColor: 'var(--hover-bg)' }}>
                         <td colSpan={8} className="px-4 py-3">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {/* HSN */}
                             <div>
-                              <label className="block text-xs font-medium text-amber-700 mb-1">HSN</label>
+                              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gold)' }}>HSN</label>
                               <input
                                 type="text"
                                 value={item.hsn || ''}
                                 placeholder="HSN"
                                 onChange={(e) => updateField('hsn', e.target.value)}
-                                className={`w-full rounded border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-100/60 ${hasError('hsn') ? 'border-red-400' : ''}`}
+                                className="w-full rounded border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 themed-transition"
+                                style={{
+                                  borderColor: hasError('hsn') ? 'var(--danger)' : 'var(--border)',
+                                  backgroundColor: 'var(--card)',
+                                  color: 'var(--text)',
+                                }}
                               />
                               {hasError('hsn') && (
-                                <p className="mt-0.5 text-xs text-red-500">{getError('hsn')}</p>
+                                <p className="mt-0.5 text-xs" style={{ color: 'var(--danger)' }}>{getError('hsn')}</p>
                               )}
                             </div>
 
                             {/* Less Wastage */}
                             <div>
-                              <label className="block text-xs font-medium text-amber-700 mb-1">Less W</label>
+                              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gold)' }}>Less W</label>
                               <TF value={toStr(item.lessWastage)} placeholder="0"
                                 onChange={(v) => updateField('lessWastage', v)} 
                                 error={hasError('lessWastage')} step="0.001" />
                               {hasError('lessWastage') && (
-                                <p className="mt-0.5 text-xs text-red-500">{getError('lessWastage')}</p>
+                                <p className="mt-0.5 text-xs" style={{ color: 'var(--danger)' }}>{getError('lessWastage')}</p>
                               )}
                             </div>
 
                             {/* Purity */}
                             <div>
-                              <label className="block text-xs font-medium text-amber-700 mb-1">Purity</label>
+                              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gold)' }}>Purity</label>
                               <SF value={item.purity}
                                 onChange={(v) => updateField('purity', v)}
                                 options={PURITY_OPTIONS} 
                                 error={hasError('purity')}
-                                className={`w-28 ${hasError('purity') ? 'border-red-400' : ''}`} />
+                                className="w-28" />
                               {hasError('purity') && (
-                                <p className="mt-0.5 text-xs text-red-500">{getError('purity')}</p>
+                                <p className="mt-0.5 text-xs" style={{ color: 'var(--danger)' }}>{getError('purity')}</p>
                               )}
                             </div>
 
                             {/* Net WT (Display only - auto-calculated) */}
                             <div>
-                              <label className="block text-xs font-medium text-amber-700 mb-1">N.WT (Auto)</label>
-                              <div className="h-9 w-full rounded border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 tabular-nums">
+                              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gold)' }}>N.WT (Auto)</label>
+                              <div 
+                                className="h-9 w-full rounded border px-3 py-1.5 text-sm tabular-nums"
+                                style={{
+                                  borderColor: 'var(--border)',
+                                  backgroundColor: 'var(--background)',
+                                  color: 'var(--text)',
+                                }}
+                              >
                                 {fmt(item.netWt || 0)}
                               </div>
                             </div>
 
                             {/* Amount (Display only - auto-calculated) */}
                             <div className="col-span-2">
-                              <label className="block text-xs font-medium text-amber-700 mb-1">Amount (Auto)</label>
-                              <div className="h-9 w-full rounded border border-amber-200 bg-amber-50/50 px-3 py-1.5 text-sm font-bold text-amber-700 tabular-nums">
+                              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gold)' }}>Amount (Auto)</label>
+                              <div 
+                                className="h-9 w-full rounded border px-3 py-1.5 text-sm font-bold tabular-nums"
+                                style={{
+                                  borderColor: 'var(--gold)',
+                                  backgroundColor: 'var(--primary-light)',
+                                  color: 'var(--gold)',
+                                }}
+                              >
                                 ₹{fmt(item.amount || 0)}
                               </div>
                             </div>
 
                             {/* Description (Full width in expanded) */}
                             <div className="col-span-2">
-                              <label className="block text-xs font-medium text-amber-700 mb-1">Description</label>
+                              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gold)' }}>Description</label>
                               <input
                                 type="text"
                                 value={item.description || ''}
                                 placeholder="Enter description"
                                 onChange={(e) => updateField('description', e.target.value)}
-                                className={`w-full rounded border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-100/60 ${hasError('description') ? 'border-red-400' : ''}`}
+                                className="w-full rounded border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 themed-transition"
+                                style={{
+                                  borderColor: hasError('description') ? 'var(--danger)' : 'var(--border)',
+                                  backgroundColor: 'var(--card)',
+                                  color: 'var(--text)',
+                                }}
                               />
                               {hasError('description') && (
-                                <p className="mt-0.5 text-xs text-red-500">{getError('description')}</p>
+                                <p className="mt-0.5 text-xs" style={{ color: 'var(--danger)' }}>{getError('description')}</p>
                               )}
                             </div>
                           </div>
@@ -390,11 +456,15 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
 
             {/* Add old gold button */}
             <tr>
-              <td colSpan={8} className="px-3 py-2 bg-amber-50/30">
+              <td colSpan={8} className="px-3 py-2" style={{ backgroundColor: 'var(--primary-light)' }}>
                 <button
                   type="button"
                   onClick={addOldGold}
-                  className="inline-flex items-center gap-1.5 rounded border border-dashed border-amber-300 px-4 py-2 text-sm font-medium text-amber-600 hover:border-amber-400 hover:text-amber-700 hover:bg-amber-50/50 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded border border-dashed px-4 py-2 text-sm font-medium transition-colors themed-transition"
+                  style={{
+                    borderColor: 'var(--gold)',
+                    color: 'var(--gold)',
+                  }}
                 >
                   <Plus className="h-4 w-4" /> Add Old Gold Item
                 </button>
@@ -407,9 +477,14 @@ export const OldGoldTable: React.FC<OldGoldTableProps> = ({
       {/* Old Gold Total */}
       {items.length > 0 && (
         <div className="flex justify-end mt-3">
-          <div className="flex items-center gap-4 bg-amber-100/60 rounded-lg px-4 py-2">
-            <span className="text-sm font-medium text-amber-800">Total Exchange Amount:</span>
-            <span className="text-lg font-bold text-amber-700">
+          <div 
+            className="flex items-center gap-4 rounded-lg px-4 py-2 themed-transition"
+            style={{
+              backgroundColor: 'var(--primary-light)',
+            }}
+          >
+            <span className="text-sm font-medium" style={{ color: 'var(--gold)' }}>Total Exchange Amount:</span>
+            <span className="text-lg font-bold" style={{ color: 'var(--gold)' }}>
               ₹{fmt(totalAmount)}
             </span>
           </div>

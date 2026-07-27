@@ -1,22 +1,21 @@
 /* ============================================================
    DESIGN TOKENS — LuxJewel Theme System
-   Extracted from exact screenshots:
-   Light = white cards, lavender bg, purple active sidebar
-   Dark  = deep navy bg, dark navy sidebar, purple active
+   Custom color codes applied
    ============================================================ */
 
 :root {
   /* ── Surfaces & Backgrounds ─────────────────────────── */
-  --background:      #F8F9FD;   /* Clean, ultra-light lavender-blue page background */
+  --background:      #fefefe;   /* Light version bg */
   --card:            #FFFFFF;   /* Pure white container cards */
   --sidebar:         #FFFFFF;   /* Pure white sidebar navigation */
   --header:          #FFFFFF;   /* Pure white header bar */
 
   /* ── Brand / Primary / Accents ──────────────────────── */
-  --primary:         #7C3AED;   /* Core brand purple */
-  --primary-hover:   #6D28D9;   /* Deepened purple interactive hover */
-  --primary-light:   #F3E8FF;   /* Soft purple tint */
-  --gold:            #B88E2F;   /* Refined luxury gold for text & branding accents */
+  --primary:         #654e7f;   /* CTA selection light */
+  --primary-hover:   #382853;   /* CTA selection dark */
+  --primary-light:   #eee7fa;   /* Selection tab light */
+  --gold:            #e0ad5d;   /* Icon colour */
+  --accent-dark:     #382853;   /* CTA selection dark */
 
   /* ── Typography ──────────────────────────────────────── */
   --text:            #1F2937;   /* Crisp slate-black for primary readability */
@@ -25,13 +24,13 @@
 
   /* ── Header Customization ────────────────────────────── */
   --header-bg:       #FFFFFF;
-  --header-border:   #EAEBF4;   /* Soft border matching layout lines */
+  --header-border:   #e1e1e1;   /* Border line light */
   --header-text:     #1F2937;
-  --header-icon:     #6B7280;
+  --header-icon:     #e0ad5d;   /* Icon colour */
   --header-hover:    rgba(0, 0, 0, 0.04);
 
   /* ── Borders & Separators ────────────────────────────── */
-  --border:          #ECEFF5;   /* Light, crisp structure lines */
+  --border:          #e1e1e1;   /* Border line light */
   --border-subtle:   #F3F4F6;
 
   /* ── Functional / Semantic States ────────────────────── */
@@ -44,18 +43,18 @@
 
   /* ── Sidebar Component States ────────────────────────── */
   --sidebar-text:        #4B5563;   /* Default inactive menu text */
-  --sidebar-icon:        #C5A059;   /* EXACT GOLD accent color for inactive icons */
-  --sidebar-hover-bg:    #F5F3FF;   /* Gentle lilac hover splash */
-  --sidebar-hover-text:  #7C3AED;
+  --sidebar-icon:        #e0ad5d;   /* Icon colour for inactive icons */
+  --sidebar-hover-bg:    #eee7fa;   /* Selection tab light for hover */
+  --sidebar-hover-text:  #654e7f;   /* CTA selection light */
   
-  /* Active State ("Dashboard" item active tint) */
-  --sidebar-active-bg:   #EDE9FE;   /* Exact light pastel-purple pill background */
-  --sidebar-active-text: #7C3AED;   /* Vibrant purple active text/icon overrides */
+  /* Active State */
+  --sidebar-active-bg:   #eee7fa;   /* Selection tab light for active background */
+  --sidebar-active-text: #654e7f;   /* CTA selection light for active text */
 
   /* ── Interactive UI Components ───────────────────────── */
-  --hover-bg:        rgba(124, 58, 237, 0.05);
-  --active-bg:       rgba(124, 58, 237, 0.1);
-  --focus-ring:      rgba(124, 58, 237, 0.25);
+  --hover-bg:        rgba(101, 78, 127, 0.05);
+  --active-bg:       rgba(101, 78, 127, 0.1);
+  --focus-ring:      rgba(101, 78, 127, 0.25);
 
   /* ── Elevation Shadows ───────────────────────────────── */
   --shadow-sm:       0 1px 2px 0 rgba(0, 0, 0, 0.03);
@@ -64,7 +63,7 @@
 
   /* ── Transitions ─────────────────────────────────────── */
   --transition:      200ms cubic-bezier(0.4, 0, 0.2, 1);
-  --scrollbar-thumb: #E1E4ED;
+  --scrollbar-thumb: #e1e1e1;
   --scrollbar-track: transparent;
 }
 
@@ -73,16 +72,17 @@
    ============================================================ */
 html.dark {
   /* ── Surfaces & Backgrounds ─────────────────────────── */
-  --background:      #09090E;   /* Deepest midnight-black background layer */
-  --card:            #12111A;   /* Distinct deep charcoal slate for elevated cards */
-  --sidebar:         #0C0B12;   /* Uniform sidebar matching the main frame dark levels */
-  --header:          #0C0B12;
+  --background:      #0c0c14;   /* Dark version bg */
+  --card:            #12111A;   /* Slightly lighter card surface */
+  --sidebar:         #0c0c14;   /* Dark version bg matching main background */
+  --header:          #0c0c14;   /* Dark version bg */
 
   /* ── Brand / Primary / Accents ──────────────────────── */
-  --primary:         #9F7AEA;   /* Lighter, high-contrast neon purple for visibility */
-  --primary-hover:   #B794F4;
-  --primary-light:   rgba(159, 122, 234, 0.15);
-  --gold:            #E9C46A;   /* Brighter, glowing gold accent */
+  --primary:         #654e7f;   /* CTA selection light */
+  --primary-hover:   #382853;   /* CTA selection dark */
+  --primary-light:   rgba(101, 78, 127, 0.15);
+  --gold:            #e0ad5d;   /* Icon colour */
+  --accent-dark:     #382853;   /* CTA selection dark */
 
   /* ── Typography ──────────────────────────────────────── */
   --text:            #F3F4F6;   /* Highly legible near-white text */
@@ -90,14 +90,14 @@ html.dark {
   --text-muted:      #6B7280;   /* Muted charcoal for deep background labels */
 
   /* ── Header Customization ────────────────────────────── */
-  --header-bg:       #0C0B12;
-  --header-border:   #1E1C26;   /* Dark structural separation borders */
+  --header-bg:       #0c0c14;
+  --header-border:   #5b4c3c;   /* Border line dark */
   --header-text:     #F3F4F6;
-  --header-icon:     #9CA3AF;
+  --header-icon:     #e0ad5d;   /* Icon colour */
   --header-hover:    rgba(255, 255, 255, 0.04);
 
   /* ── Borders & Separators ────────────────────────────── */
-  --border:          #1E1B29;   /* Perfectly blends card frames into dark space */
+  --border:          #5b4c3c;   /* Border line dark */
   --border-subtle:   #15131D;
 
   /* ── Functional / Semantic States ────────────────────── */
@@ -109,18 +109,18 @@ html.dark {
 
   /* ── Sidebar Component States ────────────────────────── */
   --sidebar-text:        #9CA3AF;
-  --sidebar-icon:        #D8A84C;   /* Radiant luxury gold for dark mode inactive icons */
+  --sidebar-icon:        #e0ad5d;   /* Icon colour for dark mode icons */
   --sidebar-hover-bg:    rgba(255, 255, 255, 0.03);
   --sidebar-hover-text:  #FFFFFF;
   
-  /* Active State (Dark mode "Dashboard" active tint pill) */
-  --sidebar-active-bg:   #231B37;   /* Muted rich dark-wine purple pill */
-  --sidebar-active-text: #A78BFA;   /* Clear luminous lavender-purple indicator text */
+  /* Active State (Dark mode) */
+  --sidebar-active-bg:   #382853;   /* CTA selection dark for active background */
+  --sidebar-active-text: #e0ad5d;   /* Icon colour for active text */
 
   /* ── Interactive UI Components ───────────────────────── */
-  --hover-bg:        rgba(159, 122, 234, 0.08);
-  --active-bg:       rgba(159, 122, 234, 0.15);
-  --focus-ring:      rgba(159, 122, 234, 0.4);
+  --hover-bg:        rgba(101, 78, 127, 0.08);
+  --active-bg:       rgba(101, 78, 127, 0.15);
+  --focus-ring:      rgba(101, 78, 127, 0.4);
 
   /* ── Elevation Shadows ───────────────────────────────── */
   --shadow-sm:       0 1px 2px rgba(0, 0, 0, 0.5);
@@ -128,7 +128,7 @@ html.dark {
   --shadow-lg:       0 20px 50px -10px rgba(0, 0, 0, 0.8);
 
   /* ── Transitions ─────────────────────────────────────── */
-  --scrollbar-thumb: #292638;
+  --scrollbar-thumb: #5b4c3c;
   --scrollbar-track: transparent;
 }
 
@@ -174,11 +174,7 @@ body {
     box-shadow       var(--transition);
 }
 
-/* ── Sidebar nav links — CSS-driven active & hover ──────
-   Using CSS classes instead of inline JS handlers so that
-   active state is always correct regardless of React
-   re-render timing (fixes "white text on click" bug).
-   ────────────────────────────────────────────────────── */
+/* ── Sidebar nav links — CSS-driven active & hover ────── */
 .sidebar-nav-link {
   background: transparent;
   transition: background var(--transition);
@@ -188,7 +184,7 @@ body {
   background: var(--sidebar-hover-bg) !important;
 }
 
-/* Active state — purple bg, always visible */
+/* Active state */
 .sidebar-nav-link.is-active {
   background: var(--sidebar-active-bg) !important;
 }

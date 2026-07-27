@@ -15,10 +15,6 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
   variant = 'signup',
   isLoading = false,
 }) => {
-  const buttonClass = `flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors w-full ${
-    isLoading ? 'opacity-50 cursor-not-allowed' : ''
-  }`;
-
   const socialButtons = [
     {
       name: 'Google',
@@ -68,10 +64,16 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
     <div className="space-y-3">
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-300"></div>
+          <div className="w-full border-t" style={{ borderColor: 'var(--border)' }}></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-white text-gray-500">
+          <span 
+            className="px-4"
+            style={{ 
+              backgroundColor: 'var(--background)', 
+              color: 'var(--text-muted)' 
+            }}
+          >
             or {variant === 'signup' ? 'sign up using' : 'sign in using'}
           </span>
         </div>
@@ -84,10 +86,29 @@ export const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
             type="button"
             onClick={button.onClick}
             disabled={isLoading}
-            className={buttonClass}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors w-full themed-transition"
+            style={{
+              border: '1px solid var(--border)',
+              backgroundColor: 'var(--card)',
+              opacity: isLoading ? 0.5 : 1,
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) {
+                (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--hover-bg)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isLoading) {
+                (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--card)';
+              }
+            }}
           >
             {button.icon}
-            <span className="text-sm font-medium text-gray-700 hidden sm:inline">
+            <span 
+              className="text-sm font-medium hidden sm:inline"
+              style={{ color: 'var(--text)' }}
+            >
               {button.name}
             </span>
           </button>

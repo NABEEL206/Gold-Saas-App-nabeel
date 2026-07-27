@@ -79,7 +79,10 @@ const Pagination: React.FC<PaginationProps> = ({
   return (
     <div
       className={`flex items-center justify-end gap-4 px-4 py-3 themed-transition ${className}`}
-      style={{ background: 'var(--card)', borderTop: '1px solid var(--border)' }}
+      style={{ 
+        backgroundColor: 'var(--card)', 
+        borderTop: '1px solid var(--border)' 
+      }}
     >
       {/* Items per page dropdown and range info */}
       <div className="flex items-center gap-3">
@@ -88,8 +91,12 @@ const Pagination: React.FC<PaginationProps> = ({
             <select
               value={itemsPerPage}
               onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-              className="px-2 py-1 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent themed-transition"
-              style={{ border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)' }}
+              className="px-2 py-1 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] themed-transition"
+              style={{ 
+                border: '1px solid var(--border)', 
+                backgroundColor: 'var(--card)', 
+                color: 'var(--text)' 
+              }}
             >
               {itemsPerPageOptions.map((option) => (
                 <option key={option} value={option}>
@@ -115,10 +122,20 @@ const Pagination: React.FC<PaginationProps> = ({
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="p-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
+            className="p-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed themed-transition"
+            style={{ 
+              border: '1px solid var(--border)', 
+              color: 'var(--text-secondary)',
+              backgroundColor: 'transparent',
+            }}
+            onMouseEnter={e => {
+              if (currentPage !== 1) {
+                (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--hover-bg)';
+              }
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+            }}
             aria-label="Previous page"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -131,18 +148,30 @@ const Pagination: React.FC<PaginationProps> = ({
                 {typeof page === 'number' ? (
                   <button
                     onClick={() => onPageChange(page)}
-                    className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                      page === currentPage ? 'text-white' : ''
-                    }`}
+                    className="px-3 py-1 text-sm rounded-md transition-colors themed-transition"
                     style={page === currentPage
-                      ? { background: 'var(--primary)', color: '#fff' }
-                      : { color: 'var(--text-secondary)' }
+                      ? { 
+                          backgroundColor: 'var(--primary)', 
+                          color: '#ffffff',
+                          border: '1px solid var(--primary)',
+                        }
+                      : { 
+                          color: 'var(--text-secondary)',
+                          backgroundColor: 'transparent',
+                          border: '1px solid transparent',
+                        }
                     }
                     onMouseEnter={e => {
-                      if (page !== currentPage) (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)';
+                      if (page !== currentPage) {
+                        (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--hover-bg)';
+                        (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
+                      }
                     }}
                     onMouseLeave={e => {
-                      if (page !== currentPage) (e.currentTarget as HTMLElement).style.background = '';
+                      if (page !== currentPage) {
+                        (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                        (e.currentTarget as HTMLElement).style.borderColor = 'transparent';
+                      }
                     }}
                     aria-current={page === currentPage ? 'page' : undefined}
                   >
@@ -159,10 +188,20 @@ const Pagination: React.FC<PaginationProps> = ({
           <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="p-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
+            className="p-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed themed-transition"
+            style={{ 
+              border: '1px solid var(--border)', 
+              color: 'var(--text-secondary)',
+              backgroundColor: 'transparent',
+            }}
+            onMouseEnter={e => {
+              if (currentPage !== totalPages) {
+                (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--hover-bg)';
+              }
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+            }}
             aria-label="Next page"
           >
             <ChevronRight className="h-4 w-4" />

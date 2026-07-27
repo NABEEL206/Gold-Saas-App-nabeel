@@ -245,13 +245,21 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   const dropdownContent = isOpen ? (
     <div
       ref={dropdownRef}
-      style={{ ...style, background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)' }}
+      style={{ 
+        ...style, 
+        backgroundColor: 'var(--card)', 
+        border: '1px solid var(--border)', 
+        boxShadow: 'var(--shadow-lg)' 
+      }}
       className="rounded-lg flex flex-col overflow-hidden themed-transition"
     >
       {/* Search box */}
       <div
         className="flex-shrink-0 m-2 flex items-center gap-2 rounded-lg px-3 py-1.5"
-        style={{ border: '1px solid var(--primary)', background: 'var(--active-bg)' }}
+        style={{ 
+          border: '1px solid var(--primary)', 
+          backgroundColor: 'var(--active-bg)' 
+        }}
       >
         <svg className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--primary)' }} viewBox="0 0 16 16" fill="none">
           <circle cx="7" cy="7" r="5.25" stroke="currentColor" strokeWidth="1.4" />
@@ -282,7 +290,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         {groupedOptions.map(([group, opts]) => (
           <div key={group || "ungrouped"} className="[&+&]:mt-1">
             {group && (
-              <div className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+              <div className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--gold)' }}>
                 {group}
               </div>
             )}
@@ -305,11 +313,11 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                   className="mx-0.5 my-0.5 select-none rounded-lg px-3 py-2 text-sm transition-all duration-100 cursor-pointer"
                   style={
                     opt.disabled
-                      ? { cursor: 'not-allowed', color: 'var(--text-muted)' }
+                      ? { cursor: 'not-allowed', color: 'var(--text-muted)', opacity: 0.5 }
                       : isSelected
-                      ? { background: `var(--primary)`, color: '#fff', fontWeight: 500 }
+                      ? { backgroundColor: 'var(--primary)', color: '#ffffff', fontWeight: 500 }
                       : isHighlighted
-                      ? { background: 'var(--primary-light)', color: 'var(--primary)' }
+                      ? { backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }
                       : { color: 'var(--text)' }
                   }
                 >
@@ -341,18 +349,20 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         style={{
           cursor: disabled ? 'not-allowed' : 'pointer',
           border: isOpen ? '1px solid var(--primary)' : '1px solid var(--border)',
-          background: disabled ? 'var(--hover-bg)' : 'var(--card)',
+          backgroundColor: disabled ? 'var(--hover-bg)' : 'var(--card)',
           color: disabled ? 'var(--text-muted)' : 'var(--text)',
           boxShadow: isOpen ? '0 0 0 2px var(--focus-ring)' : undefined,
+          opacity: disabled ? 0.6 : 1,
         }}
       >
-        <span className={`truncate ${!selectedOption ? '' : ''}`} style={{ color: selectedOption ? 'var(--text)' : 'var(--text-muted)' }}>
+        <span className="truncate" style={{ color: selectedOption ? 'var(--text)' : 'var(--text-muted)' }}>
           {selectedOption ? selectedOption.label : triggerPlaceholder}
         </span>
         <svg
-          className={`ml-2 h-3.5 w-3.5 flex-shrink-0 text-gray-400 transition-transform duration-200 ${
+          className={`ml-2 h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}
+          style={{ color: 'var(--text-muted)' }}
           viewBox="0 0 14 14"
           fill="none"
         >

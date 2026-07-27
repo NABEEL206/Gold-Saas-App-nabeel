@@ -31,22 +31,24 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
         title={label}
         className={cn(
           'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
-          'border transition-all duration-200',
+          'transition-all duration-200 themed-transition',
           'focus:outline-none focus:ring-2',
           className
         )}
         style={{
           border: '1px solid var(--border)',
-          background: 'var(--card)',
+          backgroundColor: 'var(--card)',
           color: 'var(--text-secondary)',
         }}
         onMouseEnter={e => {
           (e.currentTarget as HTMLElement).style.borderColor = 'var(--primary)';
           (e.currentTarget as HTMLElement).style.color = 'var(--primary)';
+          (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--hover-bg)';
         }}
         onMouseLeave={e => {
           (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
           (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
+          (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--card)';
         }}
       >
         {isDark ? <Sun size={13} /> : <Moon size={13} />}
@@ -63,13 +65,17 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
       aria-pressed={isDark}
       title={label}
       className={cn(
-        'p-2 rounded-lg transition-colors flex items-center justify-center',
-        'focus:outline-none focus:ring-2',
+        'p-2 rounded-lg transition-colors flex items-center justify-center themed-transition',
+        'focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]',
         className
       )}
       style={{ color: 'var(--header-icon)' }}
-      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--header-hover)'}
-      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--header-hover)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+      }}
     >
       {isDark
         ? <Sun size={18} aria-hidden="true" />

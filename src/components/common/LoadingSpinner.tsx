@@ -3,7 +3,7 @@ import React from 'react';
 
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
-  color?: string;
+  variant?: 'primary' | 'gold' | 'danger' | 'success' | 'info' | 'muted';
   fullScreen?: boolean;
   text?: string;
   className?: string;
@@ -11,7 +11,7 @@ interface LoadingSpinnerProps {
 
 const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = 'md',
-  color = 'amber-500',
+  variant = 'gold',
   fullScreen = false,
   text = 'Loading...',
   className = '',
@@ -23,30 +23,40 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     xl: 'h-20 w-20 border-4',
   };
 
-  const colorClasses: Record<string, string> = {
-    'amber-500': 'border-amber-500',
-    'blue-500': 'border-blue-500',
-    'green-500': 'border-green-500',
-    'red-500': 'border-red-500',
-    'purple-500': 'border-purple-500',
-    'gray-500': 'border-gray-500',
-    'white': 'border-white',
+  const variantColors: Record<string, string> = {
+    primary: 'var(--primary)',
+    gold: 'var(--gold)',
+    danger: 'var(--danger)',
+    success: 'var(--success)',
+    info: 'var(--info)',
+    muted: 'var(--text-muted)',
   };
 
   const spinner = (
     <div className={`flex flex-col items-center justify-center gap-3 ${className}`}>
       <div
-        className={`${sizeClasses[size]} ${colorClasses[color] || colorClasses['amber-500']} rounded-full border-t-transparent animate-spin`}
+        className={`${sizeClasses[size]} rounded-full border-t-transparent animate-spin themed-transition`}
+        style={{ 
+          borderColor: variantColors[variant] || variantColors.gold,
+          borderTopColor: 'transparent',
+        }}
       />
-  {text && <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{text}</p>}
+      {text && (
+        <p 
+          className="text-sm themed-transition" 
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          {text}
+        </p>
+      )}
     </div>
   );
 
   if (fullScreen) {
     return (
       <div
-        className="fixed inset-0 flex items-center justify-center backdrop-blur-sm z-50"
-        style={{ background: 'rgba(var(--background), 0.8)' }}
+        className="fixed inset-0 flex items-center justify-center backdrop-blur-sm z-50 themed-transition"
+        style={{ backgroundColor: 'var(--background)' }}
       >
         {spinner}
       </div>

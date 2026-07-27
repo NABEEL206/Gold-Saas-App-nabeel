@@ -14,33 +14,6 @@ export interface ErrorSummaryProps {
   badgePosition?: 'inline' | 'header';
 }
 
-const variantStyles = {
-  error: {
-    bg: 'bg-red-50',
-    border: 'border-red-200',
-    text: 'text-red-700',
-    textSecondary: 'text-red-600',
-    icon: 'text-red-500',
-    badge: 'text-red-500',
-  },
-  warning: {
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-    text: 'text-amber-700',
-    textSecondary: 'text-amber-600',
-    icon: 'text-amber-500',
-    badge: 'text-amber-500',
-  },
-  info: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    text: 'text-blue-700',
-    textSecondary: 'text-blue-600',
-    icon: 'text-blue-500',
-    badge: 'text-blue-500',
-  },
-};
-
 export const ErrorSummary: React.FC<ErrorSummaryProps> = ({
   errors,
   title = 'Please fix the following errors:',
@@ -48,7 +21,7 @@ export const ErrorSummary: React.FC<ErrorSummaryProps> = ({
   maxDisplay = 5,
   onClose,
   showIcon = true,
-  variant = 'warning',
+  variant = 'error',
   showBadge = false,
   badgePosition = 'inline',
 }) => {
@@ -63,11 +36,11 @@ export const ErrorSummary: React.FC<ErrorSummaryProps> = ({
   const remainingCount = count - maxDisplay;
   const hasMore = remainingCount > 0;
 
-  const styles = variantStyles[variant];
-
   // Badge renderer
   const renderBadge = () => (
-    <span className={`inline-flex items-center gap-1 text-sm ${styles.badge}`}>
+    <span className="inline-flex items-center gap-1 text-sm themed-transition"
+      style={{ color: 'var(--danger)' }}
+    >
       {showIcon && <AlertCircle className="h-4 w-4" />}
       {count} error{count > 1 ? 's' : ''}
     </span>
@@ -85,17 +58,27 @@ export const ErrorSummary: React.FC<ErrorSummaryProps> = ({
 
   // Full error summary with details
   return (
-    <div className={`mb-6 p-4 rounded-lg border ${styles.bg} ${styles.border} ${styles.text} ${className}`}>
+    <div 
+      className={`mb-6 p-4 rounded-lg border themed-transition ${className}`}
+      style={{
+        backgroundColor: 'var(--danger-light, rgba(239, 68, 68, 0.1))',
+        borderColor: 'var(--danger)',
+        color: 'var(--text)',
+      }}
+    >
       <div className="flex items-start gap-3">
         {showIcon && (
-          <AlertCircle className={`h-5 w-5 ${styles.icon} mt-0.5 flex-shrink-0`} />
+          <AlertCircle 
+            className="h-5 w-5 mt-0.5 flex-shrink-0"
+            style={{ color: 'var(--danger)' }}
+          />
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <p className={`text-sm font-medium ${styles.text}`}>
+            <p className="text-sm font-medium" style={{ color: 'var(--danger)' }}>
               {title}
               {showBadge && (
-                <span className={`ml-2 text-xs ${styles.textSecondary} font-normal`}>
+                <span className="ml-2 text-xs font-normal" style={{ color: 'var(--text-secondary)' }}>
                   ({count} error{count > 1 ? 's' : ''})
                 </span>
               )}
@@ -104,14 +87,27 @@ export const ErrorSummary: React.FC<ErrorSummaryProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className={`p-1 rounded hover:bg-opacity-20 hover:bg-gray-900 transition-colors ${styles.text} flex-shrink-0`}
+                className="p-1 rounded hover:bg-opacity-20 transition-colors flex-shrink-0 themed-transition"
+                style={{ 
+                  color: 'var(--text-secondary)',
+                  backgroundColor: 'transparent',
+                }}
                 aria-label="Close error summary"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
               >
                 <X className="h-4 w-4" />
               </button>
             )}
           </div>
-          <ul className={`mt-1 text-sm ${styles.textSecondary} list-disc list-inside`}>
+          <ul 
+            className="mt-1 text-sm list-disc list-inside"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             {displayErrors.map((key) => (
               <li key={key} className="break-words">
                 {errors[key]}
@@ -139,14 +135,15 @@ export const ErrorBadge: React.FC<{
   count,
   className = '',
   showIcon = true,
-  variant = 'warning',
+  variant = 'error',
 }) => {
   if (count === 0) return null;
 
-  const styles = variantStyles[variant];
-
   return (
-    <span className={`inline-flex items-center gap-1 text-sm ${styles.badge} ${className}`}>
+    <span 
+      className={`inline-flex items-center gap-1 text-sm themed-transition ${className}`}
+      style={{ color: 'var(--danger)' }}
+    >
       {showIcon && <AlertCircle className="h-4 w-4" />}
       {count} error{count > 1 ? 's' : ''}
     </span>
